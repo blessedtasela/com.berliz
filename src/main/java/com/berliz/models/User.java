@@ -1,0 +1,94 @@
+package com.berliz.models;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.DynamicUpdate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.io.Serializable;
+import java.util.Date;
+
+@NamedQuery(name = "User.findByEmailId", query = "select u from User u where u.email =: email")
+
+@NamedQuery(name = "User.getAllUsers", query = "select new com.berliz.wrapper.UserWrapper(u.id, u.firstname, " +
+        "u.lastname, u.phone, u.dob, u.country, u.state, u.city, u.address, u.postalCode, u.email," +
+        " u.date, u.status, u.lastUpdate) from User u where u.role='user'")
+
+@NamedQuery(name = "User.updateStatus", query = "update User u set u.status=:status where u.id=:id")
+
+@NamedQuery(name = "User.getAllAdminsMail", query = "select u.email from User u where u.role='admin'")
+
+@NamedQuery(name = "User.updateUserRole", query = "update User u set u.role=:role where u.id=:id")
+
+
+@Data
+@Entity
+@DynamicInsert
+@DynamicUpdate
+@Table(name = "users")
+public class User implements Serializable {
+
+    private static final long SerialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "INTEGER")
+    private Integer id;
+
+    @Column(name = "firstname")
+    private String firstname;
+
+    @Column(name = "lastname")
+    private String lastname;
+
+    @Column(name = "phone")
+    private String phone;
+
+    @Column(name = "dob")
+    private String dob;
+
+    @Column(name = "gender")
+    private String gender;
+
+    @Column(name = "country")
+    private String country;
+
+    @Column(name = "state")
+    private String state;
+
+    @Column(name = "city")
+    private String city;
+
+    @Column(name = "postalCode", columnDefinition = "INTEGER")
+    private Integer postalCode;
+
+    @Column(name = "address", columnDefinition = "TEXT")
+    private String address;
+
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "password")
+    private String password;
+
+    @Column(name = "role")
+    private String role;
+
+    @Column(name = "token")
+    private String token;
+
+    @Column(name = "profilePhoto", columnDefinition = "BYTEA")
+    private byte[] profilePhoto;
+
+    @Column(name = "status")
+    private String status;
+
+    @Column(name = "date", columnDefinition = "DATE")
+    private Date date;
+
+    @Column(name = "lastUpdate", columnDefinition = "DATE")
+    private Date lastUpdate;
+
+}

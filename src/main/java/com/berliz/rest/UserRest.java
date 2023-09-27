@@ -1,0 +1,70 @@
+package com.berliz.rest;
+
+import com.berliz.DTO.ProfilePhotoRequest;
+import com.berliz.DTO.SignupRequest;
+import com.berliz.models.User;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+
+@RequestMapping("/user")
+public interface UserRest {
+
+    @PostMapping(path = "/signup")
+    ResponseEntity<String> signUp(@ModelAttribute SignupRequest request);
+
+    @PostMapping(path = "/login")
+    ResponseEntity<String> login(@RequestBody() Map<String, String> requestMap);
+
+    @GetMapping(path = "/get")
+    ResponseEntity<List<User>> getAllUsers();
+
+    @PutMapping(path = "/updateStatus/{id}")
+    ResponseEntity<String> updateStatus(@PathVariable Integer id);
+
+    @GetMapping(path = "/checkToken")
+    ResponseEntity<String> checkToken();
+
+    @PutMapping(path = "/changePassword")
+    ResponseEntity<String> changePassword(@RequestBody() Map<String, String> requestMap);
+
+    @PutMapping(path = "/changePasswordAdmin")
+    ResponseEntity<String> changePasswordAdmin(@RequestBody() Map<String, String> requestMap);
+
+    @PostMapping(path = "/forgotPassword")
+    ResponseEntity<String> forgotPassword(@RequestBody() Map<String, String> requestMap);
+
+    @PutMapping(path = "/resetPassword")
+    ResponseEntity<String> resetPassword(@RequestBody() Map<String, String> requestMap);
+
+    @PutMapping(path = "/activateAccount")
+    ResponseEntity<String> activateAccount(@RequestBody() Map<String, String> requestMap);
+
+    @PutMapping(path = "/deactivateAccount")
+    ResponseEntity<String> deactivateAccount();
+
+    @PutMapping(path = "/update")
+    ResponseEntity<String> updateUser(@RequestBody() Map<String, String> requestMap);
+
+    @PutMapping(path = "/updateUserAdmin")
+    ResponseEntity<String> updateUserAdmin(@RequestBody Map<String, String> requestMap);
+
+    @PutMapping(path = "/updateProfilePhoto")
+    ResponseEntity<String> updateProfilePhoto(@ModelAttribute ProfilePhotoRequest request);
+
+    @PutMapping(path = "/updateProfilePhotoAdmin")
+    ResponseEntity<String> updateProfilePhotoByAdmin(@ModelAttribute ProfilePhotoRequest request);
+
+    @PutMapping(path = "/updateRole")
+    ResponseEntity<String> updateRole(@RequestBody() Map<String, String> requestMap);
+
+    @GetMapping(path = "/getUser")
+    ResponseEntity<?> getUser();
+
+    @DeleteMapping(path = "/delete/{id}")
+    ResponseEntity<String> deleteUser(@PathVariable Integer id);
+
+}
