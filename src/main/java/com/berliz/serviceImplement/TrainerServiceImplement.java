@@ -14,12 +14,14 @@ import com.berliz.repository.UserRepo;
 import com.berliz.services.TrainerService;
 import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.EmailUtilities;
+import com.berliz.utils.FileUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.*;
@@ -35,9 +37,6 @@ public class TrainerServiceImplement implements TrainerService {
     CategoryRepo categoryRepo;
 
     @Autowired
-    UserServiceImplement userServiceImplement;
-
-    @Autowired
     JWTFilter jwtFilter;
 
     @Autowired
@@ -48,6 +47,9 @@ public class TrainerServiceImplement implements TrainerService {
 
     @Autowired
     EmailUtilities emailUtilities;
+
+    @Autowired
+    FileUtilities fileUtilities;
 
     /**
      * adds a Trainer based on data provided
@@ -325,42 +327,71 @@ public class TrainerServiceImplement implements TrainerService {
     public ResponseEntity<Trainer> getTrainer() {
         try {
             log.info("Inside getTrainer");
+            Integer userId = jwtFilter.getCurrentUserId();
+            Partner partner = partnerRepo.findByUserId(userId);
+            Trainer trainer = trainerRepo.findByPartnerId(partner.getId());
 
-            // Get the current user's ID
-            Integer user = jwtFilter.getCurrentUserId();
-
-            // Retrieve the partner associated with the current user
-            Partner partnerByUserId = partnerRepo.findByUserId(user);
-
-            // Retrieve the Trainer by its ID
-            Trainer Trainer = trainerRepo.findByPartnerId(partnerByUserId.getId());
-
-            if (Trainer == null) {
-                // Trainer with the provided ID was not found
+            if (partner == null) {
                 return new ResponseEntity<>(new Trainer(), HttpStatus.BAD_REQUEST);
             }
 
-            if (jwtFilter.isAdmin()) {
-                // User is an admin, return the retrieved Trainer
-                return new ResponseEntity<>(Trainer, HttpStatus.OK);
-            } else if (partnerByUserId != null) {
-                // Check if the logged-in user has a partner and the Trainer matches
-                Integer currentUser = partnerByUserId.getUser().getId();
-
-                if (currentUser.equals(user) && Trainer.getPartner().getId().equals(partnerByUserId.getId())) {
-                    // Return the retrieved Trainer
-                    return new ResponseEntity<>(Trainer, HttpStatus.OK);
-                }
+            if (trainer == null) {
+                return new ResponseEntity<>(new Trainer(), HttpStatus.BAD_REQUEST);
             }
+            // Check if the logged-in user has a partner and the Trainer matches
+            Integer currentUser = partner.getUser().getId();
 
-            // Unauthorized access, user is not admin and doesn't have a valid Trainer
+            if (currentUser.equals(userId) && trainer.getPartner().getId().equals(partner.getId())) {
+                return new ResponseEntity<>(trainer, HttpStatus.OK);
+            }
             return new ResponseEntity<>(new Trainer(), HttpStatus.UNAUTHORIZED);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-
-        // Internal server error occurred
         return new ResponseEntity<>(new Trainer(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> updatePhoto(TrainerRequest trainerRequest) throws JsonProcessingException {
+        try {
+            log.info("Inside updatePhoto{}", trainerRequest);
+            Integer trainerId = trainerRequest.getId();
+            Trainer trainer = trainerRepo.findByTrainerId(trainerId);
+            User user = trainer.getPartner().getUser();
+            boolean validUser = jwtFilter.isAdmin() || jwtFilter.getCurrentUserId().equals(user.getId());
+
+            if (!validUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (trainer == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer id not found");
+            }
+            MultipartFile file = trainerRequest.getPhoto();
+            if (file == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "No profile photo provided");
+            }
+
+            if (!fileUtilities.isValidImageType(file)) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Invalid file type");
+            }
+
+            if (!fileUtilities.isValidImageSize(file)) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Invalid file type");
+            }
+
+            trainer.setPhoto(file.getBytes());
+            trainerRepo.save(trainer);
+            if (jwtFilter.isAdmin())
+                return BerlizUtilities.buildResponse(HttpStatus.OK, trainer.getName() + "'s cover photo updated successfully");
+            else
+                return BerlizUtilities.buildResponse(HttpStatus.OK, "Your cover photo has been updated successfully");
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+
     }
 
     /**

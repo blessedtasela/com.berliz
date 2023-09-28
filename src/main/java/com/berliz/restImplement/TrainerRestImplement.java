@@ -70,13 +70,17 @@ public class TrainerRestImplement implements TrainerRest {
 
     @Override
     public ResponseEntity<String> updatePhoto(TrainerRequest trainerRequest) {
-        return null;
+        try {
+            return trainerService.updatePhoto(trainerRequest);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
     public ResponseEntity<String> deleteTrainer(Integer id) {
         try {
-            // Delegate the Trainer deleteTrainer operation to the service
             return trainerService.deleteTrainer(id);
         } catch (Exception ex) {
             ex.printStackTrace();

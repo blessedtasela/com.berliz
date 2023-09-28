@@ -68,4 +68,5 @@ public interface TrainerService {
      */
     ResponseEntity<Trainer> getTrainer();
 
+    ResponseEntity<String> updatePhoto(TrainerRequest trainerRequest) throws JsonProcessingException;
 }
