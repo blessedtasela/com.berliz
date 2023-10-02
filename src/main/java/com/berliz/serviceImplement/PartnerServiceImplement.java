@@ -188,24 +188,15 @@ public class PartnerServiceImplement implements PartnerService {
     public ResponseEntity<List<Partner>> getAllPartners() {
         try {
             log.info("Inside getAllPartners");
-
-            // Check if the user making the request is an admin
-            if (jwtFilter.isAdmin()) {
-                // Retrieve the list of partners from the repository
-                List<Partner> partners = partnerRepo.findAll();
-
-                // Return the list of partners with a status of 200 OK
-                return new ResponseEntity<>(partners, HttpStatus.OK);
-            } else {
-                // If the user is not an admin, return an unauthorized response
+            if (!jwtFilter.isAdmin()) {
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
             }
+                List<Partner> partners = partnerRepo.findAll();
+                return new ResponseEntity<>(partners, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
-
-            // If an exception occurs during the process, return an internal server error response
-            return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
+            return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
@@ -381,6 +372,21 @@ public class PartnerServiceImplement implements PartnerService {
             ex.printStackTrace();
         }
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<Partner>> getActivePartners() {
+        try {
+            log.info("Inside getActivePartners");
+            if (!jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+            List<Partner> partners = partnerRepo.getActivePartners();
+            return new ResponseEntity<>(partners, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 

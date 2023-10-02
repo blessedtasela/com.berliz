@@ -34,16 +34,16 @@ public interface TrainerService {
      * @param requestMap Request body containing updated trainer details.
      * @return ResponseEntity indicating the result of the trainer update operation.
      */
-    ResponseEntity<String> updateTrainer(Map<String, String> requestMap);
+    ResponseEntity<String> updateTrainer(Map<String, String> requestMap) throws JsonProcessingException;
 
     /**
-     * Updates the partner ID of a trainer.
+     * Updates the photo of a trainer.
      *
-     * @param id    The ID of the trainer to update.
-     * @param newId The new partner ID to associate with the trainer.
-     * @return ResponseEntity indicating the result of the partner ID update operation.
+     * @param trainerRequest The trainer information including the new photo.
+     * @return ResponseEntity indicating the result of the photo update operation.
+     * @throws JsonProcessingException if there is an issue processing JSON data.
      */
-    ResponseEntity<String> updatePartnerId(Integer id, Integer newId);
+    ResponseEntity<String> updatePhoto(TrainerRequest trainerRequest) throws JsonProcessingException;
 
     /**
      * Deletes a trainer with the specified ID.
@@ -51,7 +51,7 @@ public interface TrainerService {
      * @param id The ID of the trainer to delete.
      * @return ResponseEntity indicating the result of the trainer deletion operation.
      */
-    ResponseEntity<String> deleteTrainer(Integer id);
+    ResponseEntity<String> deleteTrainer(Integer id) throws JsonProcessingException;
 
     /**
      * Updates the status of a trainer.
@@ -59,7 +59,7 @@ public interface TrainerService {
      * @param id The ID of the trainer to update.
      * @return ResponseEntity indicating the result of the trainer status update operation.
      */
-    ResponseEntity<String> updateStatus(Integer id);
+    ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException;
 
     /**
      * Retrieves a trainer by its ID.
@@ -68,5 +68,10 @@ public interface TrainerService {
      */
     ResponseEntity<Trainer> getTrainer();
 
-    ResponseEntity<String> updatePhoto(TrainerRequest trainerRequest) throws JsonProcessingException;
+    /**
+     * Retrieves a list of aacive trainers.
+     *
+     * @return ResponseEntity containing the list of all trainers.
+     */
+    ResponseEntity<List<Trainer>> getActiveTrainers();
 }

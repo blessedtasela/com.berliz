@@ -23,6 +23,9 @@ import java.util.Set;
 @NamedQuery(name = "Trainer.findByPartnerId",
         query = "SELECT t FROM Trainer t WHERE t.partner.id = :id")
 
+@NamedQuery(name = "Trainer.getActiveTrainers",
+        query = "SELECT t FROM Trainer t WHERE t.status = 'true'")
+
 
 @Data
 @Entity

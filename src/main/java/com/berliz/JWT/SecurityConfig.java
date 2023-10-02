@@ -77,7 +77,9 @@ public class SecurityConfig {
                                         ("/user/activateAccount"),
                                         ("/category/getActiveCategories"),
                                         ("/contactUs/add"),
-                                        ("/dashboard/berliz")
+                                        ("/dashboard/berliz"),
+                                        ("/trainer/getActiveTrainers"),
+                                        ("/center/getActiveCenters")
                                 ).permitAll()
                                 .anyRequest().authenticated());
 

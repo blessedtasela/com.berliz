@@ -32,6 +32,14 @@ public interface TrainerRest {
     ResponseEntity<List<Trainer>> getAllTrainers();
 
     /**
+     * Get a list of active trainers.
+     *
+     * @return ResponseEntity containing the list of all trainers.
+     */
+    @GetMapping(path = "/getActiveTrainers")
+    ResponseEntity<List<Trainer>> getActiveTrainers();
+
+    /**
      * Update an existing trainer's details.
      *
      * @param requestMap Request body containing updated trainer details.
@@ -39,14 +47,6 @@ public interface TrainerRest {
      */
     @PutMapping(path = "/update")
     ResponseEntity<String> updateTrainer(@RequestBody Map<String, String> requestMap);
-
-    /**
-     * Update the partner ID associated with a trainer.
-     *
-     * @return ResponseEntity indicating the result of the partner ID update operation.
-     */
-    @PutMapping(path = "/updatePartnerId/{id}/{newId}")
-    ResponseEntity<String> updatePartnerId(@PathVariable Integer id, @PathVariable Integer newId);
 
     /**
      * Update the partner ID associated with a trainer.

@@ -68,4 +68,10 @@ public interface TrainerRepo extends JpaRepository<Trainer, Integer> {
      */
     Trainer findByPartnerId(Integer id);
 
+    /**
+     * Get the lists of trainers whose status are true
+     *
+     * @return The list of trainers or null if not found
+     */
+    List<Trainer>getActiveTrainers();
 }

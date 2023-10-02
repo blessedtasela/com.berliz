@@ -43,6 +43,17 @@ public class PartnerRestImplement implements PartnerRest {
     }
 
     @Override
+    public ResponseEntity<List<Partner>> getActivePartners() {
+        try {
+            return partnerService.getActivePartners();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+
+    @Override
     public ResponseEntity<String> updatePartner(Map<String, String> requestMap) {
         try {
             return partnerService.updatePartner(requestMap);

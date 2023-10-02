@@ -25,6 +25,9 @@ import java.util.Set;
 @NamedQuery(name = "Partner.countPartnerByEmail",
         query = "SELECT COUNT(p) FROM Partner p WHERE p.user.email =: email")
 
+@NamedQuery(name = "Partner.getActivePartners",
+        query = "SELECT p FROM Partner p WHERE p.status = 'true'")
+
 @Data
 @Entity
 @DynamicInsert

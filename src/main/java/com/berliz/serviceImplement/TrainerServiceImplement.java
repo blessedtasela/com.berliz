@@ -87,38 +87,63 @@ public class TrainerServiceImplement implements TrainerService {
      * @return ResponseEntity with a success message or an error message
      */
     @Override
-    public ResponseEntity<String> updateTrainer(Map<String, String> requestMap) {
+    public ResponseEntity<String> updateTrainer(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             log.info("Inside updateTrainer {}", requestMap);
+            Trainer trainer = trainerRepo.findByTrainerId(Integer.valueOf(requestMap.get("id")));
+            Integer userId = jwtFilter.getCurrentUserId();
+            boolean validUser = jwtFilter.isAdmin() ||
+                    (jwtFilter.isTrainer() && userId.equals(trainer.getPartner().getUser().getId()));
+            boolean isValidMap = validateTrainerFromMap(requestMap);
+            log.info("Is request valid? {}", isValidMap);
 
-            // Validate the incoming request
-            boolean isValid = validateTrainerFromMap(requestMap, true);
-            log.info("Is request valid? {}", isValid);
-
-            if (!isValid) {
-                return BerlizUtilities.getResponseEntity(BerlizConstants.INVALID_DATA, HttpStatus.BAD_REQUEST);
+            if (!isValidMap) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
-            Trainer validTrainer = trainerRepo.findByTrainerId(Integer.valueOf(requestMap.get("id")));
-
-            // Check if the Trainer exists
-            if (validTrainer == null) {
-                return BerlizUtilities.getResponseEntity("Trainer id not found", HttpStatus.BAD_REQUEST);
+            if (!validUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            // Check user permissions and update Trainer
-            if (jwtFilter.isAdmin() || (jwtFilter.isTrainer()
-                    && jwtFilter.getCurrentUserId().equals(validTrainer.getPartner().getUser().getId())
-                    && validTrainer.getStatus().equalsIgnoreCase("true"))) {
-                updateTrainerFromMap(requestMap);
-                return BerlizUtilities.getResponseEntity("Trainer updated successfully", HttpStatus.OK);
-            } else {
-                return BerlizUtilities.getResponseEntity(BerlizConstants.UNAUTHORIZED_REQUEST, HttpStatus.UNAUTHORIZED);
+            if (trainer == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer id not found");
             }
+
+            // Parse categoryIds as a comma-separated string
+            String categoryIdsString = requestMap.get("categoryIds");
+            String[] categoryIdsArray = categoryIdsString.split(",");
+
+            Set<Category> categorySet = new HashSet<>();
+            for (String categoryIdString : categoryIdsArray) {
+                // Remove leading and trailing spaces before parsing
+                int categoryId = Integer.parseInt(categoryIdString.trim());
+
+                // Check if the category with the given ID exists in the database
+                Optional<Category> optionalCategory = categoryRepo.findById(categoryId);
+                if (optionalCategory.isEmpty()) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Category with ID " + categoryId + " not found");
+                }
+                categorySet.add(optionalCategory.get());
+            }
+
+            // Update the Trainer properties
+            trainer.setCategorySet(categorySet);
+            trainer.setName(requestMap.get("name"));
+            trainer.setMotto(requestMap.get("motto"));
+            trainer.setAddress(requestMap.get("address"));
+            trainer.setExperience(requestMap.get("experience"));
+            trainer.setLikes(Integer.parseInt(requestMap.get("likes")));
+            trainer.setLastUpdate(new Date());
+            trainerRepo.save(trainer);
+
+            if (jwtFilter.isAdmin())
+                return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer information updated successfully");
+            else
+                return BerlizUtilities.buildResponse(HttpStatus.OK, "Hello, " + trainer.getName() + " you have successfully updated your trainer's account information");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
 
@@ -131,87 +156,15 @@ public class TrainerServiceImplement implements TrainerService {
     public ResponseEntity<List<Trainer>> getAllTrainers() {
         try {
             log.info("Inside getAllTrainers");
-
-            // Check if the user is an admin
-            if (jwtFilter.isAdmin()) {
-                // Retrieve all Trainers from the repository
-                List<Trainer> Trainers = trainerRepo.findAll();
-                return new ResponseEntity<>(Trainers, HttpStatus.OK);
-            } else {
-                // Return an unauthorized response for non-admin users
+            if (!jwtFilter.isAdmin()) {
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
             }
+                List<Trainer> Trainers = trainerRepo.findAll();
+                return new ResponseEntity<>(Trainers, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-
-        // Return an error response if an exception occurred
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-
-    /**
-     * Updates a Trainer partner ID based on the existing id and new id provided
-     *
-     * @param id    The existing partner id to be replaced.
-     * @param newId The new partner id.
-     * @return ResponseEntity with a success message or an error message
-     */
-    @Override
-    public ResponseEntity<String> updatePartnerId(Integer id, Integer newId) {
-        try {
-            log.info("Inside updateTrainerPartnerId {}", id);
-
-            // Check if the user is an admin
-            if (jwtFilter.isAdmin()) {
-                // Retrieve the Trainer with the given id
-                Optional<Trainer> optional = trainerRepo.findById(id);
-                if (optional.isPresent()) {
-                    log.info("Inside optional {}", optional);
-                    Trainer Trainer = optional.get();
-
-                    // Check if the new partner id exists
-                    Partner newPartner = partnerRepo.findById(newId).orElse(null);
-                    if (newPartner == null) {
-                        return BerlizUtilities.getResponseEntity("Invalid new partner id", HttpStatus.BAD_REQUEST);
-                    }
-
-                    // Check if the new partner id exists in the driver
-                    Trainer partnerTrainer = trainerRepo.findById(newId).orElse(null);
-                    if (partnerTrainer != null) {
-                        return BerlizUtilities.getResponseEntity("Partner id exists in driver", HttpStatus.BAD_REQUEST);
-                    }
-
-                    //Check if the new partner id is a valid user - i.e. it is active
-                    String newPartnerStatus = newPartner.getUser().getStatus();
-                    if (!newPartnerStatus.equalsIgnoreCase("true")) {
-                        return BerlizUtilities.getResponseEntity("new partnerId must be approved by admin", HttpStatus.BAD_REQUEST);
-                    }
-
-                    //Check if the new partner id has a valid user role
-                    String newPartnerRole = newPartner.getUser().getRole();
-                    if (!newPartnerRole.equalsIgnoreCase("user")) {
-                        return BerlizUtilities.getResponseEntity("new partnerId must have user role", HttpStatus.BAD_REQUEST);
-                    }
-
-                    // Check if the Trainer status is false before updating partner id
-                    if (Trainer.getStatus().equalsIgnoreCase("false")) {
-                        // Update the Trainer's partner id
-                        trainerRepo.updatePartnerId(id, newId);
-                        return BerlizUtilities.getResponseEntity("Trainer - partner id updated successfully. New id: " + newId, HttpStatus.OK);
-                    } else {
-                        return BerlizUtilities.getResponseEntity("Trainer status must be false to update partner id", HttpStatus.BAD_REQUEST);
-                    }
-                } else {
-                    return BerlizUtilities.getResponseEntity("Trainer with id " + id + " not found", HttpStatus.BAD_REQUEST);
-                }
-            } else {
-                return BerlizUtilities.getResponseEntity(BerlizConstants.UNAUTHORIZED_REQUEST, HttpStatus.UNAUTHORIZED);
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
     }
 
     /**
@@ -221,29 +174,25 @@ public class TrainerServiceImplement implements TrainerService {
      * @return ResponseEntity with a success message or an error message
      */
     @Override
-    public ResponseEntity<String> deleteTrainer(Integer id) {
+    public ResponseEntity<String> deleteTrainer(Integer id) throws JsonProcessingException {
         try {
-            // Check if the current user is an admin
-            if (jwtFilter.isAdmin()) {
-                // Retrieve the Trainer by its ID
-                Trainer Trainer = trainerRepo.findByTrainerId(id);
-                if (Trainer != null) {
-                    // Delete the retrieved Trainer from the repository
-                    trainerRepo.delete(Trainer);
-                    return BerlizUtilities.getResponseEntity("Trainer deleted successfully", HttpStatus.OK);
-                } else {
-                    // Trainer with the provided ID was not found
-                    return BerlizUtilities.getResponseEntity("Trainer id not found", HttpStatus.BAD_REQUEST);
-                }
-            } else {
-                // Unauthorized access, user is not an admin
-                return BerlizUtilities.getResponseEntity(BerlizConstants.UNAUTHORIZED_REQUEST, HttpStatus.UNAUTHORIZED);
+            log.info("Inside deleteTrainer {}", id);
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            boolean authorizedUser = user.getEmail().equalsIgnoreCase("berlizworld@gmail.com");
+            if (!jwtFilter.isAdmin() && authorizedUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
+            Trainer Trainer = trainerRepo.findByTrainerId(id);
+            if (Trainer == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer id not found");
+            }
+            trainerRepo.delete(Trainer);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer deleted successfully");
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        // Internal server error occurred
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     /**
@@ -253,68 +202,50 @@ public class TrainerServiceImplement implements TrainerService {
      * @return ResponseEntity with a success message or an error message
      */
     @Override
-    public ResponseEntity<String> updateStatus(Integer id) {
+    public ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException {
         try {
             log.info("Inside updateStatus {}", id);
-
-            // Retrieve the current user's ID
-            Integer userId = jwtFilter.getCurrentUserId();
-
-            // Retrieve the Trainer entity by ID
+            Integer validUserId = jwtFilter.getCurrentUserId();
             Optional<Trainer> optional = trainerRepo.findById(id);
 
-            // Check if the Trainer exists
-            if (optional.isPresent()) {
-                log.info("Inside optional {}", optional);
-
-                // Retrieve the ID and status of the user associated with the Trainer
-                Integer validUser = optional.get().getPartner().getUser().getId();
-                String validUserStatus = optional.get().getStatus();
-
-                // Check if the user is an admin or the associated partner
-                if (jwtFilter.isAdmin() || (validUser.equals(userId) && validUserStatus.equalsIgnoreCase("true"))) {
-                    log.info("Is valid user? Admin: {}, ValidUser: {}, CurrentUser: {}", jwtFilter.isAdmin(), validUser, userId);
-
-                    // Get the current status of the Trainer
-                    String status = optional.get().getStatus();
-                    String userEmail = optional.get().getPartner().getUser().getEmail();
-
-                    // Toggle the status
-                    status = status.equalsIgnoreCase("true") ? "false" : "true";
-
-                    // Update the status in the repository
-                    trainerRepo.updateStatus(id, status);
-
-                    // Update user role in user repository
-                    if (optional.get().getPartner().getUser().getRole().equalsIgnoreCase("user") && status.equalsIgnoreCase("true")) {
-                        userRepo.updateUserRole("Trainer", validUser);
-                    } else {
-                        userRepo.updateUserRole("user", validUser);
-                    }
-
-                    // Send status update emails
-                    emailUtilities.sendStatusMailToAdmins(status, userEmail, userRepo.getAllAdminsMail(), "Trainer");
-                    emailUtilities.sendStatusMailToUser(status, "Trainer", userEmail);
-
-                    // Return a success response
-                    String responseMessage = status.equalsIgnoreCase("true") ?
-                            "Trainer Status updated successfully. NOW ACTIVE" :
-                            "Trainer Status updated successfully. NOW DISABLED";
-                    return BerlizUtilities.getResponseEntity(responseMessage, HttpStatus.OK);
-                } else {
-                    // Return an unauthorized response
-                    return BerlizUtilities.getResponseEntity(BerlizConstants.UNAUTHORIZED_REQUEST, HttpStatus.UNAUTHORIZED);
-                }
-            } else {
-                // Return a response when Trainer ID is not found
-                return BerlizUtilities.getResponseEntity("Trainer id not found", HttpStatus.BAD_REQUEST);
+            if (optional.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer id not found");
             }
+            log.info("Inside optional {}", optional);
+
+            Integer userId = optional.get().getPartner().getUser().getId();
+            String status = optional.get().getStatus();
+            String userEmail = optional.get().getPartner().getUser().getEmail();
+            boolean validUser = jwtFilter.isAdmin() || (validUserId.equals(userId));
+
+            if (!validUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            // Toggle the status
+            status = status.equalsIgnoreCase("true") ? "false" : "true";
+            trainerRepo.updateStatus(id, status);
+
+            // Update user role in user repository
+            if (status.equalsIgnoreCase("true")) {
+                userRepo.updateUserRole("trainer", userId);
+            } else {
+                userRepo.updateUserRole("user", userId);
+            }
+
+            // Send status update emails
+            emailUtilities.sendStatusMailToAdmins(status, userEmail, userRepo.getAllAdminsMail(), "Trainer");
+            emailUtilities.sendStatusMailToUser(status, "Trainer", userEmail);
+
+            String responseMessage = status.equalsIgnoreCase("true") ?
+                    "Trainer Status updated successfully. NOW activated" :
+                    "Trainer Status updated successfully. NOW deactivated";
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
 
-        // Return an error response if an exception occurred
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
 
@@ -351,6 +282,17 @@ public class TrainerServiceImplement implements TrainerService {
         return new ResponseEntity<>(new Trainer(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @Override
+    public ResponseEntity<List<Trainer>> getActiveTrainers() {
+        try {
+            log.info("Inside getActiveTrainers");
+            List<Trainer> Trainers = trainerRepo.getActiveTrainers();
+            return new ResponseEntity<>(Trainers, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
     @Override
     public ResponseEntity<String> updatePhoto(TrainerRequest trainerRequest) throws JsonProcessingException {
         try {
@@ -398,33 +340,16 @@ public class TrainerServiceImplement implements TrainerService {
      * Validates the data in the request map for Trainer creation or update.
      *
      * @param requestMap The map containing the request data
-     * @param validId    Flag indicating whether a valid ID is required for update
      * @return True if the request data is valid, otherwise false
      */
-    private boolean validateTrainerFromMap(Map<String, String> requestMap, boolean validId) {
-        if (validId) {
-            // For Trainer update with valid ID, check the presence of all required fields
+    private boolean validateTrainerFromMap(Map<String, String> requestMap) {
             return requestMap.containsKey("id")
                     && requestMap.containsKey("name")
                     && requestMap.containsKey("motto")
                     && requestMap.containsKey("address")
-                    && requestMap.containsKey("introduction")
                     && requestMap.containsKey("experience")
-                    && requestMap.containsKey("location")
-                    && requestMap.containsKey("photo")
                     && requestMap.containsKey("likes")
                     && requestMap.containsKey("categoryIds");
-        } else {
-            // For Trainer creation, check the presence of all required fields except ID
-            return requestMap.containsKey("name")
-                    && requestMap.containsKey("motto")
-                    && requestMap.containsKey("address")
-                    && requestMap.containsKey("introduction")
-                    && requestMap.containsKey("experience")
-                    && requestMap.containsKey("location")
-                    && requestMap.containsKey("photo")
-                    && requestMap.containsKey("categoryIds");
-        }
     }
 
     /**
@@ -478,51 +403,12 @@ public class TrainerServiceImplement implements TrainerService {
      */
     private ResponseEntity<String> updateTrainerFromMap(Map<String, String> requestMap) throws JsonProcessingException {
         try {
-            Integer currentUser = jwtFilter.getCurrentUserId();
             Optional<Trainer> optional = trainerRepo.findById(Integer.valueOf(requestMap.get("id")));
-
+            Trainer trainer = optional.get();
             if (optional.isEmpty()) {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer id not found");
             }
 
-            Trainer existingTrainer = optional.get();
-            boolean validUser = jwtFilter.isAdmin() || currentUser.equals(existingTrainer.getPartner().getUser().getId());
-
-            if (!validUser) {
-                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
-            // Parse categoryIds as a comma-separated string
-            String categoryIdsString = requestMap.get("categoryIds");
-            String[] categoryIdsArray = categoryIdsString.split(",");
-
-            Set<Category> categorySet = new HashSet<>();
-            for (String categoryIdString : categoryIdsArray) {
-                // Remove leading and trailing spaces before parsing
-                int categoryId = Integer.parseInt(categoryIdString.trim());
-
-                // Check if the category with the given ID exists in the database
-                Optional<Category> optionalCategory = categoryRepo.findById(categoryId);
-                if (optionalCategory.isEmpty()) {
-                    return BerlizUtilities.getResponseEntity("Category with ID " + categoryId + " not found", HttpStatus.BAD_REQUEST);
-                }
-                categorySet.add(optionalCategory.get());
-            }
-
-            // Update the Trainer properties
-            existingTrainer.setCategorySet(categorySet);
-            existingTrainer.setName(requestMap.get("name"));
-            existingTrainer.setMotto(requestMap.get("motto"));
-            existingTrainer.setAddress(requestMap.get("address"));
-            existingTrainer.setExperience(requestMap.get("experience"));
-            existingTrainer.setLikes(Integer.parseInt(requestMap.get("likes")));
-            existingTrainer.setLastUpdate(new Date());
-            trainerRepo.save(existingTrainer);
-
-            if (jwtFilter.isAdmin())
-                return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer information updated successfully");
-            else
-                return BerlizUtilities.buildResponse(HttpStatus.OK, "Hello, " + existingTrainer.getName() + " you have successfully updated your trainer's account information");
 
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -540,7 +426,7 @@ public class TrainerServiceImplement implements TrainerService {
         try {
             log.info("Handling Trainer addition by admin");
             Integer partnerId = trainerRequest.getId();
-            Trainer existingTrainer = trainerRepo.findByPartnerId(partnerId);
+            Trainer trainer = trainerRepo.findByPartnerId(partnerId);
             Partner partner = partnerRepo.findByPartnerId(partnerId);
 
             if (partnerId == null) {
@@ -551,7 +437,7 @@ public class TrainerServiceImplement implements TrainerService {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Partner id not found");
             }
 
-            if (existingTrainer != null) {
+            if (trainer != null) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer already exists");
             }
 
@@ -592,8 +478,8 @@ public class TrainerServiceImplement implements TrainerService {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Partner id not found");
             }
 
-            Trainer existingTrainer = trainerRepo.findByPartnerId(partnerId);
-            if (existingTrainer != null) {
+            Trainer trainer = trainerRepo.findByPartnerId(partnerId);
+            if (trainer != null) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer already exists");
             }
 

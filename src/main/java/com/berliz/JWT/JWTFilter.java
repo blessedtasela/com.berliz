@@ -37,7 +37,8 @@ public class JWTFilter extends OncePerRequestFilter {
         if (httpServletRequest.getServletPath().matches("/user/login|/user/signup|" +
                 "/user/forgotPassword|/newsletter/add|/newsletter/updateStatus|" +
                 "/user/validatePasswordToken|/user/resetPassword|/user/activateAccount|" +
-                "/category/getActiveCategories|/contactUs/add|/dashboard/berliz")) {
+                "/category/getActiveCategories|/contactUs/add|/dashboard/berliz|/trainer/getActiveTrainers|" +
+                "center/getActiveCenters")) {
 
             filterChain.doFilter(httpServletRequest, httpServletResponse);
         } else {

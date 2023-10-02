@@ -24,6 +24,12 @@ public class TrainerRestImplement implements TrainerRest {
     @Autowired
     TrainerService trainerService;
 
+    /**
+     * Add a new trainer.
+     *
+     * @param trainerRequest The trainer information to add.
+     * @return ResponseEntity containing a status message.
+     */
     @Override
     public ResponseEntity<String> addTrainer(TrainerRequest trainerRequest) {
         try {
@@ -35,10 +41,14 @@ public class TrainerRestImplement implements TrainerRest {
         return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    /**
+     * Get a list of all trainers.
+     *
+     * @return ResponseEntity containing a list of trainers.
+     */
     @Override
     public ResponseEntity<List<Trainer>> getAllTrainers() {
         try {
-            // Delegate the Trainer getAllTrainers operation to the service
             return trainerService.getAllTrainers();
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -46,10 +56,31 @@ public class TrainerRestImplement implements TrainerRest {
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    /**
+     * Get a list of active trainers.
+     *
+     * @return ResponseEntity containing a list of trainers.
+     */
+    @Override
+    public ResponseEntity<List<Trainer>> getActiveTrainers() {
+        try {
+            return trainerService.getActiveTrainers();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+
+    }
+
+    /**
+     * Update trainer information.
+     *
+     * @param requestMap The map containing updated trainer information.
+     * @return ResponseEntity containing a status message.
+     */
     @Override
     public ResponseEntity<String> updateTrainer(Map<String, String> requestMap) {
         try {
-            // Delegate the Trainer updateTrainer operation to the service
             return trainerService.updateTrainer(requestMap);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -57,17 +88,13 @@ public class TrainerRestImplement implements TrainerRest {
         return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    @Override
-    public ResponseEntity<String> updatePartnerId(Integer id, Integer newId) {
-        try {
-            // Delegate the Trainer updatePartnerId operation to the service
-            return trainerService.updatePartnerId(id, newId);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
 
+    /**
+     * Update trainer's photo.
+     *
+     * @param trainerRequest The trainer information including the new photo.
+     * @return ResponseEntity containing a status message.
+     */
     @Override
     public ResponseEntity<String> updatePhoto(TrainerRequest trainerRequest) {
         try {
@@ -78,6 +105,12 @@ public class TrainerRestImplement implements TrainerRest {
         return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    /**
+     * Delete a trainer by ID.
+     *
+     * @param id The ID of the trainer to delete.
+     * @return ResponseEntity containing a status message.
+     */
     @Override
     public ResponseEntity<String> deleteTrainer(Integer id) {
         try {
@@ -88,6 +121,12 @@ public class TrainerRestImplement implements TrainerRest {
         return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    /**
+     * Update trainer's status.
+     *
+     * @param id The ID of the trainer to update status.
+     * @return ResponseEntity containing a status message.
+     */
     @Override
     public ResponseEntity<String> updateStatus(Integer id) {
         try {
@@ -99,7 +138,11 @@ public class TrainerRestImplement implements TrainerRest {
         return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-
+    /**
+     * Get a trainer.
+     *
+     * @return ResponseEntity containing trainer information.
+     */
     @Override
     public ResponseEntity<Trainer> getTrainer() {
         try {
@@ -110,5 +153,4 @@ public class TrainerRestImplement implements TrainerRest {
         }
         return new ResponseEntity<>(new Trainer(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
 }

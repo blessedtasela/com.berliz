@@ -32,4 +32,6 @@ public interface PartnerService {
 
     // Reject a partner's application using the provided ID
     ResponseEntity<String> rejectApplication(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<List<Partner>> getActivePartners();
 }

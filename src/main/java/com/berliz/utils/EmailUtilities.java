@@ -276,20 +276,20 @@ public class EmailUtilities {
      * Sends an email notification to the user whose account status has changed.
      *
      * @param status   The new status of the account ("true" for active, "false" for disabled)
-     * @param userType The type of user (e.g., "User", "Admin", "Center", "Trainer", "Partner", "Store", "Driver", "Client")
+     * @param accountType The type of user (e.g., "User", "Admin", "Center", "Trainer", "Partner", "Store", "Driver", "Client")
      * @param email    The email address of the user
      */
-    public void sendStatusMailToUser(String status, String userType, String email) {
+    public void sendStatusMailToUser(String status, String accountType, String email) {
         String subject;
         String message;
 
         // Determine the subject and message based on the account status and user type
         if ("true".equals(status)) {
             subject = "Account status changed";
-            message = "Congratulations. Your " + userType + " account has been successfully activated.";
+            message = "Congratulations. Your " + accountType + " account has been successfully activated.";
         } else {
             subject = "Account status changed";
-            message = "Sorry. Your " + userType + " account has been deactivated.";
+            message = "Sorry. Your " + accountType + " account has been deactivated.";
         }
 
         // Send the email notification

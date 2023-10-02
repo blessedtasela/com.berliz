@@ -27,7 +27,7 @@ public interface PartnerRepo extends JpaRepository<Partner, Integer> {
 
     Partner findByUserId(Integer id);
 
-    List<Partner> findByRole(@Param("role") String role);
+    List<Partner> getActivePartners();
 
     Integer countPartnerByEmail(@Param("email") String email);
 }
