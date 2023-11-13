@@ -23,5 +23,5 @@ public interface CategoryService {
 
     ResponseEntity<List<Category>> getByTag(Integer id);
 
-
+    ResponseEntity<String> likeCategory(Integer id) throws JsonProcessingException;
 }

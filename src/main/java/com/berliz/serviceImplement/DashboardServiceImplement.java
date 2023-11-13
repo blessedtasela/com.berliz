@@ -2,8 +2,11 @@ package com.berliz.serviceImplement;
 
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
+import com.berliz.models.Center;
+import com.berliz.models.Trainer;
 import com.berliz.repository.*;
 import com.berliz.services.DashboardService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -54,24 +57,25 @@ public class DashboardServiceImplement implements DashboardService {
     ContactUsRepo contactUsRepo;
 
     @Autowired
+    TrainerLikeRepo trainerLikeRepo;
+
+    @Autowired
     JWTFilter jwtFilter;
 
     @Override
     public ResponseEntity<Map<String, Object>> getDetails() {
         try {
+           log.info("Inside getDetails");
             Integer userOrdersCount = orderRepo.countOrdersByEmail(jwtFilter.getCurrentUser());
             Integer partnerApplicationCount = partnerRepo.countPartnerByEmail(jwtFilter.getCurrentUser());
+
             Map<String, Object> map = new HashMap<>();
             if (jwtFilter.isAdmin()) {
                 map.put("users", userRepo.count());
                 map.put("partners", partnerRepo.count());
-                map.put("products", productRepo.count());
                 map.put("categories", categoryRepo.count());
                 map.put("tags", tagRepo.count());
-                map.put("orders", orderRepo.count());
-                map.put("stores", storeRepo.count());
                 map.put("trainers", trainerRepo.count());
-                map.put("drivers", driverRepo.count());
                 map.put("centers", centerRepo.count());
                 map.put("newsletters", newsletterRepo.count());
                 map.put("contact-us", contactUsRepo.count());
@@ -82,12 +86,46 @@ public class DashboardServiceImplement implements DashboardService {
                 map.put("partnership", partnerApplicationCount);
 
                 return new ResponseEntity<>(map, HttpStatus.OK);
-            } else if (jwtFilter.isTrainer()){
+            } else if (jwtFilter.isTrainer()) {
+                map.put("my-orders", userOrdersCount);
+                map.put("partnership", partnerApplicationCount);
+
+                return new ResponseEntity<>(map, HttpStatus.OK);
+            } else if (jwtFilter.isCenter()) {
                 map.put("my-orders", userOrdersCount);
                 map.put("partnership", partnerApplicationCount);
 
                 return new ResponseEntity<>(map, HttpStatus.OK);
             }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+
+    @Override
+    public ResponseEntity<String> getPartnerDetails() {
+        try {
+            log.info("Inside get partnerDetailsCount");
+            Integer userId = jwtFilter.getCurrentUserId();
+            Trainer trainer = trainerRepo.findByUserId(userId);
+            Center center = centerRepo.findByUserId(userId);
+            Integer trainerLikes = trainer.getLikes();
+            Integer centerLikes = center.getLikes();
+            Integer trainerCenterCount = trainerRepo.countTrainersByUserId(userId);
+            Integer centerTrainerCount = centerRepo.countCentersUserById(userId);
+
+            Map<String, Object> map = new HashMap<>();
+            map.put("trainerLikes", trainerLikes);
+            map.put("centerLikes", centerLikes);
+            map.put("trainerCenterCount", trainerCenterCount);
+            map.put("centerTrainerCount", centerTrainerCount);
+
+            ObjectMapper mapper = new ObjectMapper();
+            String json = mapper.writeValueAsString(map);
+
+            return new ResponseEntity<>(json, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

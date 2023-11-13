@@ -1,9 +1,11 @@
 package com.berliz.repository;
 
 import com.berliz.models.Center;
+import com.berliz.models.Trainer;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.web.bind.annotation.PathVariable;
 
@@ -21,6 +23,17 @@ public interface CenterRepo extends JpaRepository<Center, Integer> {
      * @return The center with the specified name.
      */
     Center findByName(@Param("name") String name);
+
+    /**
+     * Find a center by user id.
+     *
+     * @param id The user id of the partner of the center
+     * @return The found center or null if not found
+     */
+    Center findByUserId(Integer id);
+
+    @Query()
+    Integer countCentersUserById(Integer id);
 
     /**
      * Find centers by their status.
@@ -75,4 +88,11 @@ public interface CenterRepo extends JpaRepository<Center, Integer> {
      * @return The list of centers with the specified category ID.
      */
     List<Center> getByCategoryId(@Param("id") Integer id);
+
+    /**
+     * Get the lists of centers whose status are true
+     *
+     * @return The list of center or null if not found
+     */
+    List<Center>getActiveCenters();
 }

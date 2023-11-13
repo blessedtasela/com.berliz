@@ -37,7 +37,7 @@ public interface UserService {
 
     ResponseEntity<String> updateUser(Map<String, String> requestMap) throws JsonProcessingException;
 
-    ResponseEntity<String> updateUserAdmin(Map<String, String> requestMap) throws JsonProcessingException;
+    ResponseEntity<String> updateSuperUser(Map<String, String> requestMap) throws JsonProcessingException;
 
     ResponseEntity<String> updateProfilePhotoByAdmin(ProfilePhotoRequest request) throws JsonProcessingException;
 
@@ -48,4 +48,8 @@ public interface UserService {
     ResponseEntity<String> deleteUser(Integer id) throws JsonProcessingException;
 
     ResponseEntity<?> getUser() throws JsonProcessingException;
+
+    ResponseEntity<String> refreshToken(Map<String, String> requestMap) throws JsonProcessingException;
+
+    ResponseEntity<String> updateBio(Map<String, String> requestMap) throws JsonProcessingException;
 }

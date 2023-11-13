@@ -1,6 +1,9 @@
 package com.berliz.services;
 
+import com.berliz.DTO.CenterRequest;
 import com.berliz.models.Center;
+import com.berliz.models.CenterLike;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -14,10 +17,10 @@ public interface CenterService {
     /**
      * Adds a new center based on the provided request map.
      *
-     * @param requestMap The map containing the center's details
+     * @param centerRequest The map containing the center's details
      * @return The response entity indicating the outcome of the operation
      */
-    ResponseEntity<String> addCenter(Map<String, String> requestMap);
+    ResponseEntity<String> addCenter(CenterRequest centerRequest) throws JsonProcessingException;
 
     /**
      * Retrieves a list of all centers.
@@ -32,16 +35,7 @@ public interface CenterService {
      * @param requestMap The map containing the updated center details
      * @return The response entity indicating the outcome of the operation
      */
-    ResponseEntity<String> updateCenter(Map<String, String> requestMap);
-
-    /**
-     * Updates the partner ID of a center.
-     *
-     * @param id    The ID of the center to update
-     * @param newId The new partner ID to set
-     * @return The response entity indicating the outcome of the operation
-     */
-    ResponseEntity<String> updatePartnerId(Integer id, Integer newId);
+    ResponseEntity<String> updateCenter(Map<String, String> requestMap) throws JsonProcessingException;
 
     /**
      * Deletes a center with the specified ID.
@@ -49,7 +43,7 @@ public interface CenterService {
      * @param id The ID of the center to delete
      * @return The response entity indicating the outcome of the operation
      */
-    ResponseEntity<String> deleteCenter(Integer id);
+    ResponseEntity<String> deleteCenter(Integer id) throws JsonProcessingException;
 
     /**
      * Updates the status of a center.
@@ -57,39 +51,15 @@ public interface CenterService {
      * @param id The ID of the center to update
      * @return The response entity indicating the outcome of the operation
      */
-    ResponseEntity<String> updateStatus(Integer id);
+    ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException;
 
-    /**
-     * Retrieves a center by its partner ID.
-     *
-     * @param id The partner ID of the center to retrieve
-     * @return The response entity containing the retrieved center
-     */
-    ResponseEntity<Center> getByPartnerId(Integer id);
 
     /**
      * Retrieves a center by its ID.
      *
-     * @param id The ID of the center to retrieve
      * @return The response entity containing the retrieved center
      */
-    ResponseEntity<Center> getCenter(Integer id);
-
-    /**
-     * Retrieves a list of centers that belong to a specific category.
-     *
-     * @param id The ID of the category
-     * @return The response entity containing the list of centers
-     */
-    ResponseEntity<List<Center>> getByCategoryId(Integer id);
-
-    /**
-     * Retrieves a list of centers based on their status.
-     *
-     * @param status The status of the centers ("true" or "false")
-     * @return The response entity containing the list of centers
-     */
-    ResponseEntity<List<Center>> getByStatus(String status);
+    ResponseEntity<Center> getCenter();
 
     /**
      * Retrieves a center by the user ID.
@@ -98,4 +68,33 @@ public interface CenterService {
      * @return The response entity containing the retrieved center
      */
     ResponseEntity<Center> getByUserId(Integer id);
+
+    /**
+     * Like a center by its ID.
+     *
+     * @param id The center ID
+     * @return The response entity indicating the outcome of the operation
+     */
+    ResponseEntity<String> likeCenter(Integer id) throws JsonProcessingException;
+
+    /**
+     * Get list of Centers that are liked
+     *
+     * @return The response entity indicating the outcome of the operation
+     */
+    ResponseEntity<List<CenterLike>> getCenterLikes();
+
+    /**
+     * Update a center photo
+     *
+     * @return The response entity indicating the outcome of the operation
+     */
+    ResponseEntity<String> updatePhoto(CenterRequest centerRequest) throws JsonProcessingException;
+
+    /**
+     * Get the list of active centers
+     *
+     * @return The response entity indicating the outcome of the operation
+     */
+    ResponseEntity<List<Center>> getActiveCenters();
 }

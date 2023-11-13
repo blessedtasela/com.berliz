@@ -5,6 +5,7 @@ import com.berliz.models.Category;
 import com.berliz.rest.CategoryRest;
 import com.berliz.services.CategoryService;
 import com.berliz.utils.BerlizUtilities;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,13 +22,13 @@ public class CategoryRestImplement implements CategoryRest {
     CategoryService categoryService;
 
     @Override
-    public ResponseEntity<String> addCategory(Map<String, String> requestMap) {
+    public ResponseEntity<String> addCategory(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             return categoryService.addCategory(requestMap);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
@@ -51,43 +52,53 @@ public class CategoryRestImplement implements CategoryRest {
     }
 
     @Override
-    public ResponseEntity<String> updateCategory(Map<String, String> requestMap) {
+    public ResponseEntity<String> updateCategory(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             return categoryService.updateCategory(requestMap);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
-    public ResponseEntity<String> deleteCategory(Integer id) {
+    public ResponseEntity<String> deleteCategory(Integer id) throws JsonProcessingException {
         try {
             return categoryService.deleteCategory(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
-    public ResponseEntity<String> updateStatus(Integer id) {
+    public ResponseEntity<String> likeCategory(Integer id) throws JsonProcessingException {
+        try {
+            return categoryService.likeCategory(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException {
         try {
             return categoryService.updateStatus(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
-    public ResponseEntity<?> getCategory(Integer id) {
+    public ResponseEntity<?> getCategory(Integer id) throws JsonProcessingException {
         try {
             return categoryService.getCategory(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override

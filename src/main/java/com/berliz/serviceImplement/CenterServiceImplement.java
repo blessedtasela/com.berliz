@@ -1,24 +1,24 @@
 package com.berliz.serviceImplement;
 
+import com.berliz.DTO.CenterRequest;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
-import com.berliz.models.Category;
-import com.berliz.models.Center;
-import com.berliz.models.Partner;
-import com.berliz.models.User;
-import com.berliz.repository.CategoryRepo;
-import com.berliz.repository.CenterRepo;
-import com.berliz.repository.PartnerRepo;
-import com.berliz.repository.UserRepo;
+import com.berliz.models.*;
+import com.berliz.repository.*;
 import com.berliz.services.CenterService;
 import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.EmailUtilities;
+import com.berliz.utils.FileUtilities;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.*;
 
 @Slf4j
@@ -35,45 +35,52 @@ public class CenterServiceImplement implements CenterService {
     PartnerRepo partnerRepo;
 
     @Autowired
+    TrainerRepo trainerRepo;
+
+    @Autowired
     CategoryRepo categoryRepo;
 
     @Autowired
     UserRepo userRepo;
 
     @Autowired
+    CenterLikeRepo centerLikeRepo;
+
+    @Autowired
     EmailUtilities emailUtilities;
+
+    @Autowired
+    FileUtilities fileUtilities;
+
+    @Autowired
+    SimpMessagingTemplate simpMessagingTemplate;
 
     /**
      * adds a center based on data provided
      *
-     * @param requestMap The request body containing data
+     * @param centerRequest The request body containing data
      * @return ResponseEntity with a success message or an error message
      */
     @Override
-    public ResponseEntity<String> addCenter(Map<String, String> requestMap) {
+    public ResponseEntity<String> addCenter(CenterRequest centerRequest) throws JsonProcessingException {
         try {
-            log.info("Inside addCenter {}", requestMap);
-            boolean validRequest = validateCenterFromMap(requestMap, false);
+            log.info("Inside addCenter {}", centerRequest);
+            boolean validRequest = centerRequest != null;
             log.info("Is request valid? {}", validRequest);
 
             if (!validRequest) {
                 return BerlizUtilities.getResponseEntity(BerlizConstants.INVALID_DATA, HttpStatus.BAD_REQUEST);
             }
-
-            // Handle center addition based on user role
             if (jwtFilter.isAdmin()) {
-                // Admins have additional checks when adding a center
-                return handleCenterAdditionByAdmin(requestMap);
+                return handleCenterAdditionByAdmin(centerRequest);
             } else {
-                // Users without admin rights add centers with different criteria
-                return handleCenterAdditionByUser(requestMap);
+                return handleCenterAdditionByUser(centerRequest);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
 
-        // Return an error response if an exception occurred
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
 
@@ -84,38 +91,48 @@ public class CenterServiceImplement implements CenterService {
      * @return ResponseEntity with a success message or an error message
      */
     @Override
-    public ResponseEntity<String> updateCenter(Map<String, String> requestMap) {
+    public ResponseEntity<String> updateCenter(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             log.info("Inside updateCenter {}", requestMap);
-
-            // Validate the incoming request
-            boolean isValid = validateCenterFromMap(requestMap, true);
-            log.info("Is request valid? {}", isValid);
-
-            if (!isValid) {
-                return BerlizUtilities.getResponseEntity(BerlizConstants.INVALID_DATA, HttpStatus.BAD_REQUEST);
+            boolean isValid;
+            if (jwtFilter.isAdmin()) {
+                isValid = validateCenterFromMap(requestMap, true);
+            } else {
+                isValid = validateCenterFromMap(requestMap, false);
             }
 
             Center validCenter = centerRepo.findByCenterId(Integer.valueOf(requestMap.get("id")));
+            log.info("Is request valid? {}", isValid);
 
-            // Check if the center exists
-            if (validCenter == null) {
-                return BerlizUtilities.getResponseEntity("Center id not found", HttpStatus.BAD_REQUEST);
+            if (!isValid) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
-            // Check user permissions and update center
-            if (jwtFilter.isAdmin() || (jwtFilter.isCenter()
-                    && jwtFilter.getCurrentUserId().equals(validCenter.getPartner().getUser().getId())
-                    && validCenter.getStatus().equalsIgnoreCase("true"))) {
-                updateCenterFromMap(requestMap);
-                return BerlizUtilities.getResponseEntity("Center updated successfully", HttpStatus.OK);
+            if (validCenter == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Center id not found");
+            }
+
+            if (validCenter.getStatus().equalsIgnoreCase("false")) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Cannot make update yet. Account is inactive");
+            }
+
+            if (!(jwtFilter.isAdmin() || (jwtFilter.isCenter()
+                    && jwtFilter.getCurrentUserId().equals(validCenter
+                    .getPartner().getUser().getId())))) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            centerRepo.save(updateCenterFromMap(requestMap));
+            if (jwtFilter.isAdmin()) {
+                return BerlizUtilities.buildResponse(HttpStatus.OK, "Center information updated successfully");
             } else {
-                return BerlizUtilities.getResponseEntity(BerlizConstants.UNAUTHORIZED_REQUEST, HttpStatus.UNAUTHORIZED);
+                return BerlizUtilities.buildResponse(HttpStatus.OK, "Hello " + validCenter.getName()
+                        + ", your center information has been updated successfully");
             }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
 
@@ -128,87 +145,16 @@ public class CenterServiceImplement implements CenterService {
     public ResponseEntity<List<Center>> getAllCenters() {
         try {
             log.info("Inside getAllCenters");
-
-            // Check if the user is an admin
             if (jwtFilter.isAdmin()) {
-                // Retrieve all centers from the repository
                 List<Center> centers = centerRepo.findAll();
                 return new ResponseEntity<>(centers, HttpStatus.OK);
             } else {
-                // Return an unauthorized response for non-admin users
                 return new ResponseEntity(BerlizConstants.UNAUTHORIZED_REQUEST, HttpStatus.UNAUTHORIZED);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-
-        // Return an error response if an exception occurred
         return new ResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-
-    /**
-     * Updates a center partner ID based on the existing id and new id provided
-     *
-     * @param id    The existing partner id to be replaced.
-     * @param newId The new partner id.
-     * @return ResponseEntity with a success message or an error message
-     */
-    @Override
-    public ResponseEntity<String> updatePartnerId(Integer id, Integer newId) {
-        try {
-            log.info("Inside updateCenterPartnerId {}", id);
-
-            // Check if the user is an admin
-            if (jwtFilter.isAdmin()) {
-                // Retrieve the center with the given id
-                Optional<Center> optional = centerRepo.findById(id);
-                if (optional.isPresent()) {
-                    log.info("Inside optional {}", optional);
-                    Center center = optional.get();
-
-                    // Check if the new partner id exists
-                    Partner newPartner = partnerRepo.findById(newId).orElse(null);
-                    if (newPartner == null) {
-                        return BerlizUtilities.getResponseEntity("Invalid new partner id", HttpStatus.BAD_REQUEST);
-                    }
-
-                    // Check if the new partner id exists in the driver
-                    Center partnerCenter = centerRepo.findById(newId).orElse(null);
-                    if (partnerCenter != null) {
-                        return BerlizUtilities.getResponseEntity("Partner id exists in driver", HttpStatus.BAD_REQUEST);
-                    }
-
-                    //Check if the new partner id is a valid user - i.e. it is active
-                    String newPartnerStatus = newPartner.getUser().getStatus();
-                    if (!newPartnerStatus.equalsIgnoreCase("true")) {
-                        return BerlizUtilities.getResponseEntity("new partnerId must be approved by admin", HttpStatus.BAD_REQUEST);
-                    }
-
-                    //Check if the new partner id has a valid user role
-                    String newPartnerRole = newPartner.getUser().getRole();
-                    if (!newPartnerRole.equalsIgnoreCase("user")) {
-                        return BerlizUtilities.getResponseEntity("new partnerId must have user role", HttpStatus.BAD_REQUEST);
-                    }
-
-                    // Check if the center status is false before updating partner id
-                    if (center.getStatus().equalsIgnoreCase("false")) {
-                        // Update the center's partner id
-                        centerRepo.updatePartnerId(id, newId);
-                        return BerlizUtilities.getResponseEntity("Center - partner id updated successfully. New id: " + newId, HttpStatus.OK);
-                    } else {
-                        return BerlizUtilities.getResponseEntity("Center status must be false to update partner id", HttpStatus.BAD_REQUEST);
-                    }
-                } else {
-                    return BerlizUtilities.getResponseEntity("Center with id " + id + " not found", HttpStatus.BAD_REQUEST);
-                }
-            } else {
-                return BerlizUtilities.getResponseEntity(BerlizConstants.UNAUTHORIZED_REQUEST, HttpStatus.UNAUTHORIZED);
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
     }
 
     /**
@@ -218,29 +164,26 @@ public class CenterServiceImplement implements CenterService {
      * @return ResponseEntity with a success message or an error message
      */
     @Override
-    public ResponseEntity<String> deleteCenter(Integer id) {
+    public ResponseEntity<String> deleteCenter(Integer id) throws JsonProcessingException {
         try {
-            // Check if the current user is an admin
-            if (jwtFilter.isAdmin()) {
-                // Retrieve the center by its ID
-                Center center = centerRepo.findByCenterId(id);
-                if (center != null) {
-                    // Delete the retrieved center from the repository
-                    centerRepo.delete(center);
-                    return BerlizUtilities.getResponseEntity("Center deleted successfully", HttpStatus.OK);
-                } else {
-                    // Center with the provided ID was not found
-                    return BerlizUtilities.getResponseEntity("Center id not found", HttpStatus.BAD_REQUEST);
-                }
-            } else {
-                // Unauthorized access, user is not an admin
-                return BerlizUtilities.getResponseEntity(BerlizConstants.UNAUTHORIZED_REQUEST, HttpStatus.UNAUTHORIZED);
+            log.info("Inside deleteCenter {}", id);
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            boolean authorizedUser = user.getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN);
+            if (!(jwtFilter.isAdmin() && authorizedUser)) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
+            Center center = centerRepo.findByCenterId(id);
+            if (center == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center id not found");
+            }
+
+            centerRepo.delete(center);
+            simpMessagingTemplate.convertAndSend("/topic/deleteCenter", center);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Center deleted successfully");
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("Something went wrong while performing operation", ex);
         }
-        // Internal server error occurred
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     /**
@@ -250,222 +193,88 @@ public class CenterServiceImplement implements CenterService {
      * @return ResponseEntity with a success message or an error message
      */
     @Override
-    public ResponseEntity<String> updateStatus(Integer id) {
+    public ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException {
         try {
             log.info("Inside updateStatus {}", id);
-
-            // Retrieve the current user's ID
-            Integer userId = jwtFilter.getCurrentUserId();
-
-            // Retrieve the Center entity by ID
+            Integer validUserId = jwtFilter.getCurrentUserId();
             Optional<Center> optional = centerRepo.findById(id);
 
-            // Check if the Center exists
-            if (optional.isPresent()) {
-                log.info("Inside optional {}", optional);
-
-                // Retrieve the ID and status of the user associated with the Center
-                Integer validUser = optional.get().getPartner().getUser().getId();
-                String validUserStatus = optional.get().getStatus();
-
-                // Check if the user is an admin or the associated partner
-                if (jwtFilter.isAdmin() || (validUser.equals(userId) && validUserStatus.equalsIgnoreCase("true"))) {
-                    log.info("Is valid user? Admin: {}, ValidUser: {}, CurrentUser: {}", jwtFilter.isAdmin(), validUser, userId);
-
-                    // Get the current status of the Center
-                    String status = optional.get().getStatus();
-                    String userEmail = optional.get().getPartner().getUser().getEmail();
-
-                    // Toggle the status
-                    status = status.equalsIgnoreCase("true") ? "false" : "true";
-
-                    // Update the status in the repository
-                    centerRepo.updateStatus(id, status);
-
-                    // Update user role in user repository
-                    if (optional.get().getPartner().getUser().getRole().equalsIgnoreCase("user") && status.equalsIgnoreCase("true")) {
-                        userRepo.updateUserRole("center", validUser);
-                    } else {
-                        userRepo.updateUserRole("user", validUser);
-                    }
-
-                    // Send status update emails
-                    emailUtilities.sendStatusMailToAdmins(status, userEmail, userRepo.getAllAdminsMail(), "Center");
-                    emailUtilities.sendStatusMailToUser(status,"Center", userEmail);
-
-                    // Return a success response
-                    String responseMessage = status.equalsIgnoreCase("true") ?
-                            "Center Status updated successfully. NOW ACTIVE" :
-                            "Center Status updated successfully. NOW DISABLED";
-                    return BerlizUtilities.getResponseEntity(responseMessage, HttpStatus.OK);
-                } else {
-                    // Return an unauthorized response
-                    return BerlizUtilities.getResponseEntity(BerlizConstants.UNAUTHORIZED_REQUEST, HttpStatus.UNAUTHORIZED);
-                }
-            } else {
-                // Return a response when Center ID is not found
-                return BerlizUtilities.getResponseEntity("Center id not found", HttpStatus.BAD_REQUEST);
+            if (optional.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center id not found");
             }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
 
-        // Return an error response if an exception occurred
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+            log.info("Inside optional {}", optional);
+            Integer userId = optional.get().getPartner().getUser().getId();
+            String status = optional.get().getStatus();
+            String userEmail = optional.get().getPartner().getUser().getEmail();
+            Center center = optional.get();
+            boolean validUser = jwtFilter.isAdmin() || (validUserId.equals(userId));
 
-    /**
-     * Get a center based on the provided partner ID in the center.
-     *
-     * @param id The ID of the center to be fetched
-     * @return ResponseEntity with a success message or an error message
-     */
-    @Override
-    public ResponseEntity<Center> getByPartnerId(Integer id) {
-        try {
-            log.info("Inside getByPartnerId");
+            if (!validUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED,
+                        BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
 
-            // Check if the user is an admin
+            status = status.equalsIgnoreCase("true") ? "false" : "true";
+            center.setStatus(status);
+            centerRepo.save(center);
+
+            emailUtilities.sendStatusMailToAdmins(status, userEmail,
+                    userRepo.getAllAdminsMail(), "Center");
+            emailUtilities.sendStatusMailToUser(status, "Center", userEmail);
+
+            String responseMessage;
             if (jwtFilter.isAdmin()) {
-                // Find the center by the partner's id
-                Center center = centerRepo.findByPartnerId(id);
-
-                if (center == null) {
-                    return new ResponseEntity(BerlizConstants.UNAUTHORIZED_REQUEST, HttpStatus.UNAUTHORIZED);
-                }
-
-                // Get the actual center id and retrieve the center by that id
-                id = center.getId();
-                Center existingCenter = centerRepo.findById(id).orElse(null);
-
-                if (existingCenter != null) {
-                    // Return the center if found
-                    return new ResponseEntity<>(existingCenter, HttpStatus.OK);
-                } else {
-                    // If center doesn't exist, return NOT_FOUND status
-                    return new ResponseEntity("Center not found", HttpStatus.NOT_FOUND);
-                }
+                responseMessage = status.equalsIgnoreCase("true") ?
+                        "Center has been activated successfully" :
+                        "Center deactivated successfully";
             } else {
-                // Return FORBIDDEN status if the user is not an admin
-                return new ResponseEntity("Forbidden to make request", HttpStatus.FORBIDDEN);
+                responseMessage = status.equalsIgnoreCase("true") ?
+                        "Hello " + userEmail + ", your Center account has successfully been activated" :
+                        "Hello " + userEmail + ", your Center account has been deactivated";
             }
+            simpMessagingTemplate.convertAndSend("/topic/updateCenterStatus", center);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
-            // Return INTERNAL_SERVER_ERROR status if an exception occurs
-            return new ResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
         }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     /**
      * Gets a center based on the provided center ID.
      *
-     * @param id The ID of the center to be fetched
      * @return ResponseEntity with a success message or an error message
      */
     @Override
-    public ResponseEntity<Center> getCenter(Integer id) {
+    public ResponseEntity<Center> getCenter() {
         try {
             log.info("Inside getCenter");
+            Integer userId = jwtFilter.getCurrentUserId();
+            Partner partner = partnerRepo.findByUserId(userId);
+            Center center = centerRepo.findByPartnerId(partner.getId());
 
-            // Get the current user's ID
-            Integer user = jwtFilter.getCurrentUserId();
-
-            // Retrieve the partner associated with the current user
-            Partner partnerByUserId = partnerRepo.findByUserId(user);
-
-            // Retrieve the center by its ID
-            Center center = centerRepo.findById(id).orElse(null);
-
-            if (center == null) {
-                // Center with the provided ID was not found
-                return new ResponseEntity<>(new Center(), HttpStatus.BAD_REQUEST);
+            if (partner == null) {
+                return new ResponseEntity<>(new Center(), HttpStatus.NOT_FOUND);
             }
 
-            if (jwtFilter.isAdmin()) {
-                // User is an admin, return the retrieved center
+            if (center == null || center.getId() == null) {
+                log.error("Center or its ID is null. Check database.");
+                return new ResponseEntity("Center is null", HttpStatus.NOT_FOUND);
+            }
+
+            // Check if the partner and the Center matches
+            Integer currentUser = partner.getUser().getId();
+            boolean validUser = currentUser.equals(userId)
+                    && center.getPartner().getId().equals(partner.getId());
+            if (validUser || jwtFilter.isAdmin()) {
                 return new ResponseEntity<>(center, HttpStatus.OK);
-            } else if (partnerByUserId != null) {
-                // Check if the logged-in user has a partner and the center matches
-                Integer currentUser = partnerByUserId.getUser().getId();
-
-                if (currentUser.equals(user) && center.getPartner().getId().equals(partnerByUserId.getId())) {
-                    // Return the retrieved center
-                    return new ResponseEntity<>(center, HttpStatus.OK);
-                }
             }
-
-            // Unauthorized access, user is not admin and doesn't have a valid center
             return new ResponseEntity<>(new Center(), HttpStatus.UNAUTHORIZED);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-
-        // Internal server error occurred
         return new ResponseEntity<>(new Center(), HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    /**
-     * Deletes a center based on the provided category ID.
-     *
-     * @param id The ID of the centers to be fetched
-     * @return ResponseEntity with a success message or an error message
-     */
-    @Override
-    public ResponseEntity<List<Center>> getByCategoryId(Integer id) {
-        try {
-            log.info("Inside getByCategoryId {}", id);
-
-            // Retrieve centers with the specified category ID
-            List<Center> centers = centerRepo.getByCategoryId(id);
-
-            if (!centers.isEmpty()) {
-                // Centers with the specified category ID were found, return them
-                return new ResponseEntity<>(centers, HttpStatus.OK);
-            } else {
-                // No centers found with the specified category ID
-                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.BAD_REQUEST);
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
-        // Internal server error occurred
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    /**
-     * Get a list of centers based on the status provided.
-     *
-     * @param status The status of the centers to be fetched
-     * @return ResponseEntity with a success message or an error message
-     */
-    @Override
-    public ResponseEntity<List<Center>> getByStatus(String status) {
-        try {
-            log.info("Inside getByStatus");
-
-            // Check if the user is an admin
-            if (jwtFilter.isAdmin()) {
-                // Retrieve centers with the specified status
-                List<Center> centers = centerRepo.findByStatus(status);
-
-                if (centers != null) {
-                    // Centers with the specified status were found, return them
-                    return new ResponseEntity<>(centers, HttpStatus.OK);
-                } else {
-                    // No centers found with the specified status
-                    return new ResponseEntity<>(new ArrayList<>(), HttpStatus.BAD_REQUEST);
-                }
-            } else {
-                // Unauthorized access, user is not an admin
-                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
-        // Internal server error occurred
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     /**
@@ -478,34 +287,152 @@ public class CenterServiceImplement implements CenterService {
     public ResponseEntity<Center> getByUserId(Integer id) {
         try {
             log.info("Inside getByUserId");
-
-            // Retrieve the user's partner details using the provided user ID
             Partner partner = partnerRepo.findByUserId(id);
             if (partner == null) {
                 return new ResponseEntity<>(new Center(), HttpStatus.BAD_REQUEST);
             }
 
-            if (jwtFilter.isAdmin() && partner != null) {
-                // Retrieve the center associated with the partner (if exists)
-                Center center = centerRepo.findByPartnerId(partner.getId());
-
-                if (center != null) {
-                    // Return the retrieved center
-                    return new ResponseEntity<>(center, HttpStatus.OK);
-                } else {
-                    // No center associated with the provided user ID
-                    return new ResponseEntity<>(new Center(), HttpStatus.NOT_FOUND);
-                }
-            } else {
-                // Unauthorized access, user is not an admin and doesn't have a valid center
+            if (!jwtFilter.isAdmin()) {
                 return new ResponseEntity<>(new Center(), HttpStatus.UNAUTHORIZED);
             }
+            Center center = centerRepo.findByPartnerId(partner.getId());
+
+            if (center == null) {
+                return new ResponseEntity<>(new Center(), HttpStatus.NOT_FOUND);
+            }
+            return new ResponseEntity<>(center, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-
-        // Internal server error occurred
         return new ResponseEntity<>(new Center(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Like a center.
+     *
+     * @param id The ID of the center to be liked
+     * @return ResponseEntity with a success message or an error message
+     */
+
+    @Override
+    public ResponseEntity<String> likeCenter(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside likeCenter {}", id);
+            Center center = centerRepo.findByCenterId(id);
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            boolean validUser = jwtFilter.isBerlizUser();
+
+            if (!validUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (center == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Center id not found");
+            }
+
+            boolean hasLiked = centerLikeRepo.existsByUserAndCenter(user, center);
+            String responseMessage;
+            if (hasLiked) {
+                // dislike center
+                centerLikeRepo.deleteByUserAndCenter(user, center);
+                center.setLikes(center.getLikes() - 1);
+                responseMessage = "Hello, " + user.getFirstname() + " you have disliked " + center.getName();
+            } else {
+                // like center
+                CenterLike centerLike = new CenterLike();
+                centerLike.setUser(user);
+                centerLike.setCenter(center);
+                centerLike.setDate(new Date());
+                centerLikeRepo.save(centerLike);
+
+                center.setLikes(center.getLikes() + 1);
+                responseMessage = "Hello, " + user.getFirstname() + " you just liked " + center.getName();
+            }
+
+            centerRepo.save(center);
+            simpMessagingTemplate.convertAndSend("/topic/updateCenterStatus", center);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    /**
+     * Retrieves a list of all center likes.
+     *
+     * @return ResponseEntity containing the list of center likes.
+     */
+    @Override
+    public ResponseEntity<List<CenterLike>> getCenterLikes() {
+        try {
+            log.info("Inside getCenterLikes {}");
+            List<CenterLike> centerLikes = centerLikeRepo.findAll();
+            return new ResponseEntity<>(centerLikes, HttpStatus.OK);
+        } catch (Exception ex) {
+            log.error("Something went wrong while performing operation", ex);
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> updatePhoto(CenterRequest centerRequest) throws JsonProcessingException {
+        try {
+            log.info("Inside updatePhoto{}", centerRequest);
+            Integer centerId = centerRequest.getId();
+            Center center = centerRepo.findByCenterId(centerId);
+
+            if (center == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center id not found");
+            }
+
+            User user = center.getPartner().getUser();
+            boolean validUser = jwtFilter.isAdmin() || jwtFilter.getCurrentUserId().equals(user.getId());
+
+            if (!validUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            MultipartFile file = centerRequest.getPhoto();
+            if (file == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "No profile photo provided");
+            }
+
+            if (!fileUtilities.isValidImageType(file)) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Invalid file type");
+            }
+
+            if (!fileUtilities.isValidImageSize(file)) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Invalid file type");
+            }
+            String responseMessage;
+            center.setPhoto(file.getBytes());
+            centerRepo.save(center);
+            if (jwtFilter.isAdmin()) {
+                responseMessage = center.getName() + "'s center photo updated successfully";
+            } else {
+                responseMessage = "Hello " + center.getName() + ", your center photo has been updated successfully";
+            }
+            simpMessagingTemplate.convertAndSend("/topic/updateCenterPhoto", center);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<Center>> getActiveCenters() {
+        try {
+            log.info("Inside getActiveTrainers");
+            List<Center> centers = centerRepo.getActiveCenters();
+            return new ResponseEntity<>(centers, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 
@@ -513,31 +440,25 @@ public class CenterServiceImplement implements CenterService {
      * Validates the data in the request map for center creation or update.
      *
      * @param requestMap The map containing the request data
-     * @param validId    Flag indicating whether a valid ID is required for update
      * @return True if the request data is valid, otherwise false
      */
-    private boolean validateCenterFromMap(Map<String, String> requestMap, boolean validId) {
-        if (validId) {
-            // For center update with valid ID, check the presence of all required fields
+    private boolean validateCenterFromMap(Map<String, String> requestMap, boolean admin) {
+        if (admin) {
             return requestMap.containsKey("id")
                     && requestMap.containsKey("name")
                     && requestMap.containsKey("motto")
                     && requestMap.containsKey("address")
-                    && requestMap.containsKey("introduction")
                     && requestMap.containsKey("experience")
                     && requestMap.containsKey("location")
-                    && requestMap.containsKey("photo")
                     && requestMap.containsKey("likes")
                     && requestMap.containsKey("categoryIds");
         } else {
-            // For center creation, check the presence of all required fields except ID
-            return requestMap.containsKey("name")
+            return requestMap.containsKey("id")
+                    && requestMap.containsKey("name")
                     && requestMap.containsKey("motto")
                     && requestMap.containsKey("address")
-                    && requestMap.containsKey("introduction")
                     && requestMap.containsKey("experience")
                     && requestMap.containsKey("location")
-                    && requestMap.containsKey("photo")
                     && requestMap.containsKey("categoryIds");
         }
     }
@@ -545,63 +466,51 @@ public class CenterServiceImplement implements CenterService {
     /**
      * Constructs a Center object from the provided request map and saves it to the repository.
      *
-     * @param requestMap The map containing the request data
-     * @param isUser     Flag indicating whether the request is coming from a user
+     * @param centerRequest The class containing the request data
      * @return The constructed and saved Center object
      */
-    private Center getCenterFromMap(Map<String, String> requestMap, Boolean isUser) {
+    private Center getCenterFromMap(CenterRequest centerRequest) throws IOException {
         Center center = new Center();
-        Partner partner = new Partner();
+        User user;
+        Partner partner = partnerRepo.findByPartnerId(centerRequest.getPartnerId());
+        if (jwtFilter.isAdmin()) {
+            String userEmail = partner.getUser().getEmail();
+            user = userRepo.findByEmail(userEmail);
+        } else {
+            user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        }
+        user.setRole("center");
+        userRepo.save(user);
 
-        // Parse categoryIds as a comma-separated string
-        String categoryIdsString = requestMap.get("categoryIds");
+        byte[] photo = centerRequest.getPhoto().getBytes();
+
+        // Parse tagIds as a comma-separated string
+        String categoryIdsString = centerRequest.getCategoryIds();
         String[] categoryIdsArray = categoryIdsString.split(",");
 
         Set<Category> categorySet = new HashSet<>();
         for (String categoryIdString : categoryIdsArray) {
-            // Remove leading and trailing spaces before parsing
             int categoryId = Integer.parseInt(categoryIdString.trim());
 
-            // Retrieve the optional category by ID
-            Optional<Category> optionalCategory = categoryRepo.findById(categoryId);
-
-            if (!optionalCategory.isPresent()) {
-                // Handle case where category with the specified ID was not found
-                BerlizUtilities.getResponseEntity("Category with ID " + categoryId + " not found", HttpStatus.BAD_REQUEST);
-            }
-
-            categorySet.add(optionalCategory.get());
+            Category category = new Category();
+            category.setId(categoryId);
+            categorySet.add(category);
         }
+
         center.setCategorySet(categorySet);
-
-        // Determine the partner ID based on whether the request is from a user or not
-        Integer partnerId;
-        if (isUser) {
-            Integer userId = jwtFilter.getCurrentUserId();
-            Partner partnerByUserId = partnerRepo.findByUserId(userId);
-            partnerId = partnerByUserId.getId();
-        } else {
-            partnerId = Integer.valueOf(requestMap.get("partnerId"));
-        }
-        partner.setId(partnerId);
-
-        // Populate the Center object with the provided data
         center.setPartner(partner);
-        center.setName(requestMap.get("name"));
-        center.setMotto(requestMap.get("motto"));
-        center.setAddress(requestMap.get("address"));
-        center.setIntroduction(requestMap.get("introduction"));
-        center.setExperience(requestMap.get("experience"));
-        center.setLocation(requestMap.get("location"));
-        center.setPhoto(requestMap.get("photo"));
-        center.setLikes(0); // Initializing likes
+        center.setName(centerRequest.getName());
+        center.setMotto(centerRequest.getMotto());
+        center.setLocation(centerRequest.getLocation());
+        center.setAddress(centerRequest.getAddress());
+        center.setExperience(centerRequest.getExperience());
+        center.setPhoto(photo);
+        center.setLikes(0);
         center.setDate(new Date());
         center.setLastUpdate(new Date());
         center.setStatus("false"); // Initializing status
 
-        // Save the constructed Center object to the repository
-        centerRepo.save(center);
-
+        simpMessagingTemplate.convertAndSend("/topic/getCenterFromMap", center);
         return center;
     }
 
@@ -611,181 +520,121 @@ public class CenterServiceImplement implements CenterService {
      * @param requestMap The map containing the request data
      * @return The constructed and saved Center object
      */
-    private ResponseEntity<String> updateCenterFromMap(Map<String, String> requestMap) {
-        try {
-            // Get the current user's ID
-            Integer currentUser = jwtFilter.getCurrentUserId();
+    private Center updateCenterFromMap(Map<String, String> requestMap) {
+        Optional<Center> optional = centerRepo.findById(Integer.valueOf(requestMap.get("id")));
+        Center existingCenter = optional.get();
 
-            // Find the center by ID
-            Optional<Center> optional = centerRepo.findById(Integer.valueOf(requestMap.get("id")));
+        // Parse categoryIds as a comma-separated string
+        String categoryIdsString = requestMap.get("categoryIds");
+        String[] categoryIdsArray = categoryIdsString.split(",");
 
-            // Check if the center with the given ID exists
-            if (optional.isEmpty()) {
-                return BerlizUtilities.getResponseEntity("Center id does not exist", HttpStatus.BAD_REQUEST);
+        Set<Category> categorySet = new HashSet<>();
+        for (String categoryIdString : categoryIdsArray) {
+            int categoryId = Integer.parseInt(categoryIdString.trim());
+            Optional<Category> optionalCategory = categoryRepo.findById(categoryId);
+            if (optionalCategory.isEmpty()) {
+                log.error("Category with ID " + categoryId + " not found");
             }
-
-            // Retrieve the existing center
-            Center existingCenter = optional.get();
-
-            // Check if the user has permission to update the center
-            boolean validUser = jwtFilter.isAdmin() || currentUser.equals(existingCenter.getPartner().getUser().getId());
-
-            if (!validUser) {
-                return BerlizUtilities.getResponseEntity(BerlizConstants.UNAUTHORIZED_REQUEST, HttpStatus.UNAUTHORIZED);
-            }
-
-            // Parse categoryIds as a comma-separated string
-            String categoryIdsString = requestMap.get("categoryIds");
-            String[] categoryIdsArray = categoryIdsString.split(",");
-
-            Set<Category> categorySet = new HashSet<>();
-            for (String categoryIdString : categoryIdsArray) {
-                // Remove leading and trailing spaces before parsing
-                int categoryId = Integer.parseInt(categoryIdString.trim());
-
-                // Check if the category with the given ID exists in the database
-                Optional<Category> optionalCategory = categoryRepo.findById(categoryId);
-                if (optionalCategory.isEmpty()) {
-                    return BerlizUtilities.getResponseEntity("Category with ID " + categoryId + " not found", HttpStatus.BAD_REQUEST);
-                }
-                categorySet.add(optionalCategory.get());
-            }
-
-            // Update the center properties
-            existingCenter.setCategorySet(categorySet);
-            existingCenter.setName(requestMap.get("name"));
-            existingCenter.setMotto(requestMap.get("motto"));
-            existingCenter.setAddress(requestMap.get("address"));
-            existingCenter.setIntroduction(requestMap.get("introduction"));
-            existingCenter.setLocation(requestMap.get("location"));
-            existingCenter.setExperience(requestMap.get("experience"));
-            existingCenter.setPhoto(requestMap.get("photo"));
-            existingCenter.setLikes(Integer.parseInt(requestMap.get("likes")));
-            existingCenter.setLastUpdate(new Date());
-
-            // Save the updated center
-            centerRepo.save(existingCenter);
-
-            return BerlizUtilities.getResponseEntity("Center updated successfully", HttpStatus.OK);
-        } catch (Exception ex) {
-            ex.printStackTrace();
+            categorySet.add(optionalCategory.get());
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+
+        existingCenter.setCategorySet(categorySet);
+        existingCenter.setName(requestMap.get("name"));
+        existingCenter.setMotto(requestMap.get("motto"));
+        existingCenter.setAddress(requestMap.get("address"));
+        existingCenter.setLocation(requestMap.get("location"));
+        existingCenter.setExperience(requestMap.get("experience"));
+        if (jwtFilter.isAdmin()) {
+            existingCenter.setLikes(Integer.parseInt(requestMap.get("likes")));
+        }
+        existingCenter.setLastUpdate(new Date());
+        simpMessagingTemplate.convertAndSend("/topic/updateCenter", existingCenter);
+        return existingCenter;
     }
 
     /**
      * Handle use case of adding center by an admin.
      *
-     * @param requestMap The map containing the request data
+     * @param centerRequest The map containing the request data
      * @return The constructed and saved Center object
      */
-    private ResponseEntity<String> handleCenterAdditionByAdmin(Map<String, String> requestMap) {
+    private ResponseEntity<String> handleCenterAdditionByAdmin(CenterRequest centerRequest) throws
+            JsonProcessingException {
         try {
-            log.info("Handling center addition by admin");
+            log.info("Handling Center addition by admin");
+            Integer partnerId = centerRequest.getPartnerId();
+            Center center = centerRepo.findByPartnerId(partnerId);
+            Partner partner = partnerRepo.findByPartnerId(partnerId);
 
-            // Admin must provide partnerId
-            if (!requestMap.containsKey("partnerId")) {
-                return new ResponseEntity<>("Admin must provide partnerId", HttpStatus.BAD_REQUEST);
+            if (partnerId == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide partnerId");
             }
 
-            Integer partnerIdValue = Integer.valueOf(requestMap.get("partnerId"));
-
-            // Check if partnerId already has an associated center
-            Center existingCenterByPartnerId = centerRepo.findByPartnerId(partnerIdValue);
-            if (existingCenterByPartnerId != null) {
-                return BerlizUtilities.getResponseEntity("Partner id already exists", HttpStatus.BAD_REQUEST);
-            }
-
-            // Check if the current user is already associated with a center
-            Partner partner = partnerRepo.findByPartnerId(partnerIdValue);
-
-            // Return an error message if partner is null
             if (partner == null) {
-                return BerlizUtilities.getResponseEntity("Partner id is null", HttpStatus.BAD_REQUEST);
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Partner id not found");
             }
 
-            // Check if the user is associated with trainer
-            Integer userId = partner.getUser().getId();
-            if (!isUserAssociatedWithCenter(userId)) {
-                return BerlizUtilities.getResponseEntity("User is already associated with a center", HttpStatus.BAD_REQUEST);
+            if (center != null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Center already exists");
             }
 
-            // Check if the partner is a center
-            if (!isValidRole(partnerIdValue, "center")) {
-                return BerlizUtilities.getResponseEntity("Invalid partner role. Partner must be a center", HttpStatus.BAD_REQUEST);
+            if (!isValidRole(partnerId, "center")) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Invalid partner role. Partner must be a center");
             }
 
-            // Check if the partner already exists
-            if (!isValidPartner(partnerIdValue)) {
-                return BerlizUtilities.getResponseEntity("Partner does not exist", HttpStatus.BAD_REQUEST);
-            }
-            // Check if partnerId already been approved by an admin
-            if (!isApprovedCenterPartner(partnerIdValue)) {
-                return BerlizUtilities.getResponseEntity("Please wait for admin approval", HttpStatus.BAD_REQUEST);
+            if (!isApprovedCenterPartner(partnerId)) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Partner application hasn't been approved yet");
             }
 
-            getCenterFromMap(requestMap, false);
-            return new ResponseEntity<>("Center added successfully", HttpStatus.CREATED);
+            if (isCenterNameAlreadyExists(centerRequest.getName())) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Center name is already taken. Please choose another name");
+            }
+
+            centerRepo.save(getCenterFromMap(centerRequest));
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Center added successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
+
 
     /**
      * Handle use case of adding center by a valid user.
      *
-     * @param requestMap The map containing the request data
+     * @param centerRequest The map containing the request data
      * @return The constructed and saved Center object
      */
-    private ResponseEntity<String> handleCenterAdditionByUser(Map<String, String> requestMap) {
+    private ResponseEntity<String> handleCenterAdditionByUser(CenterRequest centerRequest) {
         try {
-            log.info("Handling center addition by user");
-
-            // Retrieve the current user's ID
+            log.info("Handling Trainer addition by user");
             Integer userId = jwtFilter.getCurrentUserId();
-
-            // Check if the current user is already associated with a center
             Partner partner = partnerRepo.findByUserId(userId);
-
-            // Return an error message if partner is null
-            if (partner == null) {
-                return BerlizUtilities.getResponseEntity("Partner id is null", HttpStatus.BAD_REQUEST);
-            }
-
             Integer partnerId = partner.getId();
-            if (!isUserAssociatedWithCenter(userId)) {
-                return BerlizUtilities.getResponseEntity("User is already associated with a center", HttpStatus.BAD_REQUEST);
+            Center center = centerRepo.findByPartnerId(partnerId);
+            if (partner == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Partner id not found");
             }
 
-            // Check if partnerId already has an associated center
-            Center existingCenterByPartnerId = centerRepo.findByPartnerId(partnerId);
-            if (existingCenterByPartnerId != null) {
-                return BerlizUtilities.getResponseEntity("Partner id already exists", HttpStatus.BAD_REQUEST);
+
+            if (center != null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Center already exists");
             }
 
-            // Check if the partner is a center
             if (!isValidRole(partnerId, "center")) {
-                return BerlizUtilities.getResponseEntity("Invalid partner role. Partner must be a center", HttpStatus.BAD_REQUEST);
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Invalid partner role. Partner must be a center");
             }
 
-            // Check if the partner already exists
-            if (!isValidPartner(partnerId)) {
-                return BerlizUtilities.getResponseEntity("Partner does not exist", HttpStatus.BAD_REQUEST);
-            }
-
-            // Check if partnerId already been approved by an admin
             if (!isApprovedCenterPartner(partnerId)) {
-                return BerlizUtilities.getResponseEntity("Please wait for admin approval", HttpStatus.BAD_REQUEST);
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Your partnership application is under review, please wait for admin approval");
             }
 
-            // Check if the center name already exists
-            if (isCenterNameAlreadyExists(requestMap.get("name"))) {
-                return BerlizUtilities.getResponseEntity("Center name already exists", HttpStatus.BAD_REQUEST);
+            if (isCenterNameAlreadyExists(centerRequest.getName())) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Center name is already taken. Please choose another name");
             }
 
-            getCenterFromMap(requestMap, true);
-            return new ResponseEntity<>("Center added successfully", HttpStatus.CREATED);
+            centerRepo.save(getCenterFromMap(centerRequest));
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Your Trainer account has successfully been created");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -834,10 +683,7 @@ public class CenterServiceImplement implements CenterService {
      */
     private boolean isUserAssociatedWithCenter(Integer userId) {
         Partner currentUserPartner = partnerRepo.findByUserId(userId);
-        return Optional.ofNullable(currentUserPartner)
-                .map(Partner::getUser)
-                .map(User::getId)
-                .isPresent();
+        return Optional.ofNullable(currentUserPartner).map(Partner::getUser).map(User::getId).isPresent();
     }
 
     /**

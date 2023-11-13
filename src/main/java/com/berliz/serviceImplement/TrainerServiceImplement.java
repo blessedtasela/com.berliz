@@ -3,14 +3,8 @@ package com.berliz.serviceImplement;
 import com.berliz.DTO.TrainerRequest;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
-import com.berliz.models.Category;
-import com.berliz.models.Partner;
-import com.berliz.models.Trainer;
-import com.berliz.models.User;
-import com.berliz.repository.CategoryRepo;
-import com.berliz.repository.PartnerRepo;
-import com.berliz.repository.TrainerRepo;
-import com.berliz.repository.UserRepo;
+import com.berliz.models.*;
+import com.berliz.repository.*;
 import com.berliz.services.TrainerService;
 import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.EmailUtilities;
@@ -20,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -43,13 +38,22 @@ public class TrainerServiceImplement implements TrainerService {
     PartnerRepo partnerRepo;
 
     @Autowired
+    CenterRepo centerRepo;
+
+    @Autowired
     UserRepo userRepo;
+
+    @Autowired
+    TrainerLikeRepo trainerLikeRepo;
 
     @Autowired
     EmailUtilities emailUtilities;
 
     @Autowired
     FileUtilities fileUtilities;
+
+    @Autowired
+    SimpMessagingTemplate simpMessagingTemplate;
 
     /**
      * adds a Trainer based on data provided
@@ -136,6 +140,7 @@ public class TrainerServiceImplement implements TrainerService {
             trainer.setLastUpdate(new Date());
             trainerRepo.save(trainer);
 
+            simpMessagingTemplate.convertAndSend("/topic/updateTrainer", trainer);
             if (jwtFilter.isAdmin())
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer information updated successfully");
             else
@@ -159,8 +164,8 @@ public class TrainerServiceImplement implements TrainerService {
             if (!jwtFilter.isAdmin()) {
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
             }
-                List<Trainer> Trainers = trainerRepo.findAll();
-                return new ResponseEntity<>(Trainers, HttpStatus.OK);
+            List<Trainer> Trainers = trainerRepo.findAll();
+            return new ResponseEntity<>(Trainers, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -178,15 +183,20 @@ public class TrainerServiceImplement implements TrainerService {
         try {
             log.info("Inside deleteTrainer {}", id);
             User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
-            boolean authorizedUser = user.getEmail().equalsIgnoreCase("berlizworld@gmail.com");
-            if (!jwtFilter.isAdmin() && authorizedUser) {
+            boolean authorizedUser = user.getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN);
+            if (!(jwtFilter.isAdmin() && authorizedUser)) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
-            Trainer Trainer = trainerRepo.findByTrainerId(id);
-            if (Trainer == null) {
+            Trainer trainer = trainerRepo.findByTrainerId(id);
+            if (trainer == null) {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer id not found");
             }
-            trainerRepo.delete(Trainer);
+
+            if (trainer.getStatus().equalsIgnoreCase("true")) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer is active, Cannot complete request");
+            }
+            trainerRepo.delete(trainer);
+            simpMessagingTemplate.convertAndSend("/topic/deleteTrainer", trainer);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer deleted successfully");
 
         } catch (Exception ex) {
@@ -211,8 +221,9 @@ public class TrainerServiceImplement implements TrainerService {
             if (optional.isEmpty()) {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer id not found");
             }
-            log.info("Inside optional {}", optional);
 
+            log.info("Inside optional {}", optional);
+            Trainer trainer = optional.get();
             Integer userId = optional.get().getPartner().getUser().getId();
             String status = optional.get().getStatus();
             String userEmail = optional.get().getPartner().getUser().getEmail();
@@ -222,29 +233,26 @@ public class TrainerServiceImplement implements TrainerService {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            // Toggle the status
             status = status.equalsIgnoreCase("true") ? "false" : "true";
-            trainerRepo.updateStatus(id, status);
-
-            // Update user role in user repository
-            if (status.equalsIgnoreCase("true")) {
-                userRepo.updateUserRole("trainer", userId);
-            } else {
-                userRepo.updateUserRole("user", userId);
-            }
-
-            // Send status update emails
+            trainer.setStatus(status);
+            trainerRepo.save(trainer);
             emailUtilities.sendStatusMailToAdmins(status, userEmail, userRepo.getAllAdminsMail(), "Trainer");
             emailUtilities.sendStatusMailToUser(status, "Trainer", userEmail);
-
-            String responseMessage = status.equalsIgnoreCase("true") ?
-                    "Trainer Status updated successfully. NOW activated" :
-                    "Trainer Status updated successfully. NOW deactivated";
+            String responseMessage;
+            if (jwtFilter.isAdmin()) {
+                responseMessage = status.equalsIgnoreCase("true") ?
+                        "Trainer has been successfully activated" :
+                        "Trainer has been deactivated successfully";
+            } else {
+                responseMessage = status.equalsIgnoreCase("true") ?
+                        "Hello " + userEmail + ", your Trainer account has successfully been activated" :
+                        "Hello " + userEmail + ", your Trainer account has been deactivated";
+            }
+            simpMessagingTemplate.convertAndSend("/topic/updateTrainerStatus", trainer);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
@@ -266,13 +274,16 @@ public class TrainerServiceImplement implements TrainerService {
                 return new ResponseEntity<>(new Trainer(), HttpStatus.BAD_REQUEST);
             }
 
-            if (trainer == null) {
-                return new ResponseEntity<>(new Trainer(), HttpStatus.BAD_REQUEST);
+            if (trainer == null || trainer.getId() == null) {
+                log.error("Trainer or its ID is null. Check database.");
+                return new ResponseEntity("Center is null", HttpStatus.NOT_FOUND);
             }
-            // Check if the logged-in user has a partner and the Trainer matches
-            Integer currentUser = partner.getUser().getId();
 
-            if (currentUser.equals(userId) && trainer.getPartner().getId().equals(partner.getId())) {
+            // Check if the partner and the Trainer matches
+            Integer currentUser = partner.getUser().getId();
+            boolean validUser = currentUser.equals(userId)
+                    && trainer.getPartner().getId().equals(partner.getId());
+            if (validUser || jwtFilter.isAdmin()) {
                 return new ResponseEntity<>(trainer, HttpStatus.OK);
             }
             return new ResponseEntity<>(new Trainer(), HttpStatus.UNAUTHORIZED);
@@ -293,12 +304,87 @@ public class TrainerServiceImplement implements TrainerService {
         }
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    @Override
+    public ResponseEntity<String> likeTrainer(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside likeTrainer {}", id);
+            Trainer trainer = trainerRepo.findByTrainerId(id);
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            boolean validUser = jwtFilter.isBerlizUser();
+
+            if (!validUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (trainer == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer id not found");
+            }
+
+            boolean hasLiked = trainerLikeRepo.existsByUserAndTrainer(user, trainer);
+            String responseMessage;
+            if (hasLiked) {
+                // dislike trainer
+                trainerLikeRepo.deleteByUserAndTrainer(user, trainer);
+                trainer.setLikes(trainer.getLikes() - 1);
+                responseMessage = "Hello, " + user.getFirstname() + " you have disliked " + trainer.getName() + " profile";
+
+            } else {
+                // like trainer
+                TrainerLike trainerLike = new TrainerLike();
+                trainerLike.setUser(user);
+                trainerLike.setTrainer(trainer);
+                trainerLike.setDate(new Date());
+                trainerLikeRepo.save(trainerLike);
+                trainer.setLikes(trainer.getLikes() + 1);
+                responseMessage = "Hello, " + user.getFirstname() + " you just liked " + trainer.getName() + " profile";
+            }
+
+            trainerRepo.save(trainer);
+            simpMessagingTemplate.convertAndSend("/topic/likeTrainer", trainer);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    /**
+     * Retrieves a list of all trainer likes.
+     *
+     * @return ResponseEntity containing the list of trainer likes.
+     */
+    @Override
+    public ResponseEntity<List<TrainerLike>> getTrainerLikes() {
+        try {
+            log.info("Inside getTrainerLikes {}");
+            List<TrainerLike> trainerLikes = trainerLikeRepo.findAll();
+            return new ResponseEntity<>(trainerLikes, HttpStatus.OK);
+        } catch (Exception ex) {
+            log.error("Something went wrong while performing operation", ex);
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Updates the photo of a trainer.
+     *
+     * @param trainerRequest The trainer information including the new photo.
+     * @return ResponseEntity indicating the result of the photo update operation.
+     * @throws JsonProcessingException if there is an issue processing JSON data.
+     */
     @Override
     public ResponseEntity<String> updatePhoto(TrainerRequest trainerRequest) throws JsonProcessingException {
         try {
             log.info("Inside updatePhoto{}", trainerRequest);
             Integer trainerId = trainerRequest.getId();
             Trainer trainer = trainerRepo.findByTrainerId(trainerId);
+
+            if (trainer == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer id not found");
+            }
+
             User user = trainer.getPartner().getUser();
             boolean validUser = jwtFilter.isAdmin() || jwtFilter.getCurrentUserId().equals(user.getId());
 
@@ -306,9 +392,6 @@ public class TrainerServiceImplement implements TrainerService {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            if (trainer == null) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer id not found");
-            }
             MultipartFile file = trainerRequest.getPhoto();
             if (file == null) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "No profile photo provided");
@@ -324,11 +407,14 @@ public class TrainerServiceImplement implements TrainerService {
 
             trainer.setPhoto(file.getBytes());
             trainerRepo.save(trainer);
-            if (jwtFilter.isAdmin())
-                return BerlizUtilities.buildResponse(HttpStatus.OK, trainer.getName() + "'s cover photo updated successfully");
-            else
-                return BerlizUtilities.buildResponse(HttpStatus.OK, "Your cover photo has been updated successfully");
-
+            String responseMessage;
+            if (jwtFilter.isAdmin()) {
+                responseMessage = trainer.getName() + "'s cover photo updated successfully";
+            } else {
+                responseMessage = "Your cover photo has been updated successfully";
+            }
+            simpMessagingTemplate.convertAndSend("/topic/updatePhoto", trainer);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -343,13 +429,13 @@ public class TrainerServiceImplement implements TrainerService {
      * @return True if the request data is valid, otherwise false
      */
     private boolean validateTrainerFromMap(Map<String, String> requestMap) {
-            return requestMap.containsKey("id")
-                    && requestMap.containsKey("name")
-                    && requestMap.containsKey("motto")
-                    && requestMap.containsKey("address")
-                    && requestMap.containsKey("experience")
-                    && requestMap.containsKey("likes")
-                    && requestMap.containsKey("categoryIds");
+        return requestMap.containsKey("id")
+                && requestMap.containsKey("name")
+                && requestMap.containsKey("motto")
+                && requestMap.containsKey("address")
+                && requestMap.containsKey("experience")
+                && requestMap.containsKey("likes")
+                && requestMap.containsKey("categoryIds");
     }
 
     /**
@@ -360,10 +446,16 @@ public class TrainerServiceImplement implements TrainerService {
      */
     private Trainer getTrainerFromMap(TrainerRequest trainerRequest) throws IOException {
         Trainer trainer = new Trainer();
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user;
+        Partner partner = partnerRepo.findByPartnerId(trainerRequest.getPartnerId());
+        if (jwtFilter.isAdmin()) {
+            String userEmail = partner.getUser().getEmail();
+            user = userRepo.findByEmail(userEmail);
+        } else {
+            user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        }
         user.setRole("trainer");
         userRepo.save(user);
-        Partner partner = partnerRepo.findByPartnerId(trainerRequest.getId());
         byte[] photo = trainerRequest.getPhoto().getBytes();
 
         // Parse tagIds as a comma-separated string
@@ -390,30 +482,9 @@ public class TrainerServiceImplement implements TrainerService {
         trainer.setLikes(0);
         trainer.setDate(new Date());
         trainer.setLastUpdate(new Date());
-        trainer.setStatus("false"); // Initializing status
-
+        trainer.setStatus("false");
+        simpMessagingTemplate.convertAndSend("/topic/getTrainerFromMap", trainer);
         return trainer;
-    }
-
-    /**
-     * Updates a Trainer object from the provided request map and saves it to the repository.
-     *
-     * @param requestMap The map containing the request data
-     * @return The constructed and saved Trainer object
-     */
-    private ResponseEntity<String> updateTrainerFromMap(Map<String, String> requestMap) throws JsonProcessingException {
-        try {
-            Optional<Trainer> optional = trainerRepo.findById(Integer.valueOf(requestMap.get("id")));
-            Trainer trainer = optional.get();
-            if (optional.isEmpty()) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer id not found");
-            }
-
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     /**
@@ -425,7 +496,7 @@ public class TrainerServiceImplement implements TrainerService {
     private ResponseEntity<String> handleTrainerAdditionByAdmin(TrainerRequest trainerRequest) throws JsonProcessingException {
         try {
             log.info("Handling Trainer addition by admin");
-            Integer partnerId = trainerRequest.getId();
+            Integer partnerId = trainerRequest.getPartnerId();
             Trainer trainer = trainerRepo.findByPartnerId(partnerId);
             Partner partner = partnerRepo.findByPartnerId(partnerId);
 

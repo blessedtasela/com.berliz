@@ -43,16 +43,23 @@ public class ProductSerializer extends JsonSerializer<Product> {
         jsonGenerator.writeStringField("photo", product.getPhoto());
 
         // Serialize the categorySet using a loop
-        jsonGenerator.writeArrayFieldStart("categorySet");
+        jsonGenerator.writeArrayFieldStart("tagSet");
         for (Category category : product.getCategorySet()) {
-            jsonGenerator.writeObject(category);
+            jsonGenerator.writeStartObject();
+            jsonGenerator.writeNumberField("id", category.getId());
+            jsonGenerator.writeStringField("name", category.getName());
+            jsonGenerator.writeStringField("description", category.getDescription());
+            jsonGenerator.writeEndObject();
         }
         jsonGenerator.writeEndArray();
+
 
         // Serialize the tagSet using a loop
         jsonGenerator.writeArrayFieldStart("tagSet");
         for (Tag tag : product.getTagSet()) {
-            jsonGenerator.writeObject(tag);
+            jsonGenerator.writeNumberField("id", tag.getId());
+            jsonGenerator.writeStringField("name", tag.getName());
+            jsonGenerator.writeStringField("description", tag.getDescription());
         }
         jsonGenerator.writeEndArray();
 

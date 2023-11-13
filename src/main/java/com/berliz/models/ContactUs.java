@@ -9,6 +9,7 @@ import java.io.Serializable;
 import java.util.Date;
 
 @NamedQuery(name = "ContactUs.updateStatus", query = "update ContactUs c set c.status=:status where c.id=:id")
+
 @Data
 @Entity
 @DynamicInsert

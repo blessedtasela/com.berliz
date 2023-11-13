@@ -2,7 +2,10 @@ package com.berliz.rest;
 
 import com.berliz.DTO.TrainerRequest;
 import com.berliz.models.Trainer;
+import com.berliz.models.TrainerLike;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,7 +24,7 @@ public interface TrainerRest {
      * @return ResponseEntity indicating the result of the trainer addition operation.
      */
     @PostMapping(path = "/add")
-    ResponseEntity<String> addTrainer(@ModelAttribute TrainerRequest trainerRequest);
+    ResponseEntity<String> addTrainer(@ModelAttribute TrainerRequest trainerRequest) throws JsonProcessingException;
 
     /**
      * Get a list of all trainers.
@@ -46,16 +49,15 @@ public interface TrainerRest {
      * @return ResponseEntity indicating the result of the trainer update operation.
      */
     @PutMapping(path = "/update")
-    ResponseEntity<String> updateTrainer(@RequestBody Map<String, String> requestMap);
+    ResponseEntity<String> updateTrainer(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
 
     /**
-     * Update the partner ID associated with a trainer.
+     * Update the trainer photo.
      *
-     * @return ResponseEntity indicating the result of the partner ID update operation.
+     * @return ResponseEntity indicating the result of the operation.
      */
     @PutMapping(path = "/updatePhoto")
-    ResponseEntity<String> updatePhoto(@ModelAttribute TrainerRequest trainerRequest);
-
+    ResponseEntity<String> updatePhoto(@ModelAttribute TrainerRequest trainerRequest) throws JsonProcessingException;
 
     /**
      * Delete a trainer.
@@ -64,7 +66,7 @@ public interface TrainerRest {
      * @return ResponseEntity indicating the result of the trainer deletion operation.
      */
     @DeleteMapping(path = "/delete/{id}")
-    ResponseEntity<String> deleteTrainer(@PathVariable Integer id);
+    ResponseEntity<String> deleteTrainer(@PathVariable Integer id) throws JsonProcessingException;
 
     /**
      * Update the status of a trainer.
@@ -73,7 +75,7 @@ public interface TrainerRest {
      * @return ResponseEntity indicating the result of the trainer status update operation.
      */
     @PutMapping(path = "/updateStatus/{id}")
-    ResponseEntity<String> updateStatus(@PathVariable Integer id);
+    ResponseEntity<String> updateStatus(@PathVariable Integer id) throws JsonProcessingException;
 
     /**
      * Get a trainer by its ID.
@@ -82,5 +84,21 @@ public interface TrainerRest {
      */
     @GetMapping(path = "/getTrainer")
     ResponseEntity<Trainer> getTrainer();
+
+    /**
+     * like a trainer by its ID.
+     *
+     * @return ResponseEntity containing the trainer with the specified ID.
+     */
+    @PutMapping(path = "/like/{id}")
+    ResponseEntity<String> likeTrainer(@PathVariable Integer id) throws JsonProcessingException;
+
+    /**
+     * dislike a trainer by its ID.
+     *
+     * @return ResponseEntity containing the trainer with the specified ID.
+     */
+    @GetMapping(path = "/getTrainerLikes")
+    ResponseEntity<List<TrainerLike>> getTrainerLikes() throws JsonProcessingException;
 
 }

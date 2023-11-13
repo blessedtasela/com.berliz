@@ -3,9 +3,13 @@ package com.berliz.serviceImplement;
 import com.berliz.DTO.PartnerRequest;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
+import com.berliz.models.Center;
 import com.berliz.models.Partner;
+import com.berliz.models.Trainer;
 import com.berliz.models.User;
+import com.berliz.repository.CenterRepo;
 import com.berliz.repository.PartnerRepo;
+import com.berliz.repository.TrainerRepo;
 import com.berliz.repository.UserRepo;
 import com.berliz.services.PartnerService;
 import com.berliz.utils.EmailUtilities;
@@ -17,6 +21,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -30,6 +35,12 @@ public class PartnerServiceImplement implements PartnerService {
     PartnerRepo partnerRepo;
 
     @Autowired
+    TrainerRepo trainerRepo;
+
+    @Autowired
+    CenterRepo centerRepo;
+
+    @Autowired
     UserRepo userRepo;
 
     @Autowired
@@ -37,6 +48,9 @@ public class PartnerServiceImplement implements PartnerService {
 
     @Autowired
     EmailUtilities emailUtilities;
+
+    @Autowired
+    SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
     public ResponseEntity<String> addPartner(PartnerRequest request) throws JsonProcessingException {
@@ -136,49 +150,52 @@ public class PartnerServiceImplement implements PartnerService {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
-            // Check if the 'role' value is valid
             if (!isValidRole(role)) {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Invalid role value. Allowed values are 'store', 'center'," +
                         " 'trainer', or 'driver'");
             }
 
-            // Attempt to find the partner by ID in the repository
             Optional<Partner> optional = partnerRepo.findById(Integer.valueOf(requestMap.get("id")));
-
-            // Check if the partner with the given ID exists
             if (optional.isEmpty()) {
                 return buildResponse(HttpStatus.NOT_FOUND, "Partner ID not found");
             }
 
             Partner existingPartner = optional.get();
-
-            // Check if the logged-in user has permission to update the partner
             String currentUser = jwtFilter.getCurrentUser();
             if (!(jwtFilter.isAdmin() || existingPartner.getUser().getEmail().equals(currentUser))) {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            // Check if the partner is already active
             if (existingPartner.getStatus().equalsIgnoreCase("true")) {
-                return buildResponse(HttpStatus.UNAUTHORIZED, "Cannot make an update. Partner is now active");
+                if (jwtFilter.isAdmin()) {
+                    return buildResponse(HttpStatus.UNAUTHORIZED, "Cannot make an update. Partner is now active");
+                } else {
+                    return buildResponse(HttpStatus.OK, "Sorry " +
+                            existingPartner.getUser().getFirstname() + ", you cannot make an update. " +
+                            " Your application has been approved");
+                }
             }
 
-            // Update the partner's information based on the request data
             existingPartner.setMotivation(requestMap.get("motivation"));
             existingPartner.setFacebookUrl(requestMap.get("facebookUrl"));
             existingPartner.setInstagramUrl(requestMap.get("instagramUrl"));
             existingPartner.setYoutubeUrl(requestMap.get("youtubeUrl"));
             existingPartner.setRole(requestMap.get("role"));
             existingPartner.setLastUpdate(new Date());
-
-            // Save the updated partner in the repository
             partnerRepo.save(existingPartner);
+            String responseMessage;
 
-            // Return a success response
-            return buildResponse(HttpStatus.OK, "Partner updated successfully");
+            if (jwtFilter.isAdmin()) {
+                responseMessage = "Partner updated successfully";
+            } else {
+                responseMessage = "Hello " +
+                        existingPartner.getUser().getFirstname() + " you have successfully " +
+                        " updated your partnership application";
+            }
 
+            simpMessagingTemplate.convertAndSend("/topic/updatePartner", existingPartner);
+            return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
-            // Handle exceptions and return an error response
             ex.printStackTrace();
             return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
         }
@@ -191,12 +208,12 @@ public class PartnerServiceImplement implements PartnerService {
             if (!jwtFilter.isAdmin()) {
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
             }
-                List<Partner> partners = partnerRepo.findAll();
-                return new ResponseEntity<>(partners, HttpStatus.OK);
+            List<Partner> partners = partnerRepo.findAll();
+            return new ResponseEntity<>(partners, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-            return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
@@ -211,6 +228,7 @@ public class PartnerServiceImplement implements PartnerService {
             }
             try {
                 partnerRepo.delete(partner);
+                simpMessagingTemplate.convertAndSend("/topic/deletePartner", partner);
                 return buildResponse(HttpStatus.OK, "Partner deleted successfully");
             } catch (DataIntegrityViolationException ex) {
                 // Handle foreign key constraint violation when deleting
@@ -239,28 +257,39 @@ public class PartnerServiceImplement implements PartnerService {
             if (optional.isEmpty()) {
                 return buildResponse(HttpStatus.NOT_FOUND, "Partner id not found");
             }
-            // Get user ID and role from partner
+
+            log.info("Inside optional {}", optional);
             Integer userId = user.get().getId();
             String role = optional.get().getRole();
-            log.info("Inside optional {}", optional);
+            String responseMessage;
+            Partner partner = optional.get();
 
             // Toggle partner status
             status = optional.get().getStatus();
             if (status.equalsIgnoreCase("true")) {
                 status = "false";
-                partnerRepo.updateStatus(id, status);
-                userRepo.updateUserRole("user", userId);
-                emailUtilities.sendPartnerShipStatusMailToAdmins(status, optional.get().getUser().getEmail(), userRepo.getAllAdminsMail());
-                emailUtilities.sendPartnerShipStatusMailToUser(status, optional.get().getUser().getEmail(), role);
-                return buildResponse(HttpStatus.OK, "Partner account is now deactivated");
+                role = "user";
+                Trainer trainer = trainerRepo.findByPartnerId(optional.get().getId());
+                Center center = centerRepo.findByPartnerId(optional.get().getId());
+                boolean isActivePartner = (trainer != null && trainer.getStatus().equalsIgnoreCase("true"))
+                        || (center != null && center.getStatus().equalsIgnoreCase("true"));
+                if (isActivePartner) {
+                    return buildResponse(HttpStatus.BAD_REQUEST, "Cannot deactivate. Partner is already active");
+                }
+
+                responseMessage = "Partner account has be deactivated successfully";
             } else {
                 status = "true";
-                partnerRepo.updateStatus(id, status);
-                userRepo.updateUserRole(role, userId);
-                emailUtilities.sendPartnerShipStatusMailToAdmins(status, optional.get().getUser().getEmail(), userRepo.getAllAdminsMail());
-                emailUtilities.sendPartnerShipStatusMailToUser(status, optional.get().getUser().getEmail(), role);
-                return buildResponse(HttpStatus.OK, "Partner account is now activated");
+                responseMessage = "Partner account has been successfully activated";
             }
+
+            userRepo.updateUserRole(role, userId);
+            partner.setStatus(status);
+            partnerRepo.save(partner);
+            emailUtilities.sendPartnerShipStatusMailToAdmins(status, optional.get().getUser().getEmail(), userRepo.getAllAdminsMail());
+            emailUtilities.sendPartnerShipStatusMailToUser(status, optional.get().getUser().getEmail(), role);
+            simpMessagingTemplate.convertAndSend("/topic/updatePartnerStatus", partner);
+            return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -309,7 +338,7 @@ public class PartnerServiceImplement implements PartnerService {
             // Save the updated partner in the repository
             partnerRepo.save(existingPartner);
 
-            // Return a success response
+            simpMessagingTemplate.convertAndSend("/topic/updatePartnerFile", existingPartner);
             return buildResponse(HttpStatus.OK, "Partner files updated successfully");
 
         } catch (Exception ex) {
@@ -364,9 +393,11 @@ public class PartnerServiceImplement implements PartnerService {
             // Get partner's email and role for sending notification
             String email = optional.get().getUser().getEmail();
             String role = optional.get().getRole();
+            String response = email + " partnership application " + role + " has been rejected";
 
             // Send application rejection notification
             emailUtilities.sendPartnershipFailedMail(email, role);
+            simpMessagingTemplate.convertAndSend("/topic/rejectPartnerApplication", response);
             return buildResponse(HttpStatus.OK, "Mail sent successfully. Application rejected");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -418,9 +449,8 @@ public class PartnerServiceImplement implements PartnerService {
         partner.setRole(request.getRole());
         partner.setDate(new Date());
         partner.setLastUpdate(new Date());
-
-        // Set the partner's status to "false" (not active)
         partner.setStatus("false");
+        simpMessagingTemplate.convertAndSend("/topic/getPartnerFromMap", partner);
 
         return partner;
     }

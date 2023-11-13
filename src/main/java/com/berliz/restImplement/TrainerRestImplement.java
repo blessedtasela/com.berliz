@@ -3,9 +3,11 @@ package com.berliz.restImplement;
 import com.berliz.DTO.TrainerRequest;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Trainer;
+import com.berliz.models.TrainerLike;
 import com.berliz.rest.TrainerRest;
 import com.berliz.services.TrainerService;
 import com.berliz.utils.BerlizUtilities;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,14 +33,13 @@ public class TrainerRestImplement implements TrainerRest {
      * @return ResponseEntity containing a status message.
      */
     @Override
-    public ResponseEntity<String> addTrainer(TrainerRequest trainerRequest) {
+    public ResponseEntity<String> addTrainer(TrainerRequest trainerRequest) throws JsonProcessingException {
         try {
-            // Delegate the Trainer addTrainer operation to the service
             return trainerService.addTrainer(trainerRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     /**
@@ -69,7 +70,6 @@ public class TrainerRestImplement implements TrainerRest {
             ex.printStackTrace();
         }
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
-
     }
 
     /**
@@ -79,13 +79,13 @@ public class TrainerRestImplement implements TrainerRest {
      * @return ResponseEntity containing a status message.
      */
     @Override
-    public ResponseEntity<String> updateTrainer(Map<String, String> requestMap) {
+    public ResponseEntity<String> updateTrainer(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             return trainerService.updateTrainer(requestMap);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
 
@@ -96,13 +96,13 @@ public class TrainerRestImplement implements TrainerRest {
      * @return ResponseEntity containing a status message.
      */
     @Override
-    public ResponseEntity<String> updatePhoto(TrainerRequest trainerRequest) {
+    public ResponseEntity<String> updatePhoto(TrainerRequest trainerRequest) throws JsonProcessingException {
         try {
             return trainerService.updatePhoto(trainerRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     /**
@@ -112,13 +112,13 @@ public class TrainerRestImplement implements TrainerRest {
      * @return ResponseEntity containing a status message.
      */
     @Override
-    public ResponseEntity<String> deleteTrainer(Integer id) {
+    public ResponseEntity<String> deleteTrainer(Integer id) throws JsonProcessingException {
         try {
             return trainerService.deleteTrainer(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     /**
@@ -128,14 +128,13 @@ public class TrainerRestImplement implements TrainerRest {
      * @return ResponseEntity containing a status message.
      */
     @Override
-    public ResponseEntity<String> updateStatus(Integer id) {
+    public ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException {
         try {
-            // Delegate the Trainer updateStatus operation to the service
             return trainerService.updateStatus(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     /**
@@ -146,11 +145,30 @@ public class TrainerRestImplement implements TrainerRest {
     @Override
     public ResponseEntity<Trainer> getTrainer() {
         try {
-            // Delegate the Trainer getTrainer operation to the service
             return trainerService.getTrainer();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return new ResponseEntity<>(new Trainer(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> likeTrainer(Integer id) throws JsonProcessingException {
+        try {
+            return trainerService.likeTrainer(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<TrainerLike>> getTrainerLikes() throws JsonProcessingException {
+        try {
+            return trainerService.getTrainerLikes();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

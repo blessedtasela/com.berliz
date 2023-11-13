@@ -23,6 +23,7 @@ public class JacksonConfig {
         module.addSerializer(Trainer.class, new TrainerSerializer());
         module.addSerializer(Center.class, new CenterSerializer());
         module.addSerializer(Driver.class, new DriverSerializer());
+        module.addSerializer(Category.class, new CategorySerializer());
         objectMapper.registerModule(module);
         return objectMapper;
     }

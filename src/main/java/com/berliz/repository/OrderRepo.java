@@ -17,7 +17,6 @@ public interface OrderRepo extends JpaRepository<Order, Integer> {
 
     Order findByOrderId(Integer id);
 
-
     @Transactional
     @Modifying
     Integer updateStatus(@PathVariable("id") Integer id, @PathVariable("status") String status);

@@ -1,6 +1,7 @@
 package com.berliz.repository;
 
 import com.berliz.models.Tag;
+import com.berliz.models.Trainer;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -19,4 +20,10 @@ public interface TagRepo extends JpaRepository<Tag, Integer> {
     @Modifying
     Integer updateStatus(@PathVariable("id") Integer id, @PathVariable("status") String status);
 
+    /**
+     * Get the lists of tags whose status are true
+     *
+     * @return The list of tags or null if not found
+     */
+    List<Tag>getActiveTags();
 }

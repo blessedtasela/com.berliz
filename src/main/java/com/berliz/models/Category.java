@@ -64,4 +64,5 @@ public class Category implements Serializable {
 
     @Column(name = "status")
     private String status;
+
 }

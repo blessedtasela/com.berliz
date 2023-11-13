@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Async
 @Service
 public class EmailUtilities {
 
@@ -31,7 +32,6 @@ public class EmailUtilities {
     @Autowired
     JWTFilter jwtFilter;
 
-    @Async
     public void composeBulkMail(String to, String subject, String body, List<String> list) {
         SimpleMailMessage mailMessage = new SimpleMailMessage();
         mailMessage.setFrom("berlizworld@gmail.com");
@@ -45,7 +45,6 @@ public class EmailUtilities {
         mailSender.send(mailMessage);
     }
 
-    @Async
     public void composeSimpleMail(String to, String subject, String body) {
         SimpleMailMessage mailMessage = new SimpleMailMessage();
         mailMessage.setFrom("berlizworld@gmail.com");
@@ -63,7 +62,7 @@ public class EmailUtilities {
         return cc;
     }
 
-    @Async
+
     public void resetPasswordMail(String to, String subject) throws MessagingException {
         MimeMessage mailMessage = mailSender.createMimeMessage();
         MimeMessageHelper messageHelper = new MimeMessageHelper(mailMessage, true);
@@ -88,7 +87,6 @@ public class EmailUtilities {
         mailSender.send(mailMessage);
     }
 
-    @Async
     public void validateSignupMail(String to, String subject) throws MessagingException {
         MimeMessage mailMessage = mailSender.createMimeMessage();
         MimeMessageHelper messageHelper = new MimeMessageHelper(mailMessage, true);
@@ -217,22 +215,26 @@ public class EmailUtilities {
      * Sends a contact us confirmation email to the user based on the status of their message.
      *
      * @param status The status of the user's message ("true" for reviewed, "false" for pending).
-     * @param user   The email address of the user to send the message to.
+     * @param email  The email address of the user to send the message to.
      */
-    public void sendContactUsMailToUser(String status, String user) {
+    public void sendContactUsMailToUser(String subject, String name, String status, String email, String message) {
         String body;
 
-        if (status != null && status.equalsIgnoreCase("true")) {
-            body = ", \uD83C\uDF89 You're now part of the Berliz Contact family! " +
-                    "\uD83D\uDC8C Get ready for a thrilling journey filled with exclusive offers, exciting updates," +
-                    " and amazing surprises. Our team of professional expertise would contact you soon." +
-                    " Stay tuned, stay connected, and let the adventure begin! \uD83C\uDF1F\uD83D\uDCEC\"";
+        if (status != null && status.equalsIgnoreCase("false")) {
+            body = "🎉 Great news, " + name + "!\n\n" +
+                    "We've received your message and our team is thrilled to assist you. " +
+                    "🌟 Your inquiry is important to us, and we'll be working diligently to " +
+                    "provide you with the information you need. Expect to hear from us soon! 🚀📬";
         } else {
-            body = "Your message has been reviewed successfully";
+            body = "Dear " + name + ",\n\n" +
+                    "We're delighted to inform you that your message has been successfully reviewed by our team.\n\n" +
+                    message + "" + " \n\n" +
+                    " 📝 Thank you for reaching out to us! If you have any further questions or " +
+                    "need assistance, feel free to contact us anytime. We're here to help! 🤝";
         }
-
-        composeSimpleMail(user, "Berliz Contact us team", body);
+        composeSimpleMail(email, subject, body);
     }
+
 
     /**
      * Sends a contact us notification email to all administrators based on the status of the user's message.
@@ -242,25 +244,23 @@ public class EmailUtilities {
      * @param allAdmins The list of all administrators' email addresses.
      */
     public void sendContactUsMailToAdmins(String status, String user, List<String> allAdmins) {
-        // Remove the current user (admin) from the list
-        allAdmins.remove(jwtFilter.getCurrentUser());
-
-        // Check if the current user is an admin
         if (jwtFilter.isAdmin()) {
             String subject;
             String body;
 
-            if (status != null && status.equalsIgnoreCase("true")) {
-                // Message is pending review
-                subject = "Contact us";
-                body = "A new message has arrived from " + user + " and is awaiting review";
+            if (status != null && status.equalsIgnoreCase("false")) {
+                subject = "New Contact Us Message Awaiting Review";
+                body = "Hello Admins,\n\n" +
+                        "A new contact us message has arrived from user " + user + ". It is currently pending review. " +
+                        "Please log in to the admin panel to review and respond to the user's inquiry.\n\n" +
+                        "Thank you!";
             } else {
-                // Message has been reviewed
-                subject = "Contact us Reviewed";
-                body = "Contact us message from " + user + " has been reviewed by Admin: " + jwtFilter.getCurrentUser();
+                subject = "Contact Us Message Reviewed";
+                body = "Hello Admins,\n\n" +
+                        "The contact us message from user " + user + " has been successfully reviewed by Admin: " +
+                        jwtFilter.getCurrentUser() + ". The user has received a response to their inquiry.\n\n" +
+                        "Thank you for your prompt attention to this matter!";
             }
-
-            // Send a bulk email to all administrators
             composeBulkMail(jwtFilter.getCurrentUser(), subject, body, allAdmins);
         }
     }
@@ -275,9 +275,9 @@ public class EmailUtilities {
     /**
      * Sends an email notification to the user whose account status has changed.
      *
-     * @param status   The new status of the account ("true" for active, "false" for disabled)
+     * @param status      The new status of the account ("true" for active, "false" for disabled)
      * @param accountType The type of user (e.g., "User", "Admin", "Center", "Trainer", "Partner", "Store", "Driver", "Client")
-     * @param email    The email address of the user
+     * @param email       The email address of the user
      */
     public void sendStatusMailToUser(String status, String accountType, String email) {
         String subject;
@@ -346,7 +346,7 @@ public class EmailUtilities {
      * @param email  The email address of the user
      * @param role   The role of the user (e.g., "trainer", "driver")
      */
-    @Async
+
     public void sendPartnerShipStatusMailToUser(String status, String email, String role) throws MessagingException {
         String message;
         String token = jwtUtility.generatePasswordResetToken(email);
@@ -378,7 +378,7 @@ public class EmailUtilities {
 
         // Send the email
         mailMessage.setContent(message, "text/html");
-       mailSender.send(mailMessage);
+        mailSender.send(mailMessage);
     }
 
     /**
@@ -442,5 +442,23 @@ public class EmailUtilities {
             composeSimpleMail(user, "Unsubscribed", "Hello " + user +
                     ", you have successfully unsubscribed from our newsletter service");
         }
+    }
+
+    /**
+     * Sends a newsletter to a particular user.
+     *
+     * @param email The user's email address
+     */
+    public void sendNewsletterMail(String email, String body, String subject) {
+        composeSimpleMail(email, subject, body);
+    }
+
+    /**
+     * Sends a newsletter to users.
+     *
+     * @param emails The list of user's email address
+     */
+    public void sendBulkNewsletterMail(List<String> emails, String body, String subject) {
+        composeBulkMail(jwtFilter.getCurrentUser(), subject, body, emails);
     }
 }

@@ -1,6 +1,7 @@
 package com.berliz.services;
 
 import com.berliz.models.ContactUs;
+import com.berliz.models.ContactUsMessage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 
@@ -19,4 +20,8 @@ public interface ContactUsService {
     ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException;
 
     ResponseEntity<String> deleteContactUs(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<String> reviewContactUs(Map<String, String> requestMap) throws JsonProcessingException;
+
+    ResponseEntity<List<ContactUsMessage>> getContactUsMessages();
 }

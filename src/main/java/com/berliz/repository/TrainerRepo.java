@@ -4,6 +4,7 @@ import com.berliz.models.Trainer;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.web.bind.annotation.PathVariable;
 
@@ -21,6 +22,17 @@ public interface TrainerRepo extends JpaRepository<Trainer, Integer> {
      * @return The found trainer or null if not found
      */
     Trainer findByName(@Param("name") String name);
+
+    /**
+     * Find a trainer by user id.
+     *
+     * @param id The user id of the partner of the trainer
+     * @return The found trainer or null if not found
+     */
+    Trainer findByUserId(Integer id);
+
+    @Query()
+    Integer countTrainersByUserId(Integer id);
 
     /**
      * Find trainers by status.

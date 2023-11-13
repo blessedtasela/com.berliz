@@ -1,5 +1,6 @@
 package com.berliz.rest;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +29,14 @@ public interface DashboardRest {
      */
     @GetMapping(path = "/berliz")
     ResponseEntity<Map<String, Object>> getBerlizData();
+
+    /**
+     * Get data in Berliz.
+     *
+     * @return ResponseEntity indicating the result of the center addition operation.
+     */
+    @GetMapping(path = "/getPartnerDetails")
+    ResponseEntity<String> getPartnerDetails() throws JsonProcessingException;
 
 
 }

@@ -17,12 +17,20 @@ import java.util.Set;
 @NamedQuery(name = "Center.updatePartnerId", query = "update Center c " +
         "set c.partner.id=:newId where c.id=:id")
 
+@NamedQuery(name = "Center.getActiveCenters",
+        query = "SELECT c FROM Center c WHERE c.status = 'true'")
+
 @NamedQuery(name = "Center.findByCenterId",
         query = "SELECT c FROM Center c WHERE c.id = :id")
 
+@NamedQuery(name = "Center.findByUserId",
+        query = "SELECT c FROM Center c WHERE c.partner.user.id = :id")
+
+@NamedQuery(name = "Center.countCentersByUserId",
+        query =  "SELECT COUNT(c) FROM Center c WHERE c.partner.user.id = :id")
+
 @NamedQuery(name = "Center.findByPartnerId",
         query = "SELECT c FROM Center c WHERE c.partner.id = :id")
-
 
 @NamedQuery(name = "Center.getByCategoryId",
         query = "select ct from Center ct " +
@@ -51,23 +59,20 @@ public class Center implements Serializable {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "motto")
+    @Column(name = "motto", columnDefinition = "TEXT")
     private String motto;
 
-    @Column(name = "introduction", columnDefinition = "TEXT")
-    private String introduction;
-
-    @Column(name = "address")
+    @Column(name = "address", columnDefinition = "TEXT")
     private String address;
 
-    @Column(name = "experience", columnDefinition = "TEXT")
+    @Column(name = "experience")
     private String experience;
 
-    @Column(name = "location")
+    @Column(name = "location", columnDefinition = "TEXT")
     private String location;
 
-    @Column(name = "photo")
-    private String photo;
+    @Column(name = "photo", columnDefinition = "BYTEA")
+    private byte[] photo;
 
     @Column(name = "likes", columnDefinition = "INTEGER")
     private int likes;

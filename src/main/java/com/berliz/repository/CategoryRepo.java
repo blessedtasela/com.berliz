@@ -1,6 +1,8 @@
 package com.berliz.repository;
 
 import com.berliz.models.Category;
+import com.berliz.models.Trainer;
+import com.berliz.models.User;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -25,4 +27,5 @@ public interface CategoryRepo  extends JpaRepository<Category, Integer> {
                       @Param("id") Integer id);
 
     List<Category> getByTag(@Param("id") Integer id);
+
 }

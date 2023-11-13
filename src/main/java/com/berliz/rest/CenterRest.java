@@ -1,6 +1,12 @@
 package com.berliz.rest;
 
+import com.berliz.DTO.CenterRequest;
+import com.berliz.DTO.TrainerRequest;
 import com.berliz.models.Center;
+import com.berliz.models.CenterLike;
+import com.berliz.models.Trainer;
+import com.berliz.models.TrainerLike;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,11 +22,11 @@ public interface CenterRest {
     /**
      * Add a new center.
      *
-     * @param requestMap Request body containing center details.
+     * @param centerRequest Request body containing center details.
      * @return ResponseEntity indicating the result of the center addition operation.
      */
     @PostMapping(path = "/add")
-    ResponseEntity<String> addCenter(@RequestBody Map<String, String> requestMap);
+    ResponseEntity<String> addCenter(@ModelAttribute CenterRequest centerRequest) throws JsonProcessingException;
 
     /**
      * Get a list of all centers.
@@ -31,23 +37,21 @@ public interface CenterRest {
     ResponseEntity<List<Center>> getAllCenters();
 
     /**
+     * Get a list of active centers.
+     *
+     * @return ResponseEntity containing the list of all centers whose status are true.
+     */
+    @GetMapping(path = "/getActiveCenters")
+    ResponseEntity<List<Center>> getActiveCenters();
+
+    /**
      * Update an existing center's details.
      *
      * @param requestMap Request body containing updated center details.
      * @return ResponseEntity indicating the result of the center update operation.
      */
     @PutMapping(path = "/update")
-    ResponseEntity<String> updateCenter(@RequestBody Map<String, String> requestMap);
-
-    /**
-     * Update the partner ID associated with a center.
-     *
-     * @param id    The ID of the center to update.
-     * @param newId The new partner ID to associate with the center.
-     * @return ResponseEntity indicating the result of the partner ID update operation.
-     */
-    @PutMapping(path = "/updatePartnerId/{id}/{newId}")
-    ResponseEntity<String> updatePartnerId(@PathVariable Integer id, @PathVariable Integer newId);
+    ResponseEntity<String> updateCenter(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
 
     /**
      * Delete a center.
@@ -56,7 +60,7 @@ public interface CenterRest {
      * @return ResponseEntity indicating the result of the center deletion operation.
      */
     @DeleteMapping(path = "/delete/{id}")
-    ResponseEntity<String> deleteCenter(@PathVariable Integer id);
+    ResponseEntity<String> deleteCenter(@PathVariable Integer id) throws JsonProcessingException;
 
     /**
      * Update the status of a center.
@@ -65,16 +69,7 @@ public interface CenterRest {
      * @return ResponseEntity indicating the result of the center status update operation.
      */
     @PutMapping(path = "/updateStatus/{id}")
-    ResponseEntity<String> updateStatus(@PathVariable Integer id);
-
-    /**
-     * Get a center by its partner ID.
-     *
-     * @param id The partner ID associated with the center.
-     * @return ResponseEntity containing the center with the specified partner ID.
-     */
-    @GetMapping(path = "/getByPartnerId/{id}")
-    ResponseEntity<Center> getByPartnerId(@PathVariable Integer id);
+    ResponseEntity<String> updateStatus(@PathVariable Integer id) throws JsonProcessingException;
 
     /**
      * Get a center by its user ID.
@@ -82,34 +77,44 @@ public interface CenterRest {
      * @param id The user ID associated with the center.
      * @return ResponseEntity containing the center with the specified user ID.
      */
-    @GetMapping(path = "/getByUserId/{id}")
+    @GetMapping(path = "/getByUserId")
     ResponseEntity<Center> getByUserId(@PathVariable Integer id);
 
     /**
-     * Get a center by its ID.
+     * Get a center.
      *
-     * @param id The ID of the center.
      * @return ResponseEntity containing the center with the specified ID.
      */
-    @GetMapping(path = "/getCenter/{id}")
-    ResponseEntity<Center> getCenter(@PathVariable Integer id);
+    @GetMapping(path = "/getCenter")
+    ResponseEntity<Center> getCenter();
 
     /**
-     * Get a list of centers by category ID.
+     * like a center by its ID.
      *
-     * @param id The ID of the category associated with the centers.
-     * @return ResponseEntity containing the list of centers with the specified category ID.
+     * @return ResponseEntity containing the center with the specified ID.
      */
-    @GetMapping(path = "/getByCategoryId/{id}")
-    ResponseEntity<List<Center>> getByCategoryId(@PathVariable Integer id);
+    /**
+     * like a trainer by its ID.
+     *
+     * @return ResponseEntity containing the trainer with the specified ID.
+     */
+    @PutMapping(path = "/like/{id}")
+    ResponseEntity<String> likeCenter(@PathVariable Integer id) throws JsonProcessingException;
 
     /**
-     * Get a list of centers by status.
+     * Get list of trainers that are liked
      *
-     * @param status The status of the centers to retrieve.
-     * @return ResponseEntity containing the list of centers with the specified status.
+     * @return ResponseEntity containing the status of the operation
      */
-    @GetMapping(path = "/getByStatus/{status}")
-    ResponseEntity<List<Center>> getByStatus(@PathVariable String status);
+    @GetMapping(path = "/getCenterLikes")
+    ResponseEntity<List<CenterLike>> getCenterLikes() throws JsonProcessingException;
+
+    /**
+     * Update the center photo.
+     *
+     * @return ResponseEntity indicating the result of the operation.
+     */
+    @PutMapping(path = "/updatePhoto")
+    ResponseEntity<String> updatePhoto(@ModelAttribute CenterRequest centerRequest) throws JsonProcessingException;
 
 }

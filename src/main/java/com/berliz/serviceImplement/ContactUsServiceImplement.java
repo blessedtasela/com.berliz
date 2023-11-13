@@ -3,9 +3,12 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.ContactUs;
+import com.berliz.models.ContactUsMessage;
+import com.berliz.repository.ContactUsMessageRepo;
 import com.berliz.repository.ContactUsRepo;
 import com.berliz.repository.UserRepo;
 import com.berliz.services.ContactUsService;
+import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.EmailUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -34,6 +38,12 @@ public class ContactUsServiceImplement implements ContactUsService {
     @Autowired
     ContactUsRepo contactUsRepo;
 
+    @Autowired
+    ContactUsMessageRepo contactUsMessageRepo;
+
+    @Autowired
+    SimpMessagingTemplate simpMessagingTemplate;
+
     /**
      * Adds a contact us request to the system and sends notifications to the user and administrators.
      *
@@ -43,22 +53,25 @@ public class ContactUsServiceImplement implements ContactUsService {
      */
     @Override
     public ResponseEntity<String> addContactUs(Map<String, String> requestMap) throws JsonProcessingException {
-        log.info("Inside addContactUs {}", requestMap);
         try {
-            // Validate the contact us request data
+            log.info("Inside addContactUs {}", requestMap);
             boolean isValid = validateContactUsMap(requestMap, false);
+            ContactUs contactUs = contactUsRepo.findByEmail(requestMap.get("email"));
+
+            if (contactUs != null) {
+                if (contactUs.getStatus().equalsIgnoreCase("false")) {
+                    return buildResponse(HttpStatus.BAD_REQUEST, "You have a pending message awaiting review");
+                }
+            }
 
             if (!isValid) {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
-            // Save the contact us request
+            String subject = "Berliz Management Team";
             contactUsRepo.save(getContactUsFromMap(requestMap));
-
-            // Send notifications to the user and administrators
-            emailUtilities.sendContactUsMailToUser("true", requestMap.get("email"));
+            emailUtilities.sendContactUsMailToUser(subject, requestMap.get("name"), "true", requestMap.get("email"), "");
             emailUtilities.sendContactUsMailToAdmins("true", requestMap.get("email"), userRepo.getAllAdminsMail());
-
             return buildResponse(HttpStatus.OK, "Contact us request added successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -75,20 +88,15 @@ public class ContactUsServiceImplement implements ContactUsService {
     public ResponseEntity<List<ContactUs>> getAllContactUs() {
         try {
             log.info("Inside getAllContactUs");
-            if (jwtFilter.isAdmin()) {
-                // Retrieve and return all contact us requests if the user is an admin
-                return new ResponseEntity<>(contactUsRepo.findAll(), HttpStatus.OK);
-            } else {
-                // Return UNAUTHORIZED status if the user is not an admin
+            if (!jwtFilter.isAdmin()) {
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
             }
+            return new ResponseEntity<>(contactUsRepo.findAll(), HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        // Return INTERNAL_SERVER_ERROR status in case of an exception
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
 
     /**
      * Retrieves a specific contact us request by its ID.
@@ -154,13 +162,11 @@ public class ContactUsServiceImplement implements ContactUsService {
             contactUs.setMessage(requestMap.get("message"));
             contactUsRepo.save(contactUs);
 
-            // Return a success message
+            simpMessagingTemplate.convertAndSend("/topic/updateContactUs", contactUs);
             return buildResponse(HttpStatus.OK, "ContactUs updated successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-
-        // Return INTERNAL_SERVER_ERROR status in case of an exception
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
@@ -177,48 +183,48 @@ public class ContactUsServiceImplement implements ContactUsService {
         try {
             log.info("Inside updateStatus {}", id);
             String status;
-
-            // Check if the user is an admin; if not, return UNAUTHORIZED
             if (!jwtFilter.isAdmin()) {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
-
-            // Find the contact us request by ID
             Optional<ContactUs> optional = contactUsRepo.findById(id);
 
-            // Check if the contact us request exists
             if (optional.isEmpty()) {
                 return buildResponse(HttpStatus.NOT_FOUND, "ContactUs id not found");
             }
 
             log.info("Inside optional {}", optional);
-            status = optional.get().getStatus();
 
             // Toggle the status value
+            status = optional.get().getStatus();
             if (status.equalsIgnoreCase("true")) {
                 status = "false";
             } else {
                 status = "true";
             }
 
-            // Update the status in the repository
-            contactUsRepo.updateStatus(id, status);
+            ContactUs contactUs = optional.get();
+            contactUs.setStatus(status);
+            contactUsRepo.save(contactUs);
+            String subject = "Berliz Management Team";
+            String name = optional.get().getName();
+            String email = optional.get().getEmail();
 
             // Send notification emails based on the updated status
-            emailUtilities.sendContactUsMailToUser(status, optional.get().getEmail());
+            emailUtilities.sendContactUsMailToUser(subject, name, status, email, "");
             emailUtilities.sendContactUsMailToAdmins(status, optional.get().getEmail(), userRepo.getAllAdminsMail());
 
             // Return a success message
+            String responseMessage;
             if (status.equalsIgnoreCase("true")) {
-                return buildResponse(HttpStatus.OK, "ContactUs has been reviewed successfully");
+                responseMessage = "ContactUs has been reviewed successfully";
             } else {
-                return buildResponse(HttpStatus.OK, "ContactUs is now pending");
+                responseMessage = "ContactUs is now pending";
             }
+            simpMessagingTemplate.convertAndSend("/topic/updateContactUsStatus", contactUs);
+            return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-
-        // Return INTERNAL_SERVER_ERROR status in case of an exception
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
@@ -233,33 +239,91 @@ public class ContactUsServiceImplement implements ContactUsService {
     public ResponseEntity<String> deleteContactUs(Integer id) throws JsonProcessingException {
         try {
             log.info("inside deleteNewsletter {}", id);
+            Optional<ContactUs> optional = contactUsRepo.findById(id);
 
-            // Check if the user is an admin; if not, return UNAUTHORIZED
             if (!jwtFilter.isAdmin()) {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            // Find the contact us request by ID
-            Optional<ContactUs> optional = contactUsRepo.findById(id);
-
-            // Check if the contact us request exists
             if (optional.isEmpty()) {
                 return buildResponse(HttpStatus.NOT_FOUND, "ContactUs id not found");
             }
 
             log.info("inside optional {}", id);
-
-            // Delete the contact us request by ID
+            ContactUs contactUs = optional.get();
             contactUsRepo.deleteById(id);
-
-            // Return a success message
+            simpMessagingTemplate.convertAndSend("/topic/deleteContactUs", contactUs);
             return buildResponse(HttpStatus.OK, "ContactUs deleted successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-
-        // Return INTERNAL_SERVER_ERROR status in case of an exception
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> reviewContactUs(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside reviewContactUs {}", requestMap);
+            if (!jwtFilter.isAdmin()) {
+                return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+            Integer id = Integer.valueOf(requestMap.get("id"));
+            String message = requestMap.get("body");
+            String subject = requestMap.get("subject");
+            Optional<ContactUs> optional = contactUsRepo.findById(id);
+
+            if (optional.isEmpty()) {
+                return buildResponse(HttpStatus.NOT_FOUND, "ContactUs id not found");
+            }
+
+            log.info("Inside optional {}", optional);
+            String name = optional.get().getName();
+            String email = optional.get().getEmail();
+            String status = "true";
+
+            if (optional.get().getStatus().equalsIgnoreCase("true")) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Status has been reviewed");
+            }
+            ContactUs contactUs = optional.get();
+            contactUs.setStatus(status);
+            contactUsRepo.save(contactUs);
+
+            ContactUsMessage contactUsMessage = contactUsMessageRepo.findByMessage(message);
+            if (contactUsMessage == null) {
+                contactUsMessage = new ContactUsMessage();
+                contactUsMessage.setDate(new Date());
+                contactUsMessage.setMessage(message);
+                contactUsMessage.setSubject(subject);
+                contactUsMessageRepo.save(contactUsMessage);
+            }
+
+            emailUtilities.sendContactUsMailToUser(subject, name, status, email, message);
+            emailUtilities.sendContactUsMailToAdmins(status, optional.get().getEmail(), userRepo.getAllAdminsMail());
+            simpMessagingTemplate.convertAndSend("/topic/reviewContactUs", contactUs);
+            return buildResponse(HttpStatus.OK, "ContactUs has been reviewed successfully");
+        } catch (Exception ex) {
+            log.error("SSomething went wrong", ex);
+        }
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    /**
+     * Retrieves a list of all contact us requests.
+     *
+     * @return A ResponseEntity containing a list of contact us requests and an HTTP status code.
+     */
+    @Override
+    public ResponseEntity<List<ContactUsMessage>> getContactUsMessages() {
+        try {
+            log.info("Inside getContactUsMessages");
+            if (!jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+            return new ResponseEntity<>(contactUsMessageRepo.findAll(), HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     /**
@@ -299,6 +363,7 @@ public class ContactUsServiceImplement implements ContactUsService {
         contactUs.setStatus("false");
         contactUs.setLastUpdate(currentDate);
 
+        simpMessagingTemplate.convertAndSend("/topic/getContactUsFromMap", contactUs);
         return contactUs;
     }
 

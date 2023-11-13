@@ -2,6 +2,7 @@ package com.berliz.restImplement;
 
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Newsletter;
+import com.berliz.models.NewsletterMessage;
 import com.berliz.rest.NewsletterRest;
 import com.berliz.services.NewsletterService;
 import com.berliz.utils.BerlizUtilities;
@@ -41,6 +42,26 @@ public class NewsletterRestImplement implements NewsletterRest {
     }
 
     @Override
+    public ResponseEntity<List<Newsletter>> getActiveNewsletters() {
+        try {
+            return newsletterService.getActiveNewsletters();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<NewsletterMessage>> getNewsletterMessages() {
+        try {
+            return newsletterService.getNewsletterMessages();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
     public ResponseEntity<?> getNewsletter(Integer id) {
         try {
             return newsletterService.getNewsletter(id);
@@ -59,6 +80,27 @@ public class NewsletterRestImplement implements NewsletterRest {
         }
         return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    @Override
+    public ResponseEntity<String> sendMessage(Map<String, String> requestMap) {
+        try {
+            return newsletterService.sendMessage(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> sendBulkMessage(Map<String, String> requestMap) {
+        try {
+            return newsletterService.sendBulkMessage(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
 
     @Override
     public ResponseEntity<String> updateStatus(Integer id) {

@@ -22,10 +22,10 @@ public class CenterSerializer extends JsonSerializer<Center> {
         jsonGenerator.writeNumberField("id", center.getId());
         jsonGenerator.writeStringField("name", center.getName());
         jsonGenerator.writeStringField("motto", center.getMotto());
-        jsonGenerator.writeStringField("introduction", center.getIntroduction());
         jsonGenerator.writeStringField("address", center.getAddress());
+        jsonGenerator.writeStringField("experience", center.getExperience());
+        jsonGenerator.writeBinaryField("photo", center.getPhoto());
         jsonGenerator.writeStringField("location", center.getLocation());
-        jsonGenerator.writeStringField("photo", center.getPhoto());
         jsonGenerator.writeNumberField("likes", center.getLikes());
 
         // Serialize the partner using the PartnerObjectSerializer
@@ -36,7 +36,11 @@ public class CenterSerializer extends JsonSerializer<Center> {
         // Serialize the categorySet using a loop
         jsonGenerator.writeArrayFieldStart("categorySet");
         for (Category category : center.getCategorySet()) {
-            jsonGenerator.writeObject(category);
+            jsonGenerator.writeStartObject();
+            jsonGenerator.writeNumberField("id", category.getId());
+            jsonGenerator.writeStringField("name", category.getName());
+            jsonGenerator.writeStringField("description", category.getDescription());
+            jsonGenerator.writeEndObject();
         }
         jsonGenerator.writeEndArray();
 

@@ -28,6 +28,9 @@ public interface UserRest {
     @GetMapping(path = "/checkToken")
     ResponseEntity<String> checkToken();
 
+    @PostMapping(path = "/refreshToken")
+    ResponseEntity<String> refreshToken(@RequestBody Map<String, String> requestMap);
+
     @PutMapping(path = "/changePassword")
     ResponseEntity<String> changePassword(@RequestBody() Map<String, String> requestMap);
 
@@ -49,8 +52,11 @@ public interface UserRest {
     @PutMapping(path = "/update")
     ResponseEntity<String> updateUser(@RequestBody() Map<String, String> requestMap);
 
-    @PutMapping(path = "/updateUserAdmin")
-    ResponseEntity<String> updateUserAdmin(@RequestBody Map<String, String> requestMap);
+    @PutMapping(path = "/updateSuperUser")
+    ResponseEntity<String> updateSuperUser(@RequestBody Map<String, String> requestMap);
+
+    @PutMapping(path = "/updateBio")
+    ResponseEntity<String> updateBio(@RequestBody Map<String, String> requestMap);
 
     @PutMapping(path = "/updateProfilePhoto")
     ResponseEntity<String> updateProfilePhoto(@ModelAttribute ProfilePhotoRequest request);

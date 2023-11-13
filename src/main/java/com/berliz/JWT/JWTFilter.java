@@ -34,11 +34,16 @@ public class JWTFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
                                     FilterChain filterChain) throws ServletException, IOException {
         // Match public paths that don't require authentication
+
+        if (isWebSocketRequest(httpServletRequest)){
+            filterChain.doFilter(httpServletRequest, httpServletResponse);
+        }
+
         if (httpServletRequest.getServletPath().matches("/user/login|/user/signup|" +
                 "/user/forgotPassword|/newsletter/add|/newsletter/updateStatus|" +
                 "/user/validatePasswordToken|/user/resetPassword|/user/activateAccount|" +
                 "/category/getActiveCategories|/contactUs/add|/dashboard/berliz|/trainer/getActiveTrainers|" +
-                "center/getActiveCenters")) {
+                "/center/getActiveCenters|/user/refreshToken|/ws/.*")) {
 
             filterChain.doFilter(httpServletRequest, httpServletResponse);
         } else {
@@ -73,13 +78,10 @@ public class JWTFilter extends OncePerRequestFilter {
         }
     }
 
-    // Methods to check user roles based on claims
-    public boolean isAdmin() {
-        if (claims != null) {
-            return "admin".equalsIgnoreCase((String) claims.get("role"));
-        } else {
-            return false;
-        }
+    private boolean isWebSocketRequest(HttpServletRequest request) {
+        // Check if the "Upgrade" header contains "websocket"
+        String upgradeHeader = request.getHeader("Upgrade");
+        return upgradeHeader != null && "websocket".equalsIgnoreCase(upgradeHeader);
     }
 
     public String getCurrentUser() {
@@ -98,7 +100,14 @@ public class JWTFilter extends OncePerRequestFilter {
         }
     }
 
-    // Methods to check specific user roles
+    public boolean isAdmin() {
+        if (claims != null) {
+            return "admin".equalsIgnoreCase((String) claims.get("role"));
+        } else {
+            return false;
+        }
+    }
+
     public boolean isUser() {
         return "user".equalsIgnoreCase((String) claims.get("role"));
     }
@@ -122,4 +131,18 @@ public class JWTFilter extends OncePerRequestFilter {
     public boolean isDriver() {
         return "driver".equalsIgnoreCase((String) claims.get("role"));
     }
+
+    public boolean isBerlizUser() {
+        String role = (String) claims.get("role");
+        if (role != null) {
+            String[] validRoles = {"admin", "user", "client", "trainer", "center", "store", "driver"};
+            for (String validRole : validRoles) {
+                if (validRole.equalsIgnoreCase(role)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 }

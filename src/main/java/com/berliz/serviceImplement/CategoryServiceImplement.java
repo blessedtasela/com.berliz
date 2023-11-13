@@ -3,10 +3,15 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Category;
+import com.berliz.models.CategoryLike;
 import com.berliz.models.Tag;
+import com.berliz.models.User;
+import com.berliz.repository.CategoryLikeRepo;
 import com.berliz.repository.CategoryRepo;
 import com.berliz.repository.TagRepo;
+import com.berliz.repository.UserRepo;
 import com.berliz.services.CategoryService;
+import com.berliz.utils.BerlizUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -30,6 +36,16 @@ public class CategoryServiceImplement implements CategoryService {
 
     @Autowired
     JWTFilter jwtFilter;
+
+    @Autowired
+    UserRepo userRepo;
+
+    @Autowired
+    CategoryLikeRepo categoryLikeRepo;
+
+    @Autowired
+    SimpMessagingTemplate simpMessagingTemplate;
+
 
     /**
      * Adds a new category based on the provided requestMap.
@@ -91,6 +107,7 @@ public class CategoryServiceImplement implements CategoryService {
         }
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
     /**
      * Updates a category with the provided information.
      *
@@ -165,6 +182,7 @@ public class CategoryServiceImplement implements CategoryService {
 
             // Save the updated category
             categoryRepo.save(existingCategory);
+            simpMessagingTemplate.convertAndSend("/topic/updateCategory", existingCategory);
             return buildResponse(HttpStatus.OK, "Category updated successfully");
 
         } catch (Exception ex) {
@@ -192,7 +210,12 @@ public class CategoryServiceImplement implements CategoryService {
                 return buildResponse(HttpStatus.NOT_FOUND, "Category id not found");
             }
             log.info("inside optional {}", id);
+            Category category = optional.get();
+            if (category.getStatus().equalsIgnoreCase("true")) {
+                return buildResponse(HttpStatus.BAD_REQUEST, "Category iis active, cannot complete request");
+            }
             categoryRepo.deleteById(id);
+            simpMessagingTemplate.convertAndSend("/topic/deleteCategory", category);
             return buildResponse(HttpStatus.OK, "Category deleted successfully");
 
         } catch (Exception ex) {
@@ -222,16 +245,22 @@ public class CategoryServiceImplement implements CategoryService {
             }
             log.info("Inside optional {}", optional);
             status = optional.get().getStatus();
+            Category category = optional.get();
+            String responseMessage;
             if (status.equalsIgnoreCase("true")) {
                 status = "false";
-                categoryRepo.updateStatus(id, status);
-                return buildResponse(HttpStatus.OK, "Category Status updated successfully. Now Deactivated");
+                responseMessage = "Category Status updated successfully. Now Deactivated";
             } else {
                 status = "true";
-                categoryRepo.updateStatus(id, status);
-                return buildResponse(HttpStatus.OK, "Category Status updated successfully. Now Activated");
+                responseMessage = "Category Status updated successfully. Now Activated";
             }
-        } catch (Exception ex) {
+
+            category.setStatus(status);
+            categoryRepo.save(category);
+            simpMessagingTemplate.convertAndSend("/topic/updateCategoryStatus", category);
+            return buildResponse(HttpStatus.OK, responseMessage);
+        } catch (
+                Exception ex) {
             ex.printStackTrace();
         }
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
@@ -280,6 +309,51 @@ public class CategoryServiceImplement implements CategoryService {
             ex.printStackTrace();
         }
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> likeCategory(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside likeTrainer {}", id);
+            Optional<Category> optional = categoryRepo.findById(id);
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            boolean validUser = jwtFilter.isBerlizUser();
+
+            if (!validUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (optional.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Category id not found");
+            }
+            Category category = optional.get();
+            boolean hasLiked = categoryLikeRepo.existsByUserAndCategory(user, category);
+
+            if (hasLiked) {
+                // dislike category
+                categoryLikeRepo.deleteByUserAndCategory(user, category);
+                category.setLikes(category.getLikes() - 1);
+                categoryRepo.save(category);
+                simpMessagingTemplate.convertAndSend("/topic/likeCategory", category);
+                return BerlizUtilities.buildResponse(HttpStatus.OK, "Hello, " + user.getFirstname() + " you have disliked " + category.getName() + " category");
+
+            } else {
+                // like category
+                CategoryLike categoryLike = new CategoryLike();
+                categoryLike.setUser(user);
+                categoryLike.setCategory(category);
+                categoryLike.setDate(new Date());
+                categoryLikeRepo.save(categoryLike);
+                category.setLikes(category.getLikes() + 1);
+                categoryRepo.save(category);
+                simpMessagingTemplate.convertAndSend("/topic/likeCategory", category);
+                return BerlizUtilities.buildResponse(HttpStatus.OK, "Hello, " +
+                        user.getFirstname() + " you just liked " + category.getName() + " category");
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     /**
@@ -338,7 +412,7 @@ public class CategoryServiceImplement implements CategoryService {
         category.setStatus("true");
         category.setLastUpdate(currentDate);
         category.setTagSet(tagSet);
-
+        simpMessagingTemplate.convertAndSend("/topic/getCategoryFromMap", category);
         return category;
     }
 

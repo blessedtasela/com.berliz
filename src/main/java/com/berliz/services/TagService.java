@@ -19,4 +19,6 @@ public interface TagService {
     ResponseEntity<?> getTag(Integer id);
 
     ResponseEntity<String> deleteTag(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<List<Tag>> getActiveTags();
 }

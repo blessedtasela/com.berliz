@@ -4,6 +4,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -15,14 +17,22 @@ import java.util.function.Function;
 @Service
 public class JWTUtility {
 
-    private static final String SECRET_KEY = "berliz";
+    @Autowired
+    private ClientUserDetailsService clientUserDetailsService;
+
+    @Value("${jwt.secret}")
+    private String SECRET_KEY;
+
+    @Value("${jwt.access.secret}")
+    private String ACCESS_SECRET_KEY;
 
     public String extractUsername(String token) {
         return extractClaims(token, Claims::getSubject);
     }
 
-    public String extractUserId(String token) {
-        return extractClaims(token, Claims::getId);
+    public Integer extractUserId(String token) {
+        Claims claims = extractAllClaims(token);
+        return Integer.parseInt(claims.getId());
     }
 
     public Date extractExpiration(String token) {
@@ -42,7 +52,17 @@ public class JWTUtility {
         return extractExpiration(token).before(new Date());
     }
 
-    private String createToken(Map<String, Object> claims, String username, Integer id) {
+    private String createAccessToken(Map<String, Object> claims, String username, Integer id) {
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(username)
+                .setId(String.valueOf(id))
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 20))
+                .signWith(SignatureAlgorithm.HS256, SECRET_KEY).compact();
+    }
+
+    private String createRefreshToken(Map<String, Object> claims, String username, Integer id) {
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(username)
@@ -52,11 +72,19 @@ public class JWTUtility {
                 .signWith(SignatureAlgorithm.HS256, SECRET_KEY).compact();
     }
 
-    public String generateToken(String username, String role, Integer id) {
-        Map<String, Object> claims = new HashMap<>();
+    public String generateAccessToken(String accessToken) {
+        Claims claims =  extractAllClaims(accessToken);
+        String role = clientUserDetailsService.getUserDetails().getRole();
+        String username = clientUserDetailsService.getUserDetails().getEmail();
+        Integer id = clientUserDetailsService.getUserDetails().getId();
         claims.put("role", role);
         claims.put("id", id);
-        return createToken(claims, username, id);
+        return createAccessToken(claims, username, id);
+    }
+
+    public String generateRefreshToken(String username, Integer id) {
+        Map<String, Object> claims = new HashMap<>();
+        return createRefreshToken(claims, username, id);
     }
 
     public String generatePasswordResetToken(String subject) {

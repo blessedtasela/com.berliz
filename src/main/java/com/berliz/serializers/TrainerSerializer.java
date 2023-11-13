@@ -36,7 +36,11 @@ public class TrainerSerializer extends JsonSerializer<Trainer> {
         // Serialize the categorySet using a loop
         jsonGenerator.writeArrayFieldStart("categorySet");
         for (Category category : trainer.getCategorySet()) {
-            jsonGenerator.writeObject(category);
+            jsonGenerator.writeStartObject();
+            jsonGenerator.writeNumberField("id", category.getId());
+            jsonGenerator.writeStringField("name", category.getName());
+            jsonGenerator.writeStringField("description", category.getDescription());
+            jsonGenerator.writeEndObject();
         }
         jsonGenerator.writeEndArray();
 

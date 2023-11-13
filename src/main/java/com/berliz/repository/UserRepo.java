@@ -16,6 +16,8 @@ public interface UserRepo extends JpaRepository<User, Integer> {
 
     User findByToken(String token);
 
+    User findByUserId(Integer id);
+
     List<String> getAllAdminsMail();
 
     @Transactional

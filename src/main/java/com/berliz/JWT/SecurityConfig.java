@@ -3,6 +3,7 @@ package com.berliz.JWT;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -69,6 +70,7 @@ public class SecurityConfig {
                         auth.requestMatchers(
                                         ("/user/login"),
                                         ("/user/signup"),
+                                        ("/user/refreshToken"),
                                         ("/user/forgotPassword"),
                                         ("/newsletter/add"),
                                         ("/newsletter/updateStatus"),
@@ -79,7 +81,8 @@ public class SecurityConfig {
                                         ("/contactUs/add"),
                                         ("/dashboard/berliz"),
                                         ("/trainer/getActiveTrainers"),
-                                        ("/center/getActiveCenters")
+                                        ("/center/getActiveCenters"),
+                                        ("/stomp")
                                 ).permitAll()
                                 .anyRequest().authenticated());
 

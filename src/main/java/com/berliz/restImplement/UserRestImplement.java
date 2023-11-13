@@ -78,6 +78,16 @@ public class UserRestImplement implements UserRest {
     }
 
     @Override
+    public ResponseEntity<String> refreshToken(Map<String, String> requestMap) {
+        try {
+            return userService.refreshToken(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
     public ResponseEntity<String> changePassword(Map<String, String> requestMap) {
         try {
             return userService.changePassword(requestMap);
@@ -151,13 +161,24 @@ public class UserRestImplement implements UserRest {
     }
 
     @Override
-    public ResponseEntity<String> updateUserAdmin(Map<String, String> requestMap) {
+    public ResponseEntity<String> updateSuperUser(Map<String, String> requestMap) {
         try {
-            return userService.updateUserAdmin(requestMap);
+            return userService.updateSuperUser(requestMap);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> updateBio(Map<String, String> requestMap) {
+        try {
+            return userService.updateBio(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+
     }
 
     @Override

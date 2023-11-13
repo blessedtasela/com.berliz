@@ -3,6 +3,8 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Newsletter;
+import com.berliz.models.NewsletterMessage;
+import com.berliz.repository.NewsletterMessageRepo;
 import com.berliz.repository.NewsletterRepo;
 import com.berliz.repository.UserRepo;
 import com.berliz.services.NewsletterService;
@@ -14,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -33,6 +36,12 @@ public class NewsletterServiceImplement implements NewsletterService {
 
     @Autowired
     NewsletterRepo newsletterRepo;
+
+    @Autowired
+    NewsletterMessageRepo newsletterMessageRepo;
+
+    @Autowired
+    SimpMessagingTemplate simpMessagingTemplate;
 
     /**
      * Adds a new newsletter subscription based on the provided data.
@@ -90,15 +99,17 @@ public class NewsletterServiceImplement implements NewsletterService {
                 return buildResponse(HttpStatus.NOT_FOUND, "Newsletter id not found");
             }
 
-            Newsletter newsletter = newsletterRepo.findByEmail(requestMap.get("email"));
+            Newsletter newsletter = optional.get();
+            Newsletter compareNewsletter = newsletterRepo.findByEmail(requestMap.get("email"));
+            String compareEmail = compareNewsletter.getEmail();
 
-            if (newsletter != null) {
+            if (requestMap.get("email").equalsIgnoreCase(compareEmail)) {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Email exists already, cannot update");
             }
-            newsletterRepo.updateNewsletter(
-                    requestMap.get("email"),
-                    Integer.parseInt(requestMap.get("id"))
-            );
+
+            newsletter.setEmail(requestMap.get("email"));
+            newsletterRepo.save(newsletter);
+            simpMessagingTemplate.convertAndSend("/topic/updateNewsletter", newsletter);
             return buildResponse(HttpStatus.OK, "Newsletter updated successfully");
 
         } catch (Exception ex) {
@@ -167,10 +178,12 @@ public class NewsletterServiceImplement implements NewsletterService {
             if (optional.isEmpty()) {
                 return buildResponse(HttpStatus.NOT_FOUND, "Newsletter id not found");
             }
-            log.info("inside optional {}", id);
-            newsletterRepo.deleteById(id);
-            return buildResponse(HttpStatus.OK, "Newsletter deleted successfully");
 
+            log.info("inside optional {}", id);
+            Newsletter newsletter = optional.get();
+            newsletterRepo.deleteById(id);
+            simpMessagingTemplate.convertAndSend("/topic/deleteNewsletter", newsletter);
+            return buildResponse(HttpStatus.OK, "Newsletter deleted successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -185,32 +198,143 @@ public class NewsletterServiceImplement implements NewsletterService {
             if (!jwtFilter.isAdmin()) {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
+
             Optional<Newsletter> optional = newsletterRepo.findById(id);
             if (optional.isEmpty()) {
                 return buildResponse(HttpStatus.NOT_FOUND, "Newsletter id not found");
             }
+
             log.info("Inside optional {}", optional);
-            status = optional.get().getStatus();
+            Newsletter newsletter = optional.get();
+            String responseMessage;
+            status = newsletter.getStatus();
+
             if (status.equalsIgnoreCase("true")) {
                 status = "false";
-                newsletterRepo.updateStatus(id, status);
+                newsletter.setStatus(status);
                 emailUtilities.sendNewsletterStatusMailToUser(status, optional.get().getEmail());
                 emailUtilities.sendStatusMailToAdmins(status, optional.get().getEmail(),
                         userRepo.getAllAdminsMail(), "Newsletter");
-                return buildResponse(HttpStatus.OK, "Newsletter Status updated successfully. Now deactivated");
+                responseMessage = "Newsletter Status updated successfully. Now deactivated";
             } else {
                 status = "true";
-                newsletterRepo.updateStatus(id, status);
+                newsletter.setStatus(status);
                 emailUtilities.sendNewsletterStatusMailToUser(status, optional.get().getEmail());
                 emailUtilities.sendStatusMailToAdmins(status, optional.get().getEmail(),
                         userRepo.getAllAdminsMail(), "Newsletter");
-                return buildResponse(HttpStatus.OK, "Newsletter Status updated successfully. Now activated");
+                responseMessage = "Newsletter Status updated successfully. Now activated";
             }
 
+            newsletterRepo.save(newsletter);
+            simpMessagingTemplate.convertAndSend("/topic/updateNewsletterStatus", newsletter);
+            return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> sendBulkMessage(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside sendBulkMessage {}", requestMap);
+            String subject = requestMap.get("subject");
+            String body = requestMap.get("body");
+            List<String> emails = newsletterRepo.getAllActiveEMails();
+
+            if (!jwtFilter.isAdmin()) {
+                return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            NewsletterMessage newsletterMessage = newsletterMessageRepo.findByMessage(body);
+            if (newsletterMessage == null) {
+                newsletterMessage = new NewsletterMessage();
+                newsletterMessage.setDate(new Date());
+                newsletterMessage.setMessage(body);
+                newsletterMessage.setSubject(subject);
+                newsletterMessageRepo.save(newsletterMessage);
+            }
+
+            emailUtilities.sendBulkNewsletterMail(emails, body, subject);
+            return buildResponse(HttpStatus.OK, "Newsletter has been sent to all active participants");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> sendMessage(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside sendMessage {}", requestMap);
+            String subject = requestMap.get("subject");
+            String body = requestMap.get("body");
+            String email = requestMap.get("email");
+            Newsletter newsletter = newsletterRepo.findByEmail(email);
+
+            if (!jwtFilter.isAdmin()) {
+                return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (newsletter == null) {
+                return buildResponse(HttpStatus.NOT_FOUND, "Newsletter not found");
+            }
+
+            NewsletterMessage newsletterMessage = newsletterMessageRepo.findByMessage(body);
+            if (newsletterMessage == null) {
+                newsletterMessage = new NewsletterMessage();
+                newsletterMessage.setDate(new Date());
+                newsletterMessage.setMessage(body);
+                newsletterMessage.setSubject(subject);
+                newsletterMessageRepo.save(newsletterMessage);
+            }
+
+            emailUtilities.sendNewsletterMail(email, body, subject);
+            return buildResponse(HttpStatus.OK, "Newsletter has been sent to participant");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    /**
+     * Retrieves list of active newsletters.
+     *
+     * @return A ResponseEntity containing the newsletters or an error message along with the HTTP status
+     */
+    @Override
+    public ResponseEntity<List<Newsletter>> getActiveNewsletters() {
+        try {
+            log.info("Inside getActiveNewsletters {}");
+            if (jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(newsletterRepo.getActiveNewsletters(), HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Retrieves list of all newsletterMessages.
+     *
+     * @return A ResponseEntity containing the newsletterMessages or an error message along with the HTTP status
+     */
+    @Override
+    public ResponseEntity<List<NewsletterMessage>> getNewsletterMessages() {
+        try {
+            log.info("Inside getNewsletterMessages {}");
+            if (jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(newsletterMessageRepo.findAll(), HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 
@@ -244,6 +368,7 @@ public class NewsletterServiceImplement implements NewsletterService {
         newsletter.setStatus("true");
         newsletter.setLastUpdate(currentDate);
 
+        simpMessagingTemplate.convertAndSend("/topic/getNewsletterFromMap", newsletter);
         return newsletter;
     }
 

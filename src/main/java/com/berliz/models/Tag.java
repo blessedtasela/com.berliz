@@ -13,6 +13,9 @@ import java.util.Date;
 
 @NamedQuery(name = "Tag.getAllTags", query = "select t from Tag t")
 
+@NamedQuery(name = "Tag.getActiveTags",
+        query = "SELECT t FROM Tag t WHERE t.status = 'true'")
+
 @Data
 @Entity
 @DynamicInsert

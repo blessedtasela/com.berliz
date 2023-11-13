@@ -37,4 +37,8 @@ public class ClientUserDetailsService implements UserDetailsService {
         user.setPassword(null);
         return userDetails;
     }
+
+    public UserDetails getCurrentUserDetailsModel(){
+        return (UserDetails) userDetails;
+    }
 }

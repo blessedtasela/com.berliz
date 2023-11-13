@@ -19,4 +19,6 @@ public class BerlizConstants {
     public static final String PROFILE_PICTURE_LOCATION = "C:\\berliz-app\\com.berliz\\src\\profile_photo\\";
 
     public static final String BERLIZ_URL = "http://localhost:4200";
+
+    public static final String BERLIZ_SUPER_ADMIN = "berlizworld@gmail.com";
 }

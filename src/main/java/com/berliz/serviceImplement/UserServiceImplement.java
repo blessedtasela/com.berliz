@@ -19,10 +19,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -58,6 +60,8 @@ public class UserServiceImplement implements UserService {
     @Autowired
     FileUtilities fileUtilities;
 
+    @Autowired
+    SimpMessagingTemplate simpMessagingTemplate;
 
     /**
      * Process a user's signup request by creating a new user account if the email is not already registered.
@@ -78,7 +82,6 @@ public class UserServiceImplement implements UserService {
                 if (Objects.isNull(user)) {
                     userRepo.save(getUserFromMap(request));
                     confirmAccount(request.getEmail());
-
                     return buildResponse(HttpStatus.OK, BerlizConstants.SIGNUP_SUCCESS);
                 } else {
                     return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.EMAIL_EXISTS);
@@ -129,12 +132,13 @@ public class UserServiceImplement implements UserService {
     public ResponseEntity<String> activateAccount(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             User user = userRepo.findByToken(requestMap.get("token"));
+
             if (user != null) {
                 user.setToken("");
                 user.setStatus("true");
                 userRepo.save(user);
+                simpMessagingTemplate.convertAndSend("/topic/activateAccount", user);
                 return buildResponse(HttpStatus.OK, "Your account has successfully been activated");
-
             } else {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -153,7 +157,7 @@ public class UserServiceImplement implements UserService {
      */
     @Override
     public ResponseEntity<String> login(Map<String, String> requestMap) throws JsonProcessingException {
-        log.info("Inside login");
+        log.info("Inside login {}", requestMap);
         try {
             User user = userRepo.findByEmail(requestMap.get("email"));
             if (user != null) {
@@ -166,13 +170,13 @@ public class UserServiceImplement implements UserService {
                         User userDetails = clientUserDetailsService.getUserDetails();
 
                         if (userDetails.getStatus().equalsIgnoreCase("true")) {
-                            String token = jwtUtility.generateToken(
-                                    userDetails.getEmail(),
-                                    userDetails.getRole(),
-                                    userDetails.getId());
+                            String refreshToken = jwtUtility.generateRefreshToken(
+                                    userDetails.getEmail(), userDetails.getId());
+                            String accessToken = jwtUtility.generateAccessToken(refreshToken);
 
                             Map<String, String> responseBody = new HashMap<>();
-                            responseBody.put("token", token);
+                            responseBody.put("refresh_token", refreshToken);
+                            responseBody.put("access_token", accessToken);
                             responseBody.put("message", "Login successful.");
 
                             ObjectMapper objectMapper = new ObjectMapper();
@@ -238,12 +242,13 @@ public class UserServiceImplement implements UserService {
             if (user == null) {
                 return buildResponse(HttpStatus.NOT_FOUND, "User is null");
             }
+
             log.info("Inside deactivateAccount {}", jwtFilter.getCurrentUser());
             user.setStatus("false");
             userRepo.save(user);
             emailUtilities.sendStatusMailToUser("false", "User", user.getEmail());
+            simpMessagingTemplate.convertAndSend("/topic/deactivateAccount", user);
             return buildResponse(HttpStatus.OK, "Your account has successfully been deactivated");
-
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -263,37 +268,43 @@ public class UserServiceImplement implements UserService {
     public ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException {
         try {
             log.info("Inside updateStatus {}", id);
+            String adminMail = jwtFilter.getCurrentUser();
+            User admin = userRepo.findByEmail(adminMail);
+
             if (!jwtFilter.isAdmin()) {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            String status;
+            if (admin.getRole().equalsIgnoreCase("admin") &&
+                    admin.getEmail().equalsIgnoreCase("berlizworld@gmail.com")) {
+                return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
             Optional<User> optional = userRepo.findById(id);
             if (optional.isEmpty()) {
                 return buildResponse(HttpStatus.NOT_FOUND, "User id not found");
             }
+
+            String status;
             log.info("Inside optional {}", optional);
             User user = optional.get();
-
-            if (user.getRole().equalsIgnoreCase("admin") &&
-                    user.getEmail().equalsIgnoreCase("berlizworld@gmail.com")) {
-                return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
             status = user.getStatus();
+            String responseMessage;
+
             if (status.equalsIgnoreCase("true")) {
                 status = "false";
-                userRepo.updateStatus(id, status);
-                emailUtilities.sendStatusMailToAdmins(status, optional.get().getEmail(), userRepo.getAllAdminsMail(), "User");
-                emailUtilities.sendStatusMailToUser(status, "User", optional.get().getEmail());
-                return buildResponse(HttpStatus.OK, "User Status updated successfully. Now Deactivated");
+                responseMessage = "User" + user.getEmail() + " has been deactivated successfully";
             } else {
                 status = "true";
-                userRepo.updateStatus(id, status);
-                emailUtilities.sendStatusMailToAdmins(status, optional.get().getEmail(), userRepo.getAllAdminsMail(), "User");
-                emailUtilities.sendStatusMailToUser(status, "User", optional.get().getEmail());
-                return buildResponse(HttpStatus.OK, "User Status updated successfully. Now Activated");
+                responseMessage = "User" + user.getEmail() + "  has been successfully activated";
             }
+
+            user.setStatus(status);
+            userRepo.save(user);
+            emailUtilities.sendStatusMailToAdmins(status, optional.get().getEmail(), userRepo.getAllAdminsMail(), "User");
+            emailUtilities.sendStatusMailToUser(status, "User", optional.get().getEmail());
+            simpMessagingTemplate.convertAndSend("/topic/updateUserStatus", user);
+            return buildResponse(HttpStatus.OK, "User Status updated successfully. Now Activated");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -329,11 +340,13 @@ public class UserServiceImplement implements UserService {
             if (!isValidRole(role)) {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Invalid role parameter");
             }
+
             User user = optional.get();
             user.setRole(role);
             userRepo.save(user);
             emailUtilities.sendRoleMailToAdmins(role, user.getEmail(), userRepo.getAllAdminsMail());
             emailUtilities.sendRoleMailToUser(role, user.getEmail());
+            simpMessagingTemplate.convertAndSend("/topic/updateUserRole", user);
             return buildResponse(HttpStatus.OK, "User role updated successfully");
 
         } catch (Exception ex) {
@@ -373,9 +386,11 @@ public class UserServiceImplement implements UserService {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            log.info("inside optional {}", id);
-            userRepo.deleteById(id);
+            log.info("inside optional {}", optional);
+            User user = optional.get();
+            userRepo.delete(user);
             emailUtilities.sendAccountDeletedMail(optional.get().getEmail(), userRepo.getAllAdminsMail());
+            simpMessagingTemplate.convertAndSend("/topic/deleteUser", user);
             return buildResponse(HttpStatus.OK, "User account deleted successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -404,6 +419,73 @@ public class UserServiceImplement implements UserService {
             return ResponseEntity.status(HttpStatus.OK)
                     .contentType(MediaType.ALL.APPLICATION_JSON)
                     .body(user);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    /**
+     * Refreshes an access token based on the provided refresh token.
+     *
+     * @param requestMap The original access token with the "Bearer " prefix.
+     * @return ResponseEntity containing the new access token and a message if the access token is created successfully.
+     * @throws JsonProcessingException if there is an issue processing JSON data.
+     */
+    @Override
+    public ResponseEntity<String> refreshToken(Map<String, String> requestMap) throws JsonProcessingException {
+        log.info("Inside refreshToken {}", requestMap);
+        String refreshToken = requestMap.get("token");
+        String username = jwtUtility.extractUsername(refreshToken);
+        Integer id = jwtUtility.extractUserId(refreshToken);
+        UserDetails userDetails = clientUserDetailsService.loadUserByUsername(username);
+
+        try {
+            if (refreshToken == null || refreshToken.isEmpty()) {
+                return buildResponse(HttpStatus.BAD_REQUEST, "Refresh token is required.");
+            }
+
+            if (!jwtUtility.isValidToken(refreshToken, userDetails)) {
+                return buildResponse(HttpStatus.UNAUTHORIZED, "Refresh token is invalid");
+            }
+
+            String newAccessToken = jwtUtility.generateAccessToken(refreshToken);
+            String newRefreshToken = jwtUtility.generateRefreshToken(username, id);
+
+            Map<String, String> responseBody = new HashMap<>();
+            responseBody.put("access_token", newAccessToken);
+            responseBody.put("refresh_token", newRefreshToken);
+            responseBody.put("message", "Access token created successfully.");
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            String responseBodyJson = objectMapper.writeValueAsString(responseBody);
+
+            return ResponseEntity.status(HttpStatus.OK)
+                    .contentType(MediaType.ALL.APPLICATION_JSON)
+                    .body(responseBodyJson);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateBio(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside updateBio", requestMap);
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            if (user == null) {
+                return buildResponse(HttpStatus.NOT_FOUND, "User is null");
+            }
+
+            if (requestMap.get("bio").isEmpty()) {
+                return buildResponse(HttpStatus.BAD_REQUEST, "Bio cannot be empty");
+            }
+
+            user.setBio(requestMap.get("bio"));
+            userRepo.save(user);
+            simpMessagingTemplate.convertAndSend("/topic/updateUserBio", user);
+            return buildResponse(HttpStatus.OK, "You have successfully updated your Bio");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -441,15 +523,17 @@ public class UserServiceImplement implements UserService {
         try {
             log.info("Inside changePassword", requestMap);
             User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+
             if (user == null) {
                 return buildResponse(HttpStatus.NOT_FOUND, "User is null");
             }
+
             if (!passwordEncoder.matches(requestMap.get("oldPassword"), user.getPassword())) {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Incorrect Password, please enter the correct old password");
             }
+
             user.setPassword(passwordEncoder.encode(requestMap.get("newPassword")));
             userRepo.save(user);
-
             return buildResponse(HttpStatus.OK, "Password changed successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -485,7 +569,6 @@ public class UserServiceImplement implements UserService {
                 User user = optional.get();
                 user.setPassword(passwordEncoder.encode(requestMap.get("newPassword")));
                 userRepo.save(user);
-
                 return buildResponse(HttpStatus.OK, "You have successfully updated " + user.getFirstname() + "'s password");
             }
         } catch (Exception ex) {
@@ -514,7 +597,6 @@ public class UserServiceImplement implements UserService {
 
                 emailUtilities.resetPasswordMail(user.getEmail(), "Recover Password");
                 return buildResponse(HttpStatus.OK, "Check your email for credentials");
-
             } else {
                 return buildResponse(HttpStatus.NOT_FOUND, "Email not found");
             }
@@ -562,6 +644,9 @@ public class UserServiceImplement implements UserService {
     public ResponseEntity<String> updateUser(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             log.info("Inside updateUser {}", requestMap);
+            User user;
+            String responseMessage;
+
             if (!validateUpdateUserMap(requestMap)) {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
@@ -574,35 +659,31 @@ public class UserServiceImplement implements UserService {
                     if (optional.isEmpty()) {
                         return buildResponse(HttpStatus.NOT_FOUND, "User id not found");
                     }
-                    User user = optional.get();
-                    updateUserFromMap(user, requestMap);
-                    userRepo.save(user);
 
-                    return buildResponse(HttpStatus.OK, "Admin: User information updated successfully");
+                    user = optional.get();
+                    responseMessage = "You have successfully updated " + user.getEmail() + " account information";
                 } else {
                     log.info("Inside adminUser {}", requestMap);
-                    User adminUser = userRepo.findByEmail(jwtFilter.getCurrentUser());
-                    if (adminUser == null) {
+                    user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+                    if (user == null) {
                         return buildResponse(HttpStatus.NOT_FOUND, "User is null");
                     }
-                    updateUserFromMap(adminUser, requestMap);
-                    userRepo.save(adminUser);
+                    responseMessage = "Hello " + user.getEmail() + "you have successfully updated your account information";
                 }
             } else {
                 log.info("Inside user {}", requestMap);
                 // Find the user based on the JWT token
-                User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
-
+                user = userRepo.findByEmail(jwtFilter.getCurrentUser());
                 if (user == null) {
                     return buildResponse(HttpStatus.NOT_FOUND, "User is null");
                 }
-                // Save the updated user entity
-                updateUserFromMap(user, requestMap);
-                userRepo.save(user);
-
-                return buildResponse(HttpStatus.OK, "Account information updated successfully");
+                responseMessage = "Hello " + user.getEmail() + "you have successfully updated your account information";
             }
 
+            updateUserFromMap(user, requestMap);
+            userRepo.save(user);
+            simpMessagingTemplate.convertAndSend("/topic/updateUser", user);
+            return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -617,8 +698,9 @@ public class UserServiceImplement implements UserService {
      * @throws JsonProcessingException If there is an issue with JSON processing.
      */
     @Override
-    public ResponseEntity<String> updateUserAdmin(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> updateSuperUser(Map<String, String> requestMap) throws JsonProcessingException {
         try {
+            User superUser = userRepo.findByEmail(jwtFilter.getCurrentUser());
             log.info("Inside updateUserAdmin {}", requestMap);
             if (!validateUpdateUserMap(requestMap)) {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
@@ -636,10 +718,15 @@ public class UserServiceImplement implements UserService {
                 return buildResponse(HttpStatus.NOT_FOUND, "User id not found");
             }
 
+            if (optional.get().getRole().equalsIgnoreCase("admin")
+                    && !superUser.getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN)) {
+                return buildResponse(HttpStatus.UNAUTHORIZED, "You are not authorized to update super user");
+            }
+
             User user = optional.get();
             updateUserFromMap(user, requestMap);
             userRepo.save(user);
-
+            simpMessagingTemplate.convertAndSend("/topic/updateUser", user);
             return buildResponse(HttpStatus.OK, user.getFirstname() + " information updated successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -681,10 +768,11 @@ public class UserServiceImplement implements UserService {
             if (optional.isEmpty()) {
                 return buildResponse(HttpStatus.NOT_FOUND, "User id not found");
             }
+
             User user = optional.get();
             user.setProfilePhoto(file.getBytes());
             userRepo.save(user);
-
+            simpMessagingTemplate.convertAndSend("/topic/updateProfilePhoto", user);
             return buildResponse(HttpStatus.OK, user.getFirstname() + "'s profile photo updated successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -703,8 +791,14 @@ public class UserServiceImplement implements UserService {
     public ResponseEntity<String> updateProfilePhoto(ProfilePhotoRequest request) throws JsonProcessingException {
         try {
             log.info("Inside updateProfilePhoto{}", request);
-            Optional<User> optional = userRepo.findById(jwtFilter.getCurrentUserId());
-            if (optional.isEmpty()) {
+            User user;
+            if (jwtFilter.isAdmin()) {
+                user = userRepo.findByUserId(request.getId());
+            } else {
+                user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            }
+
+            if (user == null) {
                 return buildResponse(HttpStatus.NOT_FOUND, "User is null");
             }
 
@@ -722,12 +816,19 @@ public class UserServiceImplement implements UserService {
             if (!fileUtilities.isValidImageSize(file)) {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Invalid file type");
             }
-            User user = optional.get();
+
+            String responseMessage;
             user.setProfilePhoto(file.getBytes());
             userRepo.save(user);
 
-            return buildResponse(HttpStatus.OK, "Hello " + user.getFirstname() + ", you have successfully " +
-                    "updated your profile photo");
+            if (jwtFilter.isAdmin()) {
+                responseMessage = user.getFirstname() + " profile photo has successfully " + "been updated";
+            } else {
+                responseMessage = "Hello " + user.getFirstname() + ", you have successfully " + "updated your profile photo";
+            }
+
+            simpMessagingTemplate.convertAndSend("/topic/updateProfilePhoto", user);
+            return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -763,6 +864,8 @@ public class UserServiceImplement implements UserService {
         user.setStatus("false");
         user.setDate(new Date());
         user.setLastUpdate(new Date());
+
+        simpMessagingTemplate.convertAndSend("/topic/getUserFromMap", user);
         return user;
     }
 
@@ -784,7 +887,8 @@ public class UserServiceImplement implements UserService {
                 && requestMap.containsKey("state")
                 && requestMap.containsKey("city")
                 && requestMap.containsKey("address")
-                && requestMap.containsKey("postalCode");
+                && requestMap.containsKey("bio")
+                &&requestMap.containsKey("postalCode");
     }
 
     // Helper method to update user entity with data from the request map
@@ -806,8 +910,10 @@ public class UserServiceImplement implements UserService {
         user.setState(requestMap.get("state"));
         user.setCity(requestMap.get("city"));
         user.setAddress(requestMap.get("address"));
+        user.setBio(requestMap.get("bio"));
         user.setPostalCode(Integer.parseInt(requestMap.get("postalCode")));
         user.setLastUpdate(new Date());
+        simpMessagingTemplate.convertAndSend("/topic/updateUserFromMap", user);
     }
 
     /**
@@ -844,17 +950,5 @@ public class UserServiceImplement implements UserService {
                 .body(responseBodyJson);
     }
 
-//    private void sendEmailsAsync(User user, String role) {
-//        // Assuming you have a message queue client
-//        MessageQueueClient messageQueue = new MessageQueueClient();
-//
-//        // Create a message containing email information
-//        EmailMessage emailMessage = new EmailMessage(user.getEmail(), "Subject", "Email Content");
-//
-//        // Enqueue the email sending task
-//        messageQueue.enqueueTask(emailMessage);
-//
-//        // The worker process will pick up the task and send the email asynchronously
-//    }
 
 }

@@ -1,6 +1,7 @@
 package com.berliz.services;
 
 import com.berliz.models.Newsletter;
+import com.berliz.models.NewsletterMessage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 
@@ -19,4 +20,12 @@ public interface NewsletterService {
     ResponseEntity<String> deleteNewsletter(Integer id) throws JsonProcessingException;
 
     ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<String> sendBulkMessage(Map<String, String> requestMap) throws JsonProcessingException;
+
+    ResponseEntity<String> sendMessage(Map<String, String> requestMap) throws JsonProcessingException;
+
+    ResponseEntity<List<Newsletter>> getActiveNewsletters();
+
+    ResponseEntity<List<NewsletterMessage>> getNewsletterMessages();
 }

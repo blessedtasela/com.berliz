@@ -4,13 +4,15 @@ import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 @NamedQuery(name = "User.findByEmailId", query = "select u from User u where u.email =: email")
+
+@NamedQuery(name = "User.findByUserId", query = "select u from User u where u.id =: id")
 
 @NamedQuery(name = "User.getAllUsers", query = "select new com.berliz.wrapper.UserWrapper(u.id, u.firstname, " +
         "u.lastname, u.phone, u.dob, u.country, u.state, u.city, u.address, u.postalCode, u.email," +
@@ -67,6 +69,9 @@ public class User implements Serializable {
     @Column(name = "address", columnDefinition = "TEXT")
     private String address;
 
+    @Column(name = "bio", columnDefinition = "TEXT")
+    private String bio;
+
     @Column(name = "email")
     private String email;
 
@@ -81,6 +86,14 @@ public class User implements Serializable {
 
     @Column(name = "profilePhoto", columnDefinition = "BYTEA")
     private byte[] profilePhoto;
+
+    @ManyToMany
+    @JoinTable(
+            name = "userCategoryLikes",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    private Set<Category> likedCategoriesSet = new HashSet<>();
 
     @Column(name = "status")
     private String status;

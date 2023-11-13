@@ -2,6 +2,7 @@ package com.berliz.services;
 
 import com.berliz.DTO.TrainerRequest;
 import com.berliz.models.Trainer;
+import com.berliz.models.TrainerLike;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 
@@ -69,9 +70,24 @@ public interface TrainerService {
     ResponseEntity<Trainer> getTrainer();
 
     /**
-     * Retrieves a list of aacive trainers.
+     * Retrieves a list of active trainers.
      *
      * @return ResponseEntity containing the list of all trainers.
      */
     ResponseEntity<List<Trainer>> getActiveTrainers();
+
+    /**
+     * Likes a trainer with the specified ID.
+     *
+     * @param id The ID of the trainer to like.
+     * @return ResponseEntity indicating the result of the like operation.
+     */
+    ResponseEntity<String> likeTrainer(Integer id) throws JsonProcessingException;
+
+    /**
+     * Retrieves the list of users who have liked a trainer.
+     *
+     * @return ResponseEntity containing the list of trainer likes.
+     */
+    ResponseEntity<List<TrainerLike>> getTrainerLikes();
 }

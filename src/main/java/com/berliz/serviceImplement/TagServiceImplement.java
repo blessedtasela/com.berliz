@@ -3,6 +3,7 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Tag;
+import com.berliz.models.Trainer;
 import com.berliz.repository.TagRepo;
 import com.berliz.services.TagService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -26,6 +28,8 @@ public class TagServiceImplement implements TagService {
     @Autowired
     TagRepo tagRepo;
 
+    @Autowired
+    SimpMessagingTemplate simpMessagingTemplate;
 
     /**
      * Adds a new tag based on the provided request map.
@@ -101,6 +105,7 @@ public class TagServiceImplement implements TagService {
             tag.setDescription(requestMap.get("description"));
             tag.setLastUpdate(new Date());
             tagRepo.save(tag);
+            simpMessagingTemplate.convertAndSend("/topic/updateTag", tag);
             return buildResponse(HttpStatus.OK, "Tag updated successfully");
 
         } catch (Exception ex) {
@@ -130,15 +135,22 @@ public class TagServiceImplement implements TagService {
             }
             log.info("Inside optional {}", optional);
             status = optional.get().getStatus();
+            String responseMessage;
+            Tag tag = optional.get();
+
             if (status.equalsIgnoreCase("true")) {
                 status = "false";
-                tagRepo.updateStatus(id, status);
-                return buildResponse(HttpStatus.OK, "Tag status updated successfully. Now deactivated");
+            responseMessage = "Tag has been deactivated successfully";
             } else {
                 status = "true";
-                tagRepo.updateStatus(id, status);
-                return buildResponse(HttpStatus.OK, "Tag status updated successfully. Now activated");
+                responseMessage =  "Tag has been successfully activated";
             }
+
+            tag.setStatus(status);
+            tagRepo.save(tag);
+            simpMessagingTemplate.convertAndSend("/topic/updateTagStatus", tag);
+            return buildResponse(HttpStatus.OK, responseMessage);
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -186,12 +198,26 @@ public class TagServiceImplement implements TagService {
                 return buildResponse(HttpStatus.NOT_FOUND, "Tag id not found");
             }
             log.info("inside optional {}", id);
+            Tag tag = optional.get();
             tagRepo.deleteById(id);
+            simpMessagingTemplate.convertAndSend("/topic/deleteTag", tag);
             return buildResponse(HttpStatus.OK, "Tag deleted successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<Tag>> getActiveTags() {
+        try {
+            log.info("Inside getActiveTags");
+            List<Tag> tags = tagRepo.getActiveTags();
+            return new ResponseEntity<>(tags, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     /**
@@ -224,6 +250,7 @@ public class TagServiceImplement implements TagService {
         tag.setStatus("true");
         tag.setLastUpdate(currentDate);
 
+        simpMessagingTemplate.convertAndSend("/topic/getTagFromMap", tag);
         return tag;
     }
 
