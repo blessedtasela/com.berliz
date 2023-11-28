@@ -38,17 +38,25 @@ public class TodoListServiceImplement implements TodoListService {
     public ResponseEntity<String> addTodo(Map<String, String> requestMap) throws JsonProcessingException {
         log.info("Inside addTodo {}", requestMap);
         try {
+            User user;
+            if(jwtFilter.isAdmin() && requestMap.containsKey("email")){
+                user = userRepo.findByEmail(requestMap.get("email"));
+            } else{
+                String email = jwtFilter.getCurrentUser();
+                user = userRepo.findByEmail(email);
+            }
+
             if (!jwtFilter.isBerlizUser()) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
+
             if (!validateTodoListMap(requestMap, false)) {
                 BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
-            String email = jwtFilter.getCurrentUser();
+
             String task = requestMap.get("task");
-            User user = userRepo.findByEmail(email);
-            TodoList todoList = todoListRepo.existsByUserAndTask(user, task);
-            if (todoList != null) {
+            Boolean isTodo = todoListRepo.existsByUserAndTask(user, task);
+            if (isTodo) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "You have this task registered already");
             }
 
@@ -64,7 +72,27 @@ public class TodoListServiceImplement implements TodoListService {
     public ResponseEntity<List<TodoList>> getAllTodos() {
         try {
             log.info("inside getAllTodos {}");
+            if (!jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+            }
             return new ResponseEntity<List<TodoList>>(todoListRepo.findAll(), HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<TodoList>> getMyTodo() {
+        try {
+            log.info("inside getAllTodos {}");
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            List<TodoList> todoList = todoListRepo.findByUser(user);
+            if (todoList.isEmpty()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.NOT_FOUND);
+            }
+
+            return new ResponseEntity<List<TodoList>>(todoList, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -78,11 +106,14 @@ public class TodoListServiceImplement implements TodoListService {
             if (!jwtFilter.isBerlizUser()) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
+
             boolean isValid = validateTodoListMap(requestMap, true);
             log.info("Is request valid? {}", isValid);
+
             if (!isValid) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
+
             Optional<TodoList> optional = todoListRepo.findById(Integer.parseInt(requestMap.get("id")));
             if (optional.isEmpty()) {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Todo id not found");
@@ -91,8 +122,14 @@ public class TodoListServiceImplement implements TodoListService {
             log.info("inside optional {}", requestMap);
             TodoList todoList = optional.get();
             User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
-            TodoList ValidUser = todoListRepo.existsByUserAndTask(user, todoList.getTask());
-            if (todoList == null) {
+            Boolean isTodo;
+            if(jwtFilter.isAdmin()){
+                isTodo =  true;
+            } else{
+                isTodo = todoListRepo.existsByUserAndTask(user, todoList.getTask());
+            }
+
+            if (!isTodo) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
@@ -100,7 +137,7 @@ public class TodoListServiceImplement implements TodoListService {
             todoList.setLastUpdate(new Date());
             todoListRepo.save(todoList);
             simpMessagingTemplate.convertAndSend("/topic/updateTodoList", todoList);
-            return BerlizUtilities.buildResponse(HttpStatus.OK, "Tag updated successfully");
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Task updated successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -108,37 +145,40 @@ public class TodoListServiceImplement implements TodoListService {
     }
 
     @Override
-    public ResponseEntity<String> updateStatus(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> updateStatus(Integer id, String status) throws JsonProcessingException {
         try {
-            log.info("inside updateStatus {}", requestMap);
+            log.info("inside updateStatus {}", id, status);
             if (!jwtFilter.isBerlizUser()) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            boolean isValid = requestMap.containsKey("pending") || requestMap.containsKey("complete") || requestMap.containsKey("progress");
+            boolean isValid = status.equalsIgnoreCase("pending")
+                    || status.equalsIgnoreCase("completed")
+                    || status.equalsIgnoreCase("in-progress");
             log.info("Is request valid? {}", isValid);
             if (!isValid) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
-            Optional<TodoList> optional = todoListRepo.findById(Integer.parseInt(requestMap.get("id")));
+            Optional<TodoList> optional = todoListRepo.findById(id);
             if (optional.isEmpty()) {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Todo id not found");
             }
 
-            log.info("inside optional {}", requestMap);
+            log.info("inside optional {}", optional);
             TodoList todoList = optional.get();
             User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
-            TodoList ValidUser = todoListRepo.existsByUserAndTask(user, todoList.getTask());
-            if (todoList == null) {
+            Boolean isTodo = todoListRepo.existsByUserAndTask(user, todoList.getTask());
+
+            if (isTodo == null) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            todoList.setStatus(requestMap.get("status"));
+            todoList.setStatus(status);
             todoList.setLastUpdate(new Date());
             todoListRepo.save(todoList);
             simpMessagingTemplate.convertAndSend("/topic/updateTodoStatus", todoList);
-            return BerlizUtilities.buildResponse(HttpStatus.OK, "Task is now" + todoList.getStatus());
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Task is now " + todoList.getStatus());
         } catch (Exception ex) {
             ex.printStackTrace();
         }

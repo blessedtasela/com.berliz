@@ -9,11 +9,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@RestController
 public class TodoListRestImplement implements TodoListRest {
 
     @Autowired
@@ -40,6 +42,16 @@ public class TodoListRestImplement implements TodoListRest {
     }
 
     @Override
+    public ResponseEntity<List<TodoList>> getMyTodo() throws JsonProcessingException {
+        try {
+            return todoListService.getMyTodo();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
     public ResponseEntity<String> updateTodo(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             return todoListService.updateTodo(requestMap);
@@ -50,9 +62,9 @@ public class TodoListRestImplement implements TodoListRest {
     }
 
     @Override
-    public ResponseEntity<String> updateStatus(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> updateStatus(Integer id, String status) throws JsonProcessingException {
         try {
-            return todoListService.updateStatus(requestMap);
+            return todoListService.updateStatus(id, status);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

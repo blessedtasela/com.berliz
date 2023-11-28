@@ -19,11 +19,14 @@ public interface TodoListRest {
     @GetMapping(path = "/get")
     ResponseEntity<List<TodoList>> getAllTodos() throws JsonProcessingException;
 
-    @PutMapping(path = "/update")
-    ResponseEntity<String> updateTodo( Map<String, String> requestMap) throws JsonProcessingException;
+    @GetMapping(path = "/getMyTodos")
+    ResponseEntity<List<TodoList>> getMyTodo() throws JsonProcessingException;
 
-    @PutMapping(path = "/updateStatus")
-    ResponseEntity<String> updateStatus(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+    @PutMapping(path = "/update")
+    ResponseEntity<String> updateTodo(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateStatus/{id}/{status}")
+    ResponseEntity<String> updateStatus(@PathVariable Integer id, @PathVariable String status) throws JsonProcessingException;
 
     @DeleteMapping(path = "/delete/{id}")
     ResponseEntity<String> deleteTodo(@PathVariable Integer id) throws JsonProcessingException;

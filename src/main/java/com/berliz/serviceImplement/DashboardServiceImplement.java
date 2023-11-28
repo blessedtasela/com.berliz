@@ -57,7 +57,16 @@ public class DashboardServiceImplement implements DashboardService {
     ContactUsRepo contactUsRepo;
 
     @Autowired
+    TodoListRepo todoListRepo;
+
+    @Autowired
     TrainerLikeRepo trainerLikeRepo;
+
+    @Autowired
+    MuscleGroupRepo muscleGroupRepo;
+
+    @Autowired
+    ExerciseRepo exerciseRepo;
 
     @Autowired
     JWTFilter jwtFilter;
@@ -65,9 +74,10 @@ public class DashboardServiceImplement implements DashboardService {
     @Override
     public ResponseEntity<Map<String, Object>> getDetails() {
         try {
-           log.info("Inside getDetails");
+            log.info("Inside getDetails");
             Integer userOrdersCount = orderRepo.countOrdersByEmail(jwtFilter.getCurrentUser());
             Integer partnerApplicationCount = partnerRepo.countPartnerByEmail(jwtFilter.getCurrentUser());
+            Integer myTodoCount = todoListRepo.countMyTodosByEmail(jwtFilter.getCurrentUser());
 
             Map<String, Object> map = new HashMap<>();
             if (jwtFilter.isAdmin()) {
@@ -79,24 +89,20 @@ public class DashboardServiceImplement implements DashboardService {
                 map.put("centers", centerRepo.count());
                 map.put("newsletters", newsletterRepo.count());
                 map.put("contact-us", contactUsRepo.count());
-
-                return new ResponseEntity<>(map, HttpStatus.OK);
-            } else if (jwtFilter.isUser()) {
-                map.put("my-orders", userOrdersCount);
-                map.put("partnership", partnerApplicationCount);
-
-                return new ResponseEntity<>(map, HttpStatus.OK);
-            } else if (jwtFilter.isTrainer()) {
-                map.put("my-orders", userOrdersCount);
-                map.put("partnership", partnerApplicationCount);
-
-                return new ResponseEntity<>(map, HttpStatus.OK);
-            } else if (jwtFilter.isCenter()) {
-                map.put("my-orders", userOrdersCount);
-                map.put("partnership", partnerApplicationCount);
-
-                return new ResponseEntity<>(map, HttpStatus.OK);
+                map.put("todo-lists", todoListRepo.count());
+                map.put("muscle-groups", muscleGroupRepo.count());
+                map.put("exercises", exerciseRepo.count());
             }
+            else if (jwtFilter.isUser()) {
+            }
+            else if (jwtFilter.isTrainer()) {
+            }
+            else if (jwtFilter.isCenter()) {
+            }
+            map.put("my-orders", userOrdersCount);
+            map.put("partnership", partnerApplicationCount);
+            map.put("my-todos", myTodoCount);
+            return new ResponseEntity<>(map, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

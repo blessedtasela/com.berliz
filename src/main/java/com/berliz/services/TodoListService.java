@@ -13,9 +13,11 @@ public interface TodoListService {
 
     ResponseEntity<List<TodoList>> getAllTodos();
 
+    ResponseEntity<List<TodoList>> getMyTodo();
+
     ResponseEntity<String> updateTodo(Map<String, String> requestMap) throws JsonProcessingException;
 
-    ResponseEntity<String> updateStatus(Map<String, String> requestMap) throws JsonProcessingException;
+    ResponseEntity<String> updateStatus(Integer id, String status) throws JsonProcessingException;
 
     ResponseEntity<String> deleteTodo(Integer id) throws JsonProcessingException;
 

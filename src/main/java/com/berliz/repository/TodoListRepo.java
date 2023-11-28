@@ -16,8 +16,10 @@ public interface TodoListRepo extends JpaRepository<TodoList, Integer> {
 
     TodoList findByTask(@Param("task") String name);
 
-    TodoList findByUser(User user);
+    List<TodoList> findByUser(User user);
 
-    TodoList existsByUserAndTask(User user, String task);
+    Boolean existsByUserAndTask(User user, String task);
+
+    Integer countMyTodosByEmail(@Param("email") String email);
 
 }

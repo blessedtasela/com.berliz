@@ -14,6 +14,7 @@ import com.berliz.services.CategoryService;
 import com.berliz.utils.BerlizUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -275,17 +276,17 @@ public class CategoryServiceImplement implements CategoryService {
     @Override
     public ResponseEntity<?> getCategory(Integer id) {
         try {
-            log.info("Inside getBrand {}", id);
+            log.info("Inside getCategory {}", id);
             Optional<Category> optional = categoryRepo.findById(id);
             if (optional.isPresent()) {
-                return ResponseEntity.ok(optional);
+                return new ResponseEntity<>(optional.get(), HttpStatus.OK);
             } else {
-                return ResponseEntity.badRequest().body("Category ID not found");
+                return new ResponseEntity<>(new Category(), HttpStatus.OK);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
+        return new ResponseEntity<>(new Category(), HttpStatus.OK);
     }
 
     /**
@@ -392,16 +393,17 @@ public class CategoryServiceImplement implements CategoryService {
 
         // Parse tagIds as a comma-separated string
         String tagIdsString = requestMap.get("tagIds");
-        String[] tagIdsArray = tagIdsString.split(",");
-
-        Set<Tag> tagSet = new HashSet<>();
-        for (String tagIdString : tagIdsArray) {
-            // Remove leading and trailing spaces before parsing
-            int tagId = Integer.parseInt(tagIdString.trim());
-
-            Tag tag = new Tag();
-            tag.setId(tagId);
-            tagSet.add(tag);
+        if (tagIdsString != null) {
+            String[] tagIdsArray = tagIdsString.split(",");
+            Set<Tag> tagSet = new HashSet<>();
+            for (String tagIdString : tagIdsArray) {
+                // Remove leading and trailing spaces before parsing
+                int tagId = Integer.parseInt(tagIdString.trim());
+                Tag tag = tagRepo.findById(tagId)
+                        .orElseThrow(() -> new EntityNotFoundException("Tag not found with ID: " + tagId));
+                tagSet.add(tag);
+            }
+            category.setTagSet(tagSet);
         }
 
         category.setDate(currentDate);
@@ -411,7 +413,6 @@ public class CategoryServiceImplement implements CategoryService {
         category.setLikes(Integer.parseInt(requestMap.get("likes")));
         category.setStatus("true");
         category.setLastUpdate(currentDate);
-        category.setTagSet(tagSet);
         simpMessagingTemplate.convertAndSend("/topic/getCategoryFromMap", category);
         return category;
     }
