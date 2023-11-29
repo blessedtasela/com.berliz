@@ -183,20 +183,19 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
             muscleGroup.setLastUpdate(new Date());
 
             // Create a set to store the updated exercises
-            String exercisesIdsString = requestMap.get("exerciseIds");
-            String[] exercisesIdsArray = exercisesIdsString.split(",");
-
-            Set<Exercise> exercises = new HashSet<>();
-            for (String exerciseIdString : exercisesIdsArray) {
-                // Remove leading and trailing spaces before parsing
-                int exerciseId = Integer.parseInt(exerciseIdString.trim());
-                Exercise exercise = exerciseRepo.findById(exerciseId).orElse(null);
-                if (exercise != null) {
-                    exercises.add(exercise); // Add the tag to the set of updated tags
+            String exerciseIdsString = requestMap.get("exerciseIds");
+            if(exerciseIdsString != null) {
+                String[] exerciseIdsArray = exerciseIdsString.split(",");
+                Set<Exercise> exercises = new HashSet<>();
+                for (String exerciseIdString : exerciseIdsArray) {
+                    int exerciseId = Integer.parseInt(exerciseIdString.trim());
+                    Exercise exercise = exerciseRepo.findById(exerciseId)
+                            .orElseThrow(() -> new EntityNotFoundException("Exercise not found with ID: " + exerciseId));
+                    exercises.add(exercise);
                 }
+                muscleGroup.setExercises(exercises);
             }
-
-            muscleGroup.setExercises(exercises);
+            
             muscleGroupRepo.save(muscleGroup);
             simpMessagingTemplate.convertAndSend("/topic/updateMuscleGroup", muscleGroup );
             return BerlizUtilities.buildResponse(HttpStatus.OK, "MuscleGroup updated successfully");
