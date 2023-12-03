@@ -4,8 +4,7 @@ import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
 @Data
-public class ImageRequest {
-
+public class FileRequest {
     private Integer id;
-    private MultipartFile image;
+    private MultipartFile file;
 }

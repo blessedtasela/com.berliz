@@ -2,6 +2,7 @@
 package com.berliz.rest;
 
 import com.berliz.DTO.ExerciseRequest;
+import com.berliz.DTO.FileRequest;
 import com.berliz.DTO.ProfilePhotoRequest;
 import com.berliz.models.Exercise;
 import org.springframework.http.ResponseEntity;
@@ -50,11 +51,11 @@ public interface ExerciseRest {
     /**
      * Update an exercise image.
      *
-     * @param photoRequest A map containing exercise details for the update.
+     * @param fileRequest A map containing exercise details for the update.
      * @return ResponseEntity containing a message about the result.
      */
-    @PutMapping(path = "/updateImage")
-    ResponseEntity<String> updateExerciseImage(@ModelAttribute ProfilePhotoRequest photoRequest);
+    @PutMapping(path = "/updateDemo")
+    ResponseEntity<String> updateExerciseDemo(@ModelAttribute FileRequest fileRequest);
 
     /**
      * Update an exercise.

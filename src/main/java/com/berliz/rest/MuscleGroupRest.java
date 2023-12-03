@@ -1,9 +1,8 @@
 
 package com.berliz.rest;
 
-import com.berliz.DTO.ImageRequest;
+import com.berliz.DTO.FileRequest;
 import com.berliz.DTO.MuscleGroupRequest;
-import com.berliz.DTO.ProfilePhotoRequest;
 import com.berliz.models.MuscleGroup;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -55,7 +54,7 @@ public interface MuscleGroupRest {
      * @return ResponseEntity containing a message about the result.
      */
     @PutMapping(path = "/updateImage")
-    ResponseEntity<String> updateMuscleGroupImage(@ModelAttribute ImageRequest imageRequest);
+    ResponseEntity<String> updateMuscleGroupImage(@ModelAttribute FileRequest imageRequest);
 
 
     /**

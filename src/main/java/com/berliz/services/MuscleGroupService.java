@@ -1,8 +1,7 @@
 package com.berliz.services;
 
-import com.berliz.DTO.ImageRequest;
+import com.berliz.DTO.FileRequest;
 import com.berliz.DTO.MuscleGroupRequest;
-import com.berliz.DTO.ProfilePhotoRequest;
 import com.berliz.models.MuscleGroup;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +18,7 @@ public interface MuscleGroupService {
 
     ResponseEntity<MuscleGroup> getMuscleGroup(Integer id);
 
-    ResponseEntity<String> updateMuscleGroupImage(ImageRequest imageRequest) throws JsonProcessingException;
+    ResponseEntity<String> updateMuscleGroupImage(FileRequest imageRequest) throws JsonProcessingException;
 
     ResponseEntity<String> updateMuscleGroup(Map<String, String> requestMap) throws JsonProcessingException;
 

@@ -6,7 +6,10 @@ import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 @NamedQuery(name = "MuscleGroup.getActiveMuscleGroups",
         query = "select mg from MuscleGroup mg WHERE mg.status ='true'")
@@ -18,7 +21,7 @@ import java.util.*;
 @Table(name = "muscleGroup")
 public class MuscleGroup implements Serializable {
 
-    private static final long SerialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,7 +37,11 @@ public class MuscleGroup implements Serializable {
     @Column(name = "bodyPart")
     private String bodyPart;
 
-    @ManyToMany(mappedBy = "muscleGroups")
+    @ManyToMany
+    @JoinTable(
+            name = "muscle_group_exercise",
+            joinColumns = @JoinColumn(name = "muscleGroup_id"),
+            inverseJoinColumns = @JoinColumn(name = "exercise_id"))
     private Set<Exercise> exercises = new HashSet<>();
 
     @Column(name = "image", columnDefinition = "BYTEA")
@@ -48,4 +55,9 @@ public class MuscleGroup implements Serializable {
 
     @Column(name = "lastUpdate", columnDefinition = "DATE")
     private Date lastUpdate;
+
+//    @Override
+//    public int hashCode() {
+//        return Objects.hash(id, name, description, bodyPart, image, lastUpdate, date, status);
+//    }
 }

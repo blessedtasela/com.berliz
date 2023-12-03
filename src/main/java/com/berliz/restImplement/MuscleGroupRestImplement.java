@@ -1,8 +1,7 @@
 package com.berliz.restImplement;
 
-import com.berliz.DTO.ImageRequest;
+import com.berliz.DTO.FileRequest;
 import com.berliz.DTO.MuscleGroupRequest;
-import com.berliz.DTO.ProfilePhotoRequest;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.MuscleGroup;
 import com.berliz.rest.MuscleGroupRest;
@@ -64,7 +63,7 @@ public class MuscleGroupRestImplement implements MuscleGroupRest {
     }
 
     @Override
-    public ResponseEntity<String> updateMuscleGroupImage(ImageRequest imageRequest) {
+    public ResponseEntity<String> updateMuscleGroupImage(FileRequest imageRequest) {
         try {
             return muscleGroupService.updateMuscleGroupImage(imageRequest);
         } catch (Exception ex) {

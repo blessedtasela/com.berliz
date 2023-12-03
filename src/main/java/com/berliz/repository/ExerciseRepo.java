@@ -28,14 +28,6 @@ public interface ExerciseRepo extends JpaRepository<Exercise, Integer> {
     List<Exercise> findByCategories(Category category);
 
     /**
-     * Find exercises by subtask.
-     *
-     * @param subTask The subtask of the exercises to search for.
-     * @return List of exercises matching the subtask.
-     */
-    List<Exercise> findBySubTasks(SubTask subTask);
-
-    /**
      * Find exercises by muscle group.
      *
      * @param muscleGroup The muscle group of the exercises to search for.

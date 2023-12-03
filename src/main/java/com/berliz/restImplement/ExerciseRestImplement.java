@@ -1,6 +1,7 @@
 package com.berliz.restImplement;
 
 import com.berliz.DTO.ExerciseRequest;
+import com.berliz.DTO.FileRequest;
 import com.berliz.DTO.ProfilePhotoRequest;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Exercise;
@@ -63,9 +64,9 @@ public class ExerciseRestImplement implements ExerciseRest {
     }
 
     @Override
-    public ResponseEntity<String> updateExerciseImage(ProfilePhotoRequest photoRequest) {
+    public ResponseEntity<String> updateExerciseDemo(FileRequest fileRequest) {
         try {
-            return exerciseService.updateExerciseImage(photoRequest);
+            return exerciseService.updateExerciseDemo(fileRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

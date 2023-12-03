@@ -8,6 +8,7 @@ import org.hibernate.annotations.DynamicUpdate;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 @NamedQuery(name = "Exercise.getActiveExercises",
@@ -20,7 +21,7 @@ import java.util.Set;
 @Table(name = "exercise")
 public class Exercise implements Serializable {
 
-    private static final long SerialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,24 +38,18 @@ public class Exercise implements Serializable {
     @JoinTable(
             name = "exercise_muscle_group",
             joinColumns = @JoinColumn(name = "exercise_id"),
-            inverseJoinColumns = @JoinColumn(name = "muscleGroup_id")
-    )
+            inverseJoinColumns = @JoinColumn(name = "muscleGroup_id"))
     private Set<MuscleGroup> muscleGroups = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "exercise_category",
             joinColumns = @JoinColumn(name = "exercise_id"),
-            inverseJoinColumns = @JoinColumn(name = "categoryId")
-    )
+            inverseJoinColumns = @JoinColumn(name = "categoryId"))
     private Set<Category> categories = new HashSet<>();
 
-    @OneToMany(mappedBy = "exercise", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<SubTask> subTasks = new HashSet<>();
-
-    @Lob
-    @Column(name = "video", columnDefinition = "BYTEA")
-    private byte[] video;
+    @Column(name = "demo", columnDefinition = "BYTEA")
+    private byte[] demo;
 
     @Column(name = "status")
     private String status;
@@ -64,4 +59,9 @@ public class Exercise implements Serializable {
 
     @Column(name = "lastUpdate", columnDefinition = "DATE")
     private Date lastUpdate;
+
+//    @Override
+//    public int hashCode() {
+//        return Objects.hash(id, name, description, categories, demo, lastUpdate, date, status);
+//    }
 }

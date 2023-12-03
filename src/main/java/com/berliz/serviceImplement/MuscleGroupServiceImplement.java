@@ -1,14 +1,11 @@
 package com.berliz.serviceImplement;
 
-import com.berliz.DTO.ImageRequest;
+import com.berliz.DTO.FileRequest;
 import com.berliz.DTO.MuscleGroupRequest;
 import com.berliz.JWT.JWTFilter;
-import com.berliz.JWT.JWTUtility;
 import com.berliz.constants.BerlizConstants;
-import com.berliz.models.Category;
 import com.berliz.models.Exercise;
 import com.berliz.models.MuscleGroup;
-import com.berliz.models.Tag;
 import com.berliz.repository.ExerciseRepo;
 import com.berliz.repository.MuscleGroupRepo;
 import com.berliz.services.MuscleGroupService;
@@ -44,15 +41,16 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
     FileUtilities fileUtilities;
 
     @Autowired
-    JWTUtility jwtUtility;
-
-    @Autowired
     JWTFilter jwtFilter;
 
     @Override
     public ResponseEntity<String> addMuscleGroup(MuscleGroupRequest muscleGroupRequest) throws JsonProcessingException {
         log.info("Inside signUp {}", muscleGroupRequest);
         try {
+            if (!jwtFilter.isAdmin()) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
             boolean isValidRequest = muscleGroupRequest != null;
             log.info("is request valid? {}", isValidRequest);
             if (isValidRequest) {
@@ -77,6 +75,10 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
     @Override
     public ResponseEntity<List<MuscleGroup>> getAllMuscleGroups() {
         try {
+            if (!jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
             log.info("Inside getAllMuscleGroups 'ADMIN'");
             return new ResponseEntity<>(muscleGroupRepo.findAll(), HttpStatus.OK);
         } catch (Exception ex) {
@@ -113,10 +115,10 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
     }
 
     @Override
-    public ResponseEntity<String> updateMuscleGroupImage(ImageRequest imageRequest) throws JsonProcessingException {
+    public ResponseEntity<String> updateMuscleGroupImage(FileRequest imageRequest) throws JsonProcessingException {
         try {
             log.info("Inside updateMuscleGroupImage{}", imageRequest);
-            MultipartFile file = imageRequest.getImage();
+            MultipartFile file = imageRequest.getFile();
             if (file == null) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "No photo provided");
             }
@@ -144,7 +146,7 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
             muscleGroup.setImage(file.getBytes());
             muscleGroupRepo.save(muscleGroup);
             simpMessagingTemplate.convertAndSend("/topic/updateMuscleGroupImage", muscleGroup);
-            return BerlizUtilities.buildResponse(HttpStatus.OK, muscleGroup.getStatus() + "'s photo updated successfully");
+            return BerlizUtilities.buildResponse(HttpStatus.OK, muscleGroup.getName() + "'s photo updated successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -184,7 +186,7 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
 
             // Create a set to store the updated exercises
             String exerciseIdsString = requestMap.get("exerciseIds");
-            if(exerciseIdsString != null) {
+            if (exerciseIdsString != null) {
                 String[] exerciseIdsArray = exerciseIdsString.split(",");
                 Set<Exercise> exercises = new HashSet<>();
                 for (String exerciseIdString : exerciseIdsArray) {
@@ -195,9 +197,9 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
                 }
                 muscleGroup.setExercises(exercises);
             }
-            
+
             muscleGroupRepo.save(muscleGroup);
-            simpMessagingTemplate.convertAndSend("/topic/updateMuscleGroup", muscleGroup );
+            simpMessagingTemplate.convertAndSend("/topic/updateMuscleGroup", muscleGroup);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "MuscleGroup updated successfully");
 
         } catch (Exception ex) {
@@ -282,7 +284,7 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
 
         // Parse exercisesId as a comma-separated string
         String exerciseIdsString = request.getExercises();
-        if(exerciseIdsString != null) {
+        if (exerciseIdsString != null) {
             String[] exerciseIdsArray = exerciseIdsString.split(",");
             Set<Exercise> exercises = new HashSet<>();
             for (String exerciseIdString : exerciseIdsArray) {
@@ -301,10 +303,12 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
         if (validId) {
             return requestMap.containsKey("id")
                     && requestMap.containsKey("name")
-                    && requestMap.containsKey("description");
+                    && requestMap.containsKey("description")
+                    && requestMap.containsKey("bodyPart");
         } else {
             return requestMap.containsKey("name")
-                    && requestMap.containsKey("description");
+                    && requestMap.containsKey("description")
+                    && requestMap.containsKey("bodyPart");
         }
     }
 
