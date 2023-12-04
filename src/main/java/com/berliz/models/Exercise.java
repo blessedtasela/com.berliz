@@ -1,5 +1,6 @@
 package com.berliz.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.DynamicInsert;
@@ -19,6 +20,7 @@ import java.util.Set;
 @DynamicInsert
 @DynamicUpdate
 @Table(name = "exercise")
+@JsonIgnoreProperties("muscleGroups")
 public class Exercise implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -60,8 +62,4 @@ public class Exercise implements Serializable {
     @Column(name = "lastUpdate", columnDefinition = "DATE")
     private Date lastUpdate;
 
-//    @Override
-//    public int hashCode() {
-//        return Objects.hash(id, name, description, categories, demo, lastUpdate, date, status);
-//    }
 }

@@ -76,19 +76,19 @@ public class UserServiceImplement implements UserService {
         try {
             boolean isValidRequest = request != null;
             log.info("is request valid? {}", isValidRequest);
-            if (isValidRequest) {
-                User user = userRepo.findByEmail(request.getEmail());
 
-                if (Objects.isNull(user)) {
-                    userRepo.save(getUserFromMap(request));
-                    confirmAccount(request.getEmail());
-                    return buildResponse(HttpStatus.OK, BerlizConstants.SIGNUP_SUCCESS);
-                } else {
-                    return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.EMAIL_EXISTS);
-                }
-            } else {
+            if (!isValidRequest) {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
+
+            User user = userRepo.findByEmail(request.getEmail());
+            if (!Objects.isNull(user)) {
+                return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.EMAIL_EXISTS);
+            }
+
+            getUserFromMap(request);
+            confirmAccount(request.getEmail());
+            return buildResponse(HttpStatus.OK, BerlizConstants.SIGNUP_SUCCESS);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -132,7 +132,6 @@ public class UserServiceImplement implements UserService {
     public ResponseEntity<String> activateAccount(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             User user = userRepo.findByToken(requestMap.get("token"));
-
             if (user != null) {
                 user.setToken("");
                 user.setStatus("true");
@@ -275,8 +274,8 @@ public class UserServiceImplement implements UserService {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            if (admin.getRole().equalsIgnoreCase("admin") &&
-                    admin.getEmail().equalsIgnoreCase("berlizworld@gmail.com")) {
+            if (!admin.getRole().equalsIgnoreCase("admin") &&
+                    admin.getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN)) {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
@@ -293,10 +292,10 @@ public class UserServiceImplement implements UserService {
 
             if (status.equalsIgnoreCase("true")) {
                 status = "false";
-                responseMessage = "User" + user.getEmail() + " has been deactivated successfully";
+                responseMessage = "User: " + user.getEmail() + " has been deactivated successfully";
             } else {
                 status = "true";
-                responseMessage = "User" + user.getEmail() + "  has been successfully activated";
+                responseMessage = "User: " + user.getEmail() + "  has been successfully activated";
             }
 
             user.setStatus(status);
@@ -304,7 +303,7 @@ public class UserServiceImplement implements UserService {
             emailUtilities.sendStatusMailToAdmins(status, optional.get().getEmail(), userRepo.getAllAdminsMail(), "User");
             emailUtilities.sendStatusMailToUser(status, "User", optional.get().getEmail());
             simpMessagingTemplate.convertAndSend("/topic/updateUserStatus", user);
-            return buildResponse(HttpStatus.OK, "User Status updated successfully. Now Activated");
+            return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -864,8 +863,8 @@ public class UserServiceImplement implements UserService {
         user.setStatus("false");
         user.setDate(new Date());
         user.setLastUpdate(new Date());
-
-        simpMessagingTemplate.convertAndSend("/topic/getUserFromMap", user);
+        User savedUser = userRepo.save(user);
+        simpMessagingTemplate.convertAndSend("/topic/getUserFromMap", savedUser);
         return user;
     }
 
@@ -888,7 +887,7 @@ public class UserServiceImplement implements UserService {
                 && requestMap.containsKey("city")
                 && requestMap.containsKey("address")
                 && requestMap.containsKey("bio")
-                &&requestMap.containsKey("postalCode");
+                && requestMap.containsKey("postalCode");
     }
 
     // Helper method to update user entity with data from the request map

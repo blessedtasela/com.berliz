@@ -50,7 +50,7 @@ public class ExerciseServiceImplement implements ExerciseService {
 
     @Override
     public ResponseEntity<String> addExercise(ExerciseRequest exerciseRequest) throws JsonProcessingException {
-        log.info("Inside signUp {}", exerciseRequest);
+        log.info("Inside addExercise {}", exerciseRequest);
         try {
             if (!jwtFilter.isAdmin()) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
@@ -62,7 +62,7 @@ public class ExerciseServiceImplement implements ExerciseService {
                 Exercise exercise = exerciseRepo.findByName(exerciseRequest.getName());
 
                 if (Objects.isNull(exercise)) {
-                    exerciseRepo.save(getExerciseFromMap(exerciseRequest));
+                    getExerciseFromMap(exerciseRequest);
                     return BerlizUtilities.buildResponse(HttpStatus.OK, "Exercise created successfully");
                 } else {
                     return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Exercise Exists");
@@ -189,7 +189,7 @@ public class ExerciseServiceImplement implements ExerciseService {
 
             // Create a set to store the updated muscleGroups
             String muscleGroupIdsString = requestMap.get("muscleGroupIds");
-            if (muscleGroupIdsString != null) {
+            if (!muscleGroupIdsString.isEmpty()) {
                 String[] muscleGroupIdsArray = muscleGroupIdsString.split(",");
                 Set<MuscleGroup> muscleGroups = new HashSet<>();
                 for (String muscleGroupIdString : muscleGroupIdsArray) {
@@ -203,7 +203,7 @@ public class ExerciseServiceImplement implements ExerciseService {
 
             // Create a set to store the updated categories
             String categoryIdsString = requestMap.get("categoryIds");
-            if (categoryIdsString != null) {
+            if (!categoryIdsString.isEmpty()) {
                 String[] categoryIdsArray = categoryIdsString.split(",");
                 Set<Category> categories = new HashSet<>();
                 for (String categoryIdString : categoryIdsArray) {
@@ -299,7 +299,7 @@ public class ExerciseServiceImplement implements ExerciseService {
 
         // Parse muscleGroupId as a comma-separated string
         String muscleGroupIdsString = request.getMuscleGroups();
-        if (muscleGroupIdsString != null) {
+        if (!muscleGroupIdsString.isEmpty()) {
             String[] muscleGroupIdsArray = muscleGroupIdsString.split(",");
             Set<MuscleGroup> muscleGroups = new HashSet<>();
             for (String muscleGroupIdString : muscleGroupIdsArray) {
@@ -313,7 +313,7 @@ public class ExerciseServiceImplement implements ExerciseService {
 
         // Parse categoryId as a comma-separated string
         String categoryIdsString = request.getCategories();
-        if (categoryIdsString != null) {
+        if (!categoryIdsString.isEmpty()) {
             String[] categoryIdsArray = categoryIdsString.split(",");
             Set<Category> categories = new HashSet<>();
             for (String categoryIdString : categoryIdsArray) {
@@ -324,8 +324,8 @@ public class ExerciseServiceImplement implements ExerciseService {
             }
             exercise.setCategories(categories);
         }
-
-        simpMessagingTemplate.convertAndSend("/topic/getExerciseFromMap", exercise);
+        Exercise savedExercise = exerciseRepo.save(exercise);
+        simpMessagingTemplate.convertAndSend("/topic/getExerciseFromMap", savedExercise);
         return exercise;
     }
 

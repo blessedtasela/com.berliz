@@ -22,14 +22,6 @@ public interface MuscleGroupRepo extends JpaRepository<MuscleGroup, Integer> {
     MuscleGroup findByName(String name);
 
     /**
-     * Find a muscle group by it's exercise.
-     *
-     * @param exercise The exercise linked to the muscle group to search for.
-     * @return The found muscle group or null if not found.
-     */
-    MuscleGroup findByExercises(Exercise exercise);
-
-    /**
      * Get a list of all active muscle groups.
      *
      * @return List of muscle groups whose status is true.

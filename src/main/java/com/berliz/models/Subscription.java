@@ -6,21 +6,20 @@ import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
-@NamedQuery(name = "Task.findActiveTaskByUser",
-        query = "select t from Task t where t.status='true' AND t.user = :user")
+@NamedQuery(name = "Subscription.findActiveSubscriptionByUser",
+        query = "select s from Subscription s where s.status='true' AND s.user = :user")
 
-@NamedQuery(name = "Task.getActiveTasks",
-        query = "select t from Task t WHERE t.status ='true'")
+@NamedQuery(name = "Subscription.getActiveSubscriptions",
+        query = "select s from Subscription s where s.status='true'")
+
 @Data
 @Entity
 @DynamicInsert
 @DynamicUpdate
-@Table(name = "task")
-public class Task implements Serializable {
+@Table(name = "subscription")
+public class Subscription implements Serializable {
 
     private static final long SerialVersionUID = 1L;
 
@@ -29,28 +28,30 @@ public class Task implements Serializable {
     @Column(name = "id", columnDefinition = "INTEGER")
     private Integer id;
 
-    @Column(name = "description")
-    private String description;
-
-    @Column(name = "priority")
-    private String priority;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_fk", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "trainer_fk", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "trainer_id")
     private Trainer trainer;
 
-    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<SubTask> subTasks = new ArrayList<>();
+    @ManyToOne
+    @JoinColumn(name = "center_id")
+    private Center center;
 
-    @Column(name = "startData", columnDefinition = "DATE")
+    @ManyToOne
+    @JoinColumn(name = "payment_id")
+    private Payment payment;
+
+    @Column(name = "startDate", columnDefinition = "DATE")
     private Date startDate;
 
     @Column(name = "endDate", columnDefinition = "DATE")
     private Date endDate;
+
+    @Column(name = "months")
+    private Integer months;
 
     @Column(name = "date", columnDefinition = "DATE")
     private Date date;

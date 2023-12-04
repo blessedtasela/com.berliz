@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -25,6 +26,9 @@ public class BrandServiceImplement implements BrandService {
     @Autowired
     BrandRepo brandRepo;
 
+    @Autowired
+    SimpMessagingTemplate simpMessagingTemplate;
+
     @Override
     public ResponseEntity<String> addBrand(Map<String, String> requestMap) {
         log.info("Inside addCategory {}", requestMap);
@@ -33,7 +37,7 @@ public class BrandServiceImplement implements BrandService {
                 if (validateBrandMap(requestMap, false)) {
                     Brand brand = brandRepo.findByName(requestMap.get("name"));
                     if (brand == null) {
-                        brandRepo.save(getBrandFromMap(requestMap));
+                        getBrandFromMap(requestMap);
                         return BerlizUtilities.getResponseEntity("Brand added successfully", HttpStatus.OK);
                     } else {
                         return BerlizUtilities.getResponseEntity("Brand exists", HttpStatus.BAD_REQUEST);
@@ -153,12 +157,12 @@ public class BrandServiceImplement implements BrandService {
     public ResponseEntity<?> getBrand(Integer id) {
         try {
             log.info("Inside getBrand {}", id);
-                Optional<Brand> optional = brandRepo.findById(id);
-                if (optional.isPresent()) {
-                    return ResponseEntity.ok(optional);
-                } else {
-                    return ResponseEntity.badRequest().body("Brand id not found");
-                }
+            Optional<Brand> optional = brandRepo.findById(id);
+            if (optional.isPresent()) {
+                return ResponseEntity.ok(optional);
+            } else {
+                return ResponseEntity.badRequest().body("Brand id not found");
+            }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -187,7 +191,8 @@ public class BrandServiceImplement implements BrandService {
         brand.setStatus("true");
         brand.setLastUpdate(currentDate);
         brand.setDate(currentDate);
-
+        Brand savedBrand = brandRepo.save(brand);
+        simpMessagingTemplate.convertAndSend("/topic/getBrandFromMap", savedBrand);
         return brand;
     }
 }

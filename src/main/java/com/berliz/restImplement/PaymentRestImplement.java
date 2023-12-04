@@ -1,9 +1,9 @@
 package com.berliz.restImplement;
 
 import com.berliz.constants.BerlizConstants;
-import com.berliz.models.Client;
-import com.berliz.rest.ClientRest;
-import com.berliz.services.ClientService;
+import com.berliz.models.Payment;
+import com.berliz.rest.PaymentRest;
+import com.berliz.services.PaymentService;
 import com.berliz.utils.BerlizUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,15 +14,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class ClientRestImplement implements ClientRest {
+public class PaymentRestImplement implements PaymentRest {
 
     @Autowired
-    ClientService clientService;
+    PaymentService paymentService;
 
     @Override
-    public ResponseEntity<String> addClient(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> addPayment(Map<String, String> requestMap) throws JsonProcessingException {
         try {
-            return clientService.addClient(requestMap);
+            return paymentService.addPayment(requestMap);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -30,9 +30,9 @@ public class ClientRestImplement implements ClientRest {
     }
 
     @Override
-    public ResponseEntity<List<Client>> getAllClients() {
+    public ResponseEntity<List<Payment>> getAllPayments() {
         try {
-            return clientService.getAllClients();
+            return paymentService.getAllPayments();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -40,9 +40,9 @@ public class ClientRestImplement implements ClientRest {
     }
 
     @Override
-    public ResponseEntity<List<Client>> getActiveClients() {
+    public ResponseEntity<List<Payment>> getActivePayments() {
         try {
-            return clientService.getActiveClients();
+            return paymentService.getActivePayments();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -50,30 +50,30 @@ public class ClientRestImplement implements ClientRest {
     }
 
     @Override
-    public ResponseEntity<String> updateClient(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> updatePayment(Map<String, String> requestMap) throws JsonProcessingException {
         try {
-            return clientService.updateClient(requestMap);
+            return paymentService.updatePayment(requestMap);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
+
 
     @Override
-    public ResponseEntity<String> deleteClient(Integer id) throws JsonProcessingException {
+    public ResponseEntity<String> deletePayment(Integer id) throws JsonProcessingException {
         try {
-            return clientService.deleteClient(id);
+            return paymentService.deletePayment(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
-
 
     @Override
     public ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException {
         try {
-            return clientService.updateStatus(id);
+            return paymentService.updateStatus(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -81,13 +81,13 @@ public class ClientRestImplement implements ClientRest {
     }
 
     @Override
-    public ResponseEntity<Client> getClient(Integer id) {
+    public ResponseEntity<Payment> getPayment(Integer id) {
         try {
-            return clientService.getClient(id);
+            return paymentService.getPayment(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return new ResponseEntity<>(new Client(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(new Payment(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 }

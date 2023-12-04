@@ -69,7 +69,7 @@ public class ContactUsServiceImplement implements ContactUsService {
             }
 
             String subject = "Berliz Management Team";
-            contactUsRepo.save(getContactUsFromMap(requestMap));
+            getContactUsFromMap(requestMap);
             emailUtilities.sendContactUsMailToUser(subject, requestMap.get("name"), "true", requestMap.get("email"), "");
             emailUtilities.sendContactUsMailToAdmins("true", requestMap.get("email"), userRepo.getAllAdminsMail());
             return buildResponse(HttpStatus.OK, "Contact us request added successfully");
@@ -362,8 +362,8 @@ public class ContactUsServiceImplement implements ContactUsService {
         contactUs.setMessage(requestMap.get("message"));
         contactUs.setStatus("false");
         contactUs.setLastUpdate(currentDate);
-
-        simpMessagingTemplate.convertAndSend("/topic/getContactUsFromMap", contactUs);
+        ContactUs savedContactUs = contactUsRepo.save(contactUs);
+        simpMessagingTemplate.convertAndSend("/topic/getContactUsFromMap", savedContactUs);
         return contactUs;
     }
 

@@ -4,7 +4,6 @@ import com.berliz.DTO.FileRequest;
 import com.berliz.DTO.MuscleGroupRequest;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
-import com.berliz.models.Exercise;
 import com.berliz.models.MuscleGroup;
 import com.berliz.repository.ExerciseRepo;
 import com.berliz.repository.MuscleGroupRepo;
@@ -12,7 +11,6 @@ import com.berliz.services.MuscleGroupService;
 import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.FileUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -57,7 +55,7 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
                 MuscleGroup muscleGroup = muscleGroupRepo.findByName(muscleGroupRequest.getName());
 
                 if (Objects.isNull(muscleGroup)) {
-                    muscleGroupRepo.save(getMuscleGroupFromMap(muscleGroupRequest));
+                    getMuscleGroupFromMap(muscleGroupRequest);
                     return BerlizUtilities.buildResponse(HttpStatus.OK, "Muscle Group created successfully");
                 } else {
                     return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Muscle Group Exists");
@@ -183,21 +181,6 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
             muscleGroup.setBodyPart(requestMap.get("bodyPart"));
             muscleGroup.setDescription(requestMap.get("description"));
             muscleGroup.setLastUpdate(new Date());
-
-            // Create a set to store the updated exercises
-            String exerciseIdsString = requestMap.get("exerciseIds");
-            if (exerciseIdsString != null) {
-                String[] exerciseIdsArray = exerciseIdsString.split(",");
-                Set<Exercise> exercises = new HashSet<>();
-                for (String exerciseIdString : exerciseIdsArray) {
-                    int exerciseId = Integer.parseInt(exerciseIdString.trim());
-                    Exercise exercise = exerciseRepo.findById(exerciseId)
-                            .orElseThrow(() -> new EntityNotFoundException("Exercise not found with ID: " + exerciseId));
-                    exercises.add(exercise);
-                }
-                muscleGroup.setExercises(exercises);
-            }
-
             muscleGroupRepo.save(muscleGroup);
             simpMessagingTemplate.convertAndSend("/topic/updateMuscleGroup", muscleGroup);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "MuscleGroup updated successfully");
@@ -281,21 +264,8 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
         muscleGroup.setDate(new Date());
         muscleGroup.setLastUpdate(new Date());
         muscleGroup.setStatus("false");
-
-        // Parse exercisesId as a comma-separated string
-        String exerciseIdsString = request.getExercises();
-        if (exerciseIdsString != null) {
-            String[] exerciseIdsArray = exerciseIdsString.split(",");
-            Set<Exercise> exercises = new HashSet<>();
-            for (String exerciseIdString : exerciseIdsArray) {
-                int exerciseId = Integer.parseInt(exerciseIdString.trim());
-                Exercise exercise = exerciseRepo.findById(exerciseId)
-                        .orElseThrow(() -> new EntityNotFoundException("Exercise not found with ID: " + exerciseId));
-                exercises.add(exercise);
-            }
-            muscleGroup.setExercises(exercises);
-        }
-        simpMessagingTemplate.convertAndSend("/topic/getMuscleGroupFromMap", muscleGroup);
+        MuscleGroup savedMuscleGroup = muscleGroupRepo.save(muscleGroup);
+        simpMessagingTemplate.convertAndSend("/topic/getMuscleGroupFromMap", savedMuscleGroup);
         return muscleGroup;
     }
 

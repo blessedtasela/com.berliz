@@ -24,6 +24,7 @@ import java.util.Set;
 
 @NamedQuery(name = "User.updateUserRole", query = "update User u set u.role=:role where u.id=:id")
 
+@NamedQuery(name = "User.getActiveUsers", query = "select u from User u where u.status='true'")
 
 @Data
 @Entity

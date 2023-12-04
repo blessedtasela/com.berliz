@@ -20,11 +20,8 @@ public class JWTUtility {
     @Autowired
     private ClientUserDetailsService clientUserDetailsService;
 
-    @Value("${jwt.secret}")
+    @Value("${JWT_SECRET}")
     private String SECRET_KEY;
-
-    @Value("${jwt.access.secret}")
-    private String ACCESS_SECRET_KEY;
 
     public String extractUsername(String token) {
         return extractClaims(token, Claims::getSubject);

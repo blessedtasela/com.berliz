@@ -25,13 +25,9 @@ public class SubTask implements Serializable {
     @Column(name = "name")
     private String name;
 
-    @ManyToOne
-    @JoinColumn(name = "task_id")
-    private Task task;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_fk", nullable = false)
-    private User user;
+    @JoinColumn(name = "task_fk", nullable = false)
+    private Task task;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "exercise_fk", nullable = false)

@@ -64,7 +64,7 @@ public class NewsletterServiceImplement implements NewsletterService {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Email exists already");
             }
 
-            newsletterRepo.save(getNewsletterFromMap(requestMap));
+            getNewsletterFromMap(requestMap);
             emailUtilities.sendNewsletterStatusMailToUser("true", requestMap.get("email"));
             emailUtilities.sendStatusMailToAdmins("true", requestMap.get("email"),
                     userRepo.getAllAdminsMail(), "Newsletter");
@@ -367,8 +367,8 @@ public class NewsletterServiceImplement implements NewsletterService {
         newsletter.setEmail(requestMap.get("email"));
         newsletter.setStatus("true");
         newsletter.setLastUpdate(currentDate);
-
-        simpMessagingTemplate.convertAndSend("/topic/getNewsletterFromMap", newsletter);
+        Newsletter savedNewsletter = newsletterRepo.save(newsletter);
+        simpMessagingTemplate.convertAndSend("/topic/getNewsletterFromMap", savedNewsletter);
         return newsletter;
     }
 

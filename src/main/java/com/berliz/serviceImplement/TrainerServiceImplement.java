@@ -483,7 +483,8 @@ public class TrainerServiceImplement implements TrainerService {
         trainer.setDate(new Date());
         trainer.setLastUpdate(new Date());
         trainer.setStatus("false");
-        simpMessagingTemplate.convertAndSend("/topic/getTrainerFromMap", trainer);
+        Trainer savedTrainer = trainerRepo.save(trainer);
+        simpMessagingTemplate.convertAndSend("/topic/getTrainerFromMap", savedTrainer);
         return trainer;
     }
 
@@ -524,7 +525,7 @@ public class TrainerServiceImplement implements TrainerService {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer name is already taken. Please choose another name");
             }
 
-            trainerRepo.save(getTrainerFromMap(trainerRequest));
+           getTrainerFromMap(trainerRequest);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer added successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -566,7 +567,7 @@ public class TrainerServiceImplement implements TrainerService {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer name is already taken. Please choose another name");
             }
 
-            trainerRepo.save(getTrainerFromMap(trainerRequest));
+            getTrainerFromMap(trainerRequest);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer added successfully");
         } catch (Exception ex) {
             ex.printStackTrace();

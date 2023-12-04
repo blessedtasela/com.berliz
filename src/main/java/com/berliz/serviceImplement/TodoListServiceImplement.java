@@ -39,9 +39,9 @@ public class TodoListServiceImplement implements TodoListService {
         log.info("Inside addTodo {}", requestMap);
         try {
             User user;
-            if(jwtFilter.isAdmin() && requestMap.containsKey("email")){
+            if (jwtFilter.isAdmin() && requestMap.containsKey("email")) {
                 user = userRepo.findByEmail(requestMap.get("email"));
-            } else{
+            } else {
                 String email = jwtFilter.getCurrentUser();
                 user = userRepo.findByEmail(email);
             }
@@ -60,7 +60,7 @@ public class TodoListServiceImplement implements TodoListService {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "You have this task registered already");
             }
 
-            todoListRepo.save(getTodoListFromMap(requestMap, false, user));
+            getTodoListFromMap(requestMap, false, user);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Task successfully created");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -123,9 +123,9 @@ public class TodoListServiceImplement implements TodoListService {
             TodoList todoList = optional.get();
             User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
             Boolean isTodo;
-            if(jwtFilter.isAdmin()){
-                isTodo =  true;
-            } else{
+            if (jwtFilter.isAdmin()) {
+                isTodo = true;
+            } else {
                 isTodo = todoListRepo.existsByUserAndTask(user, todoList.getTask());
             }
 
@@ -219,8 +219,8 @@ public class TodoListServiceImplement implements TodoListService {
         todoList.setUser(user);
         todoList.setStatus("pending");
         todoList.setLastUpdate(currentDate);
-
-        simpMessagingTemplate.convertAndSend("/topic/getTodoFromMap", todoList);
+        TodoList savedTodoList = todoListRepo.save(todoList);
+        simpMessagingTemplate.convertAndSend("/topic/getTodoFromMap", savedTodoList);
         return todoList;
     }
 

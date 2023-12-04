@@ -3,6 +3,7 @@ package com.berliz.repository;
 
 import com.berliz.models.Exercise;
 import com.berliz.models.SubTask;
+import com.berliz.models.Task;
 import com.berliz.models.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -18,13 +19,6 @@ public interface SubTaskRepo extends JpaRepository<SubTask, Integer> {
      */
     SubTask findByName(String name);
 
-    /**
-     * Find subtasks by user.
-     *
-     * @param user The user associated with the subtasks to search for.
-     * @return List of subtasks matching the user.
-     */
-    List<SubTask> findByUser(User user);
 
     /**
      * Find subtasks by exercise.

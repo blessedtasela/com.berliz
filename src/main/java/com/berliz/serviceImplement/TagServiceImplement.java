@@ -3,7 +3,6 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Tag;
-import com.berliz.models.Trainer;
 import com.berliz.repository.TagRepo;
 import com.berliz.services.TagService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -51,7 +50,7 @@ public class TagServiceImplement implements TagService {
                 if (tag != null) {
                     return buildResponse(HttpStatus.BAD_REQUEST, "Tag exists");
                 }
-                tagRepo.save(getTagFromMap(requestMap, false));
+                getTagFromMap(requestMap, false);
                 return buildResponse(HttpStatus.OK, "Tag added successfully");
             }
         } catch (Exception ex) {
@@ -140,10 +139,10 @@ public class TagServiceImplement implements TagService {
 
             if (status.equalsIgnoreCase("true")) {
                 status = "false";
-            responseMessage = "Tag has been deactivated successfully";
+                responseMessage = "Tag has been deactivated successfully";
             } else {
                 status = "true";
-                responseMessage =  "Tag has been successfully activated";
+                responseMessage = "Tag has been successfully activated";
             }
 
             tag.setStatus(status);
@@ -249,8 +248,8 @@ public class TagServiceImplement implements TagService {
         tag.setDescription(requestMap.get("description"));
         tag.setStatus("true");
         tag.setLastUpdate(currentDate);
-
-        simpMessagingTemplate.convertAndSend("/topic/getTagFromMap", tag);
+        Tag savedTag = tagRepo.save(tag);
+        simpMessagingTemplate.convertAndSend("/topic/getTagFromMap", savedTag);
         return tag;
     }
 

@@ -3,11 +3,11 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Category;
-import com.berliz.models.Client;
+import com.berliz.models.Member;
 import com.berliz.models.Subscription;
 import com.berliz.models.User;
 import com.berliz.repository.*;
-import com.berliz.services.ClientService;
+import com.berliz.services.MemberService;
 import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.EmailUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -27,12 +27,12 @@ import java.time.Period;
 import java.time.ZoneId;
 import java.util.*;
 
-@Service
 @Slf4j
-public class ClientServiceImplement implements ClientService {
+@Service
+public class MemberServiceImplement implements MemberService {
 
     @Autowired
-    ClientRepo clientRepo;
+    MemberRepo memberRepo;
 
     @Autowired
     CategoryRepo categoryRepo;
@@ -56,9 +56,9 @@ public class ClientServiceImplement implements ClientService {
     SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
-    public ResponseEntity<String> addClient(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> addMember(Map<String, String> requestMap) throws JsonProcessingException {
         try {
-            log.info("Inside addClient {}", requestMap);
+            log.info("Inside addMember {}", requestMap);
             boolean isValid = validateRequestFromMap(requestMap, false);
             log.info("Is request valid? {}", isValid);
 
@@ -82,12 +82,12 @@ public class ClientServiceImplement implements ClientService {
                     return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Admin cannot be a client");
                 }
 
-                Client client = clientRepo.findByUser(user);
-                if (client != null) {
-                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Client exists already");
+                Member member = memberRepo.findByUser(user);
+                if (member != null) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Member exists already");
                 }
 
-                getClientFromMap(requestMap, user);
+                getMemberFromMap(requestMap, user);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "You have successfully added "
                         + user.getFirstname() + " as a client");
             } else {
@@ -97,11 +97,11 @@ public class ClientServiceImplement implements ClientService {
                     return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Invalid user");
                 }
 
-                Client client = clientRepo.findByUser(user);
-                if (client != null) {
+                Member member = memberRepo.findByUser(user);
+                if (member != null) {
                     return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Client exists already");
                 }
-                getClientFromMap(requestMap, user);
+                getMemberFromMap(requestMap, user);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Hello "
                         + user.getFirstname() + " your information has been saved successfully");
             }
@@ -112,14 +112,14 @@ public class ClientServiceImplement implements ClientService {
     }
 
     @Override
-    public ResponseEntity<List<Client>> getAllClients() {
+    public ResponseEntity<List<Member>> getAllMembers() {
         try {
-            log.info("Inside getAllClients");
+            log.info("Inside getAllMembers");
             if (!jwtFilter.isAdmin()) {
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
             }
-            List<Client> clients = clientRepo.findAll();
-            return new ResponseEntity<>(clients, HttpStatus.OK);
+            List<Member> members = memberRepo.findAll();
+            return new ResponseEntity<>(members, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -127,14 +127,14 @@ public class ClientServiceImplement implements ClientService {
     }
 
     @Override
-    public ResponseEntity<List<Client>> getActiveClients() {
+    public ResponseEntity<List<Member>> getActiveMembers() {
         try {
-            log.info("Inside getActiveClients");
+            log.info("Inside getActiveMembers");
             if (!jwtFilter.isAdmin()) {
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
             }
-            List<Client> clients = clientRepo.getActiveClients();
-            return new ResponseEntity<>(clients, HttpStatus.OK);
+            List<Member> members = memberRepo.getActiveMembers();
+            return new ResponseEntity<>(members, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -142,41 +142,41 @@ public class ClientServiceImplement implements ClientService {
     }
 
     @Override
-    public ResponseEntity<String> updateClient(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> updateMember(Map<String, String> requestMap) throws JsonProcessingException {
         try {
-            log.info("Inside updateClient {}", requestMap);
+            log.info("Inside updateMember {}", requestMap);
             boolean isValid = validateRequestFromMap(requestMap, true);
             log.info("Is request valid? {}", isValid);
             if (!isValid) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
-            Optional<Client> optional = clientRepo.findById(Integer.valueOf(requestMap.get("id")));
+            Optional<Member> optional = memberRepo.findById(Integer.valueOf(requestMap.get("id")));
             if (optional.isEmpty()) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Partner ID not found");
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Member ID not found");
             }
 
-            Client client = optional.get();
+            Member member = optional.get();
             String currentUser = jwtFilter.getCurrentUser();
-            if (!(jwtFilter.isAdmin() || client.getUser().getEmail().equals(currentUser))) {
+            if (!(jwtFilter.isAdmin() || member.getUser().getEmail().equals(currentUser))) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            if (client.getStatus().equalsIgnoreCase("true")) {
+            if (member.getStatus().equalsIgnoreCase("true")) {
                 if (jwtFilter.isAdmin()) {
-                    return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Cannot make an update. Partner is now active");
+                    return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Cannot make an update. Member is now active");
                 } else {
                     return BerlizUtilities.buildResponse(HttpStatus.OK, "Sorry " +
-                            client.getUser().getFirstname() + ", you cannot make an update. " +
-                            " Your goal is in progress");
+                            member.getUser().getFirstname() + ", you cannot make an update. " +
+                            " Your membership is now active");
                 }
             }
 
-            User user = client.getUser();
+            User user = member.getUser();
             double height = Double.parseDouble(requestMap.get("height"));
-            client.setHeight(height);
+            member.setHeight(height);
             double weight = Double.parseDouble(requestMap.get("weight"));
-            client.setWeight(weight);
+            member.setWeight(weight);
             String dobString = user.getDob();
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
             Date dob = dateFormat.parse(dobString);
@@ -186,7 +186,7 @@ public class ClientServiceImplement implements ClientService {
             Integer age = period.getYears();
             double BMI = weight / (height * height);
             double bodyFat = 1.2 * BMI + 0.23 * age - 5.4;
-            client.setBodyFat(bodyFat);
+            member.setBodyFat(bodyFat);
 
             String categoryIdsString = requestMap.get("categoryIds");
             if (!categoryIdsString.isEmpty()) {
@@ -195,37 +195,33 @@ public class ClientServiceImplement implements ClientService {
                 for (String categoryIdString : categoryIdsArray) {
                     int categoryId = Integer.parseInt(categoryIdString.trim());
                     Category category = categoryRepo.findById(categoryId)
-                            .orElseThrow(() -> new EntityNotFoundException("Exercise not found with ID: " + categoryId));
+                            .orElseThrow(() -> new EntityNotFoundException("Category not found with ID: " + categoryId));
                     categories.add(category);
                 }
-                client.setCategories(categories);
+                member.setCategories(categories);
             }
 
             List<Subscription> subscriptions = subscriptionRepo.findByUser(user);
             if (!subscriptions.isEmpty()) {
                 Set<Subscription> subscriptionSet = new HashSet<>(subscriptions);
-                client.setSubscriptions(subscriptionSet);
+                member.setSubscriptions(subscriptionSet);
             }
 
-            client.setMotivation(requestMap.get("motivation"));
-            client.setMode(requestMap.get("mode"));
-            client.setTargetWeight(Double.parseDouble(requestMap.get("targetWeight")));
-            client.setDietaryRestrictions(requestMap.get("dietaryRestrictions"));
-            client.setCalorieIntake(Integer.valueOf(requestMap.get("caloriesIntake")));
-            client.setDietaryPreferences(requestMap.get("dietaryPreferences"));
-            client.setMedicalConditions(requestMap.get("medicalConditions"));
-            client.setLastUpdate(new Date());
-            Client savedClient = clientRepo.save(client);
+            member.setMotivation(requestMap.get("motivation"));
+            member.setTargetWeight(Double.parseDouble(requestMap.get("targetWeight")));
+            member.setMedicalConditions(requestMap.get("medicalConditions"));
+            member.setLastUpdate(new Date());
+            Member savedMember = memberRepo.save(member);
             String responseMessage;
             if (jwtFilter.isAdmin()) {
                 responseMessage = "Client updated successfully";
             } else {
                 responseMessage = "Hello " +
-                        client.getUser().getFirstname() + " you have successfully " +
+                        member.getUser().getFirstname() + " you have successfully " +
                         " updated your client information";
             }
 
-            simpMessagingTemplate.convertAndSend("/topic/updateClient", client);
+            simpMessagingTemplate.convertAndSend("/topic/updateClient", savedMember);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -234,26 +230,26 @@ public class ClientServiceImplement implements ClientService {
     }
 
     @Override
-    public ResponseEntity<String> deleteClient(Integer id) throws JsonProcessingException {
+    public ResponseEntity<String> deleteMember(Integer id) throws JsonProcessingException {
         try {
-            log.info("inside deleteClient {}", id);
+            log.info("inside deleteMember {}", id);
             if (!jwtFilter.isAdmin()) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
-            Optional<Client> optional = clientRepo.findById(id);
+            Optional<Member> optional = memberRepo.findById(id);
             if (optional.isEmpty()) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Client not found");
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Member not found");
             }
             log.info("inside optional {}", optional);
             try {
-                Client client = optional.get();
-                clientRepo.deleteById(id);
-                simpMessagingTemplate.convertAndSend("/topic/deleteClient", client);
-                return BerlizUtilities.buildResponse(HttpStatus.OK, "Client deleted successfully");
+                Member member = optional.get();
+                memberRepo.deleteById(id);
+                simpMessagingTemplate.convertAndSend("/topic/deleteMember", member);
+                return BerlizUtilities.buildResponse(HttpStatus.OK, "Member deleted successfully");
             } catch (DataIntegrityViolationException ex) {
                 // Handle foreign key constraint violation when deleting
                 ex.printStackTrace();
-                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Cannot delete client due to a foreign key constraint violation.");
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Cannot delete member due to a foreign key constraint violation.");
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -269,25 +265,25 @@ public class ClientServiceImplement implements ClientService {
             if (!jwtFilter.isAdmin()) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
-            Optional<Client> optional = clientRepo.findById(id);
+            Optional<Member> optional = memberRepo.findById(id);
             if (optional.isEmpty()) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Client not found");
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Member not found");
             }
             log.info("Inside optional {}", optional);
             status = optional.get().getStatus();
-            Client client = optional.get();
+            Member member = optional.get();
             String responseMessage;
             if (status.equalsIgnoreCase("true")) {
                 status = "false";
-                responseMessage = "Client Status updated successfully. Now Deactivated";
+                responseMessage = "Member Status updated successfully. Now Deactivated";
             } else {
                 status = "true";
-                responseMessage = "Client Status updated successfully. Now Activated";
+                responseMessage = "Member Status updated successfully. Now Activated";
             }
 
-            client.setStatus(status);
-            clientRepo.save(client);
-            simpMessagingTemplate.convertAndSend("/topic/updateClientStatus", client);
+            member.setStatus(status);
+            memberRepo.save(member);
+            simpMessagingTemplate.convertAndSend("/topic/updateMemberStatus", member);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (
                 Exception ex) {
@@ -297,29 +293,29 @@ public class ClientServiceImplement implements ClientService {
     }
 
     @Override
-    public ResponseEntity<Client> getClient(Integer id) {
+    public ResponseEntity<Member> getMember(Integer id) {
         try {
-            log.info("Inside getClient {}", id);
-            Optional<Client> optional = clientRepo.findById(id);
+            log.info("Inside getMember {}", id);
+            Optional<Member> optional = memberRepo.findById(id);
             if (optional.isPresent()) {
                 return new ResponseEntity<>(optional.get(), HttpStatus.OK);
             } else {
-                return new ResponseEntity<>(new Client(), HttpStatus.NOT_FOUND);
+                return new ResponseEntity<>(new Member(), HttpStatus.NOT_FOUND);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return new ResponseEntity<>(new Client(), HttpStatus.OK);
+        return new ResponseEntity<>(new Member(), HttpStatus.OK);
     }
 
-    private void getClientFromMap(Map<String, String> requestMap, User user) throws ParseException {
-        Client client = new Client();
-        client.setUser(user);
+    private void getMemberFromMap(Map<String, String> requestMap, User user) throws ParseException {
+        Member member = new Member();
+        member.setUser(user);
 
         double height = Double.parseDouble(requestMap.get("height"));
-        client.setHeight(height);
+        member.setHeight(height);
         double weight = Double.parseDouble(requestMap.get("weight"));
-        client.setWeight(weight);
+        member.setWeight(weight);
         String dobString = user.getDob();
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         Date dob = dateFormat.parse(dobString);
@@ -329,7 +325,7 @@ public class ClientServiceImplement implements ClientService {
         Integer age = period.getYears();
         double BMI = weight / (height * height);
         double bodyFat = 1.2 * BMI + 0.23 * age - 5.4;
-        client.setBodyFat(bodyFat);
+        member.setBodyFat(bodyFat);
 
         String categoryIdsString = requestMap.get("categoryIds");
         if (!categoryIdsString.isEmpty()) {
@@ -341,27 +337,23 @@ public class ClientServiceImplement implements ClientService {
                         .orElseThrow(() -> new EntityNotFoundException("Exercise not found with ID: " + categoryId));
                 categories.add(category);
             }
-            client.setCategories(categories);
+            member.setCategories(categories);
         }
 
         List<Subscription> subscriptions = subscriptionRepo.findByUser(user);
         if (!subscriptions.isEmpty()) {
             Set<Subscription> subscriptionSet = new HashSet<>(subscriptions);
-            client.setSubscriptions(subscriptionSet);
+            member.setSubscriptions(subscriptionSet);
         }
 
-        client.setMotivation(requestMap.get("motivation"));
-        client.setMode(requestMap.get("mode"));
-        client.setTargetWeight(Double.parseDouble(requestMap.get("targetWeight")));
-        client.setDietaryRestrictions(requestMap.get("dietaryRestrictions"));
-        client.setCalorieIntake(Integer.valueOf(requestMap.get("caloriesIntake")));
-        client.setDietaryPreferences(requestMap.get("dietaryPreferences"));
-        client.setMedicalConditions(requestMap.get("medicalConditions"));
-        client.setDate(new Date());
-        client.setLastUpdate(new Date());
-        client.setStatus("false");
-        Client savedClient = clientRepo.save(client);
-        simpMessagingTemplate.convertAndSend("/topic/getClientFromMap", savedClient);
+        member.setMotivation(requestMap.get("motivation"));
+        member.setTargetWeight(Double.parseDouble(requestMap.get("targetWeight")));
+        member.setMedicalConditions(requestMap.get("medicalConditions"));
+        member.setDate(new Date());
+        member.setLastUpdate(new Date());
+        member.setStatus("false");
+        Member savedMember = memberRepo.save(member);
+        simpMessagingTemplate.convertAndSend("/topic/getMemberFromMap", savedMember);
     }
 
     private boolean validateRequestFromMap(Map<String, String> requestMap, boolean validId) {

@@ -56,12 +56,8 @@ public class PartnerServiceImplement implements PartnerService {
     public ResponseEntity<String> addPartner(PartnerRequest request) throws JsonProcessingException {
         try {
             log.info("Inside addPartner {}", request);
-            boolean isAdmin = jwtFilter.isAdmin();
-
-            // Validate the request data
             boolean isValid = request != null;
             log.info("Is request valid? {}", isValid);
-
             if (!isValid) {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
@@ -71,11 +67,9 @@ public class PartnerServiceImplement implements PartnerService {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Invalid role value. Allowed values are 'store', 'center', or 'trainer'");
             }
 
-            // If the user is an admin
-            if (isAdmin) {
-                // Admin must provide userId
+            if (jwtFilter.isAdmin()) {
                 if (request.getEmail() == null) {
-                    return buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide userId");
+                    return buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide user email");
                 }
 
                 User user = userRepo.findByEmail(request.getEmail());
@@ -83,42 +77,35 @@ public class PartnerServiceImplement implements PartnerService {
                     return buildResponse(HttpStatus.NOT_FOUND, "User id not found in db");
                 }
 
-                // Check if the user is an admin
                 String userRole = user.getRole();
                 boolean validateAdminRole = userRole.equalsIgnoreCase("admin");
                 if (validateAdminRole) {
                     return buildResponse(HttpStatus.UNAUTHORIZED, "Admin cannot be a partner");
                 }
 
-                // Check if a partner entry already exists for the provided user ID
-                Partner userPartner = partnerRepo.findByUserId(user.getId());
-                if (userPartner != null && userPartner.getStatus().equalsIgnoreCase("false")) {
+                Partner partner = partnerRepo.findByUserId(user.getId());
+                if (partner != null && partner.getStatus().equalsIgnoreCase("false")) {
                     return buildResponse(HttpStatus.BAD_REQUEST, "Partner application pending, please wait for approval");
                 }
 
-                // Create and save the partner entry
-                partnerRepo.save(getPartnerFromMap(request, user.getId()));
+                getPartnerFromMap(request, user);
                 return buildResponse(HttpStatus.OK, "You have successfully created a partner entry for " + user.getFirstname());
 
             } else {
-                // Get the current user's ID from JWT
                 Integer userId = jwtFilter.getCurrentUserId();
-                if (userId == null) {
+                User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+                if (user ==  null) {
                     return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid user");
                 }
 
-                // Check if a partner entry already exists for the current user
                 Partner userPartner = partnerRepo.findByUserId(userId);
                 if (userPartner != null && userPartner.getUser().getStatus().equalsIgnoreCase("false")) {
                     return buildResponse(HttpStatus.UNAUTHORIZED, "Your application is awaiting approval");
                 }
-
                 if (userPartner != null) {
                     return buildResponse(HttpStatus.UNAUTHORIZED, "Partner entry exists already");
                 }
-
-                // Create and save the partner entry
-                partnerRepo.save(getPartnerFromMap(request, userId));
+                getPartnerFromMap(request, user);
             }
 
             return buildResponse(HttpStatus.CREATED, "Partner entry added successfully");
@@ -425,16 +412,12 @@ public class PartnerServiceImplement implements PartnerService {
      * Creates and returns a new Partner object based on the provided requestMap and userId.
      *
      * @param request A map containing partner data from the request
-     * @param userId  The ID of the user associated with the partner
+     * @param user  The user associated with the partner
      * @return The created Partner object
      */
-    private Partner getPartnerFromMap(PartnerRequest request, Integer userId) throws IOException {
+    private Partner getPartnerFromMap(PartnerRequest request, User user) throws IOException {
         // Initialize Partner and User objects
         Partner partner = new Partner();
-        User user = new User();
-
-        // Set the ID of the user
-        user.setId(userId);
         partner.setUser(user);
 
         // Set partner attributes from the requestMap
@@ -450,8 +433,8 @@ public class PartnerServiceImplement implements PartnerService {
         partner.setDate(new Date());
         partner.setLastUpdate(new Date());
         partner.setStatus("false");
-        simpMessagingTemplate.convertAndSend("/topic/getPartnerFromMap", partner);
-
+        Partner savedPartner = partnerRepo.save(partner);
+        simpMessagingTemplate.convertAndSend("/topic/getPartnerFromMap", savedPartner);
         return partner;
     }
 
@@ -462,13 +445,8 @@ public class PartnerServiceImplement implements PartnerService {
      * @return True if the role is valid, false otherwise
      */
     private boolean isValidRole(String role) {
-        // Define a list of valid roles
         List<String> validRoles = Arrays.asList("store", "driver", "trainer", "center");
-
-        // Convert the provided role value to lowercase for case-insensitive comparison
         String lowercaseRole = role.toLowerCase();
-
-        // Check if the lowercaseRole exists in the list of valid roles
         return validRoles.contains(lowercaseRole);
     }
 

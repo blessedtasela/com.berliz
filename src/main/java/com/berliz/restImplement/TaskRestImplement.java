@@ -73,6 +73,16 @@ public class TaskRestImplement implements TaskRest {
     }
 
     @Override
+    public ResponseEntity<List<Task>> getTrainerTasks() {
+        try {
+            return taskService.getTrainerTasks();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
     public ResponseEntity<Task> getTask(Integer id) {
         try {
             return taskService.getTask(id);

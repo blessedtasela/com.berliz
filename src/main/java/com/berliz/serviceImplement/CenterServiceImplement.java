@@ -509,8 +509,8 @@ public class CenterServiceImplement implements CenterService {
         center.setDate(new Date());
         center.setLastUpdate(new Date());
         center.setStatus("false"); // Initializing status
-
-        simpMessagingTemplate.convertAndSend("/topic/getCenterFromMap", center);
+        Center savedCenter = centerRepo.save(center);
+        simpMessagingTemplate.convertAndSend("/topic/getCenterFromMap", savedCenter);
         return center;
     }
 
@@ -590,7 +590,7 @@ public class CenterServiceImplement implements CenterService {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Center name is already taken. Please choose another name");
             }
 
-            centerRepo.save(getCenterFromMap(centerRequest));
+            getCenterFromMap(centerRequest);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Center added successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -633,7 +633,7 @@ public class CenterServiceImplement implements CenterService {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Center name is already taken. Please choose another name");
             }
 
-            centerRepo.save(getCenterFromMap(centerRequest));
+            getCenterFromMap(centerRequest);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Your Trainer account has successfully been created");
         } catch (Exception ex) {
             ex.printStackTrace();

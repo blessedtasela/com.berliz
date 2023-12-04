@@ -1,9 +1,9 @@
 package com.berliz.restImplement;
 
 import com.berliz.constants.BerlizConstants;
-import com.berliz.models.Client;
-import com.berliz.rest.ClientRest;
-import com.berliz.services.ClientService;
+import com.berliz.models.Member;
+import com.berliz.rest.MemberRest;
+import com.berliz.services.MemberService;
 import com.berliz.utils.BerlizUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,15 +14,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class ClientRestImplement implements ClientRest {
+public class MemberRestImplement implements MemberRest {
 
     @Autowired
-    ClientService clientService;
+    MemberService memberService;
 
     @Override
-    public ResponseEntity<String> addClient(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> addMember(Map<String, String> requestMap) throws JsonProcessingException {
         try {
-            return clientService.addClient(requestMap);
+            return memberService.addMember(requestMap);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -30,9 +30,9 @@ public class ClientRestImplement implements ClientRest {
     }
 
     @Override
-    public ResponseEntity<List<Client>> getAllClients() {
+    public ResponseEntity<List<Member>> getAllMembers() {
         try {
-            return clientService.getAllClients();
+            return memberService.getAllMembers();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -40,9 +40,9 @@ public class ClientRestImplement implements ClientRest {
     }
 
     @Override
-    public ResponseEntity<List<Client>> getActiveClients() {
+    public ResponseEntity<List<Member>> getActiveMembers() {
         try {
-            return clientService.getActiveClients();
+            return memberService.getActiveMembers();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -50,9 +50,9 @@ public class ClientRestImplement implements ClientRest {
     }
 
     @Override
-    public ResponseEntity<String> updateClient(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> updateMember(Map<String, String> requestMap) throws JsonProcessingException {
         try {
-            return clientService.updateClient(requestMap);
+            return memberService.updateMember(requestMap);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -60,20 +60,19 @@ public class ClientRestImplement implements ClientRest {
     }
 
     @Override
-    public ResponseEntity<String> deleteClient(Integer id) throws JsonProcessingException {
+    public ResponseEntity<String> deleteMember(Integer id) throws JsonProcessingException {
         try {
-            return clientService.deleteClient(id);
+            return memberService.deleteMember(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
-
 
     @Override
     public ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException {
         try {
-            return clientService.updateStatus(id);
+            return memberService.updateStatus(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -81,13 +80,13 @@ public class ClientRestImplement implements ClientRest {
     }
 
     @Override
-    public ResponseEntity<Client> getClient(Integer id) {
+    public ResponseEntity<Member> getMember(Integer id) {
         try {
-            return clientService.getClient(id);
+            return memberService.getMember(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return new ResponseEntity<>(new Client(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(new Member(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 }

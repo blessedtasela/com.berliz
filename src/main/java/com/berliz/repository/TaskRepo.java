@@ -3,6 +3,7 @@ package com.berliz.repository;
 
 import com.berliz.models.SubTask;
 import com.berliz.models.Task;
+import com.berliz.models.Trainer;
 import com.berliz.models.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -25,6 +26,22 @@ public interface TaskRepo extends JpaRepository<Task, Integer> {
      * @return List of tasks matching the user.
      */
     List<Task> findByUser(User user);
+
+    /**
+     * Find tasks by user.
+     *
+     * @param trainer The trainer associated with the tasks to search for.
+     * @return List of tasks matching the trainer.
+     */
+    List<Task> findByTrainer(Trainer trainer);
+
+    /**
+     * Find task by user.
+     *
+     * @param user The user associated with the task to search for.
+     * @return task matching the user.
+     */
+    Task findActiveTaskByUser(User user);
 
     /**
      * Find tasks by subtask.

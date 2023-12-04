@@ -8,15 +8,17 @@ import org.hibernate.annotations.DynamicUpdate;
 import java.io.Serializable;
 import java.util.Date;
 
-@NamedQuery(name = "Testimonial.getActiveTestimonials",
-        query = "select t from Testimonial t where t.status='true'")
+@NamedQuery(name = "Payment.findActivePaymentByUser",
+        query = "select p from Payment p where p.status='true' AND p.user = :user")
+
+@NamedQuery(name = "Payment.getActivePayments", query = "select p from Payment p where p.status='true'")
 
 @Data
 @Entity
 @DynamicInsert
 @DynamicUpdate
-@Table(name = "testimonial")
-public class Testimonial implements Serializable {
+@Table(name = "payment")
+public class Payment implements Serializable {
 
     private static final long SerialVersionUID = 1L;
 
@@ -25,26 +27,26 @@ public class Testimonial implements Serializable {
     @Column(name = "id", columnDefinition = "INTEGER")
     private Integer id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_fk", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "center_fk", nullable = false)
-    private Center center;
+    @ManyToOne
+    @JoinColumn(name = "payer_id")
+    private User payer;
 
-    @Column(name = "testimonial", columnDefinition = "TEXT")
-    private String testimonial;
+    @Column(name = "payment_method")
+    private String paymentMethod;
 
-    @Column(name = "likes", columnDefinition = "INTEGER")
-    private Integer likes;
-
-    @Column(name = "status")
-    private String status;
+    @Column(name = "amount", columnDefinition = "FLOAT")
+    private double amount;
 
     @Column(name = "date", columnDefinition = "DATE")
     private Date date;
 
     @Column(name = "lastUpdate", columnDefinition = "DATE")
     private Date lastUpdate;
+
+    @Column(name = "status")
+    private String status;
 }

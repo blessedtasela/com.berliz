@@ -69,7 +69,7 @@ public class CategoryServiceImplement implements CategoryService {
             if (category != null) {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Category exists");
             }
-            categoryRepo.save(getCategoryFromMap(requestMap));
+            getCategoryFromMap(requestMap);
             return buildResponse(HttpStatus.OK, "Category added successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -413,7 +413,8 @@ public class CategoryServiceImplement implements CategoryService {
         category.setLikes(Integer.parseInt(requestMap.get("likes")));
         category.setStatus("true");
         category.setLastUpdate(currentDate);
-        simpMessagingTemplate.convertAndSend("/topic/getCategoryFromMap", category);
+        Category savedCategory = categoryRepo.save(category);
+        simpMessagingTemplate.convertAndSend("/topic/getCategoryFromMap", savedCategory);
         return category;
     }
 
