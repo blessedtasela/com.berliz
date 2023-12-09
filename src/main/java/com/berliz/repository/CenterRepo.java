@@ -95,4 +95,5 @@ public interface CenterRepo extends JpaRepository<Center, Integer> {
      * @return The list of center or null if not found
      */
     List<Center>getActiveCenters();
+
 }

@@ -30,4 +30,6 @@ public interface ClientRepo extends JpaRepository<Client, Integer> {
      * @return List of clients whose status is true.
      */
     List<Client> getActiveClients();
+
+    Integer countTrainerClientsByEmail(String email);
 }

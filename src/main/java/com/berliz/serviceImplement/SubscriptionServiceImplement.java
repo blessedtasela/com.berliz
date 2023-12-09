@@ -306,6 +306,7 @@ public class SubscriptionServiceImplement implements SubscriptionService {
         if (payment != null) {
             subscription.setPayment(payment);
         }
+
         Trainer trainer = trainerRepo.findByTrainerId(Integer.valueOf(requestMap.get("trainerId")));
         if (trainer != null) {
             subscription.setTrainer(trainer);

@@ -11,6 +11,12 @@ import java.util.Date;
 @NamedQuery(name = "Testimonial.getActiveTestimonials",
         query = "select t from Testimonial t where t.status='true'")
 
+@NamedQuery(name = "Testimonial.countCenterTestimonialsByEmail",
+        query = "SELECT COUNT(t) FROM Testimonial t WHERE t.center.partner.user.email =: email")
+
+@NamedQuery(name = "Testimonial.countUserTestimonialsByEmail",
+        query = "SELECT COUNT(t) FROM Testimonial t WHERE t.user.email =: email")
+
 @Data
 @Entity
 @DynamicInsert

@@ -12,6 +12,10 @@ import java.util.Set;
 
 @NamedQuery(name = "Member.getActiveMembers", query = "select m from Member m where m.status='true'")
 
+@NamedQuery(name = "Member.countCenterMembersByEmail",
+        query = "SELECT COUNT(m) FROM Member m JOIN m.subscriptions s " +
+                "JOIN s.center c JOIN c.partner p JOIN p.user u WHERE u.email = :email")
+
 @Data
 @Entity
 @DynamicInsert

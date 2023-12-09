@@ -14,6 +14,12 @@ import java.util.Date;
 @NamedQuery(name = "Subscription.getActiveSubscriptions",
         query = "select s from Subscription s where s.status='true'")
 
+@NamedQuery(name = "Subscription.countClientSubscriptionsByEmail",
+        query = "SELECT COUNT(s) FROM Subscription s WHERE s.user.email =: email")
+
+@NamedQuery(name = "Subscription.countMemberSubscriptionsByEmail",
+        query = "SELECT COUNT(s) FROM Subscription s WHERE s.user.email =: email")
+
 @Data
 @Entity
 @DynamicInsert
@@ -61,4 +67,5 @@ public class Subscription implements Serializable {
 
     @Column(name = "status")
     private String status;
+
 }

@@ -43,4 +43,8 @@ public interface TestimonialRepo extends JpaRepository<Testimonial, Integer> {
      * @return List of testimonials whose status is true.
      */
     List<Testimonial> getActiveTestimonials();
+
+    Integer countUserTestimonialsByEmail(String email);
+
+    Integer countCenterTestimonialsByEmail(String email);
 }

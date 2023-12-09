@@ -10,7 +10,12 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
-@NamedQuery(name = "Client.getActiveClients", query = "select c from Client c where c.status='true'")
+@NamedQuery(name = "Client.getActiveClients",
+        query = "select c from Client c where c.status='true'")
+
+@NamedQuery(name = "Client.countTrainerClientsByEmail",
+        query = "SELECT COUNT(c) FROM Client c JOIN c.subscriptions s " +
+                "JOIN s.trainer t JOIN t.partner p JOIN p.user u WHERE u.email = :email")
 
 @Data
 @Entity

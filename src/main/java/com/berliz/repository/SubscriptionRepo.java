@@ -8,13 +8,6 @@ import java.util.List;
 
 public interface SubscriptionRepo extends JpaRepository<Subscription, Integer> {
 
-    /**
-     * Find a subscription by name.
-     *
-     * @param name The name of the subscription to search for.
-     * @return The found subscription or null if not found.
-     */
-    Subscription findByName(String name);
 
     /**
      * Find subscriptions by trainer.
@@ -62,4 +55,8 @@ public interface SubscriptionRepo extends JpaRepository<Subscription, Integer> {
      * @return List of subscriptions whose status is true.
      */
     List<Subscription> getActiveSubscriptions();
+
+    Integer countClientSubscriptionsByEmail(String email);
+
+    Integer countMemberSubscriptionsByEmail(String email);
 }

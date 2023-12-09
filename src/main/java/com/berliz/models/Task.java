@@ -15,6 +15,13 @@ import java.util.List;
 
 @NamedQuery(name = "Task.getActiveTasks",
         query = "select t from Task t WHERE t.status ='true'")
+
+@NamedQuery(name = "Task.countClientTasksByEmail",
+        query = "SELECT COUNT(t) FROM Task t WHERE t.user.email =: email")
+
+@NamedQuery(name = "Task.countTrainerTasksByEmail",
+        query = "SELECT COUNT(t) FROM Task t WHERE t.trainer.partner.user.email =: email")
+
 @Data
 @Entity
 @DynamicInsert

@@ -3,6 +3,7 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Center;
+import com.berliz.models.SubTask;
 import com.berliz.models.Trainer;
 import com.berliz.repository.*;
 import com.berliz.services.DashboardService;
@@ -69,6 +70,27 @@ public class DashboardServiceImplement implements DashboardService {
     ExerciseRepo exerciseRepo;
 
     @Autowired
+    TestimonialRepo testimonialRepo;
+
+    @Autowired
+    SubscriptionRepo subscriptionRepo;
+
+    @Autowired
+    PaymentRepo paymentRepo;
+
+    @Autowired
+    TaskRepo taskRepo;
+
+    @Autowired
+    SubTaskRepo subTaskRepo;
+
+    @Autowired
+    MemberRepo memberRepo;
+
+    @Autowired
+    ClientRepo clientRepo;
+
+    @Autowired
     JWTFilter jwtFilter;
 
     @Override
@@ -78,27 +100,54 @@ public class DashboardServiceImplement implements DashboardService {
             Integer userOrdersCount = orderRepo.countOrdersByEmail(jwtFilter.getCurrentUser());
             Integer partnerApplicationCount = partnerRepo.countPartnerByEmail(jwtFilter.getCurrentUser());
             Integer myTodoCount = todoListRepo.countMyTodosByEmail(jwtFilter.getCurrentUser());
+            Integer clientTaskCount = taskRepo.countClientTasksByEmail(jwtFilter.getCurrentUser());
+            Integer trainerTaskCount = taskRepo.countTrainerTasksByEmail(jwtFilter.getCurrentUser());
+            Integer clientSubscriptionCount = subscriptionRepo.countClientSubscriptionsByEmail(jwtFilter.getCurrentUser());
+            Integer trainerClientCount = clientRepo.countTrainerClientsByEmail(jwtFilter.getCurrentUser());
+            Integer centerMemberCount = memberRepo.countCenterMembersByEmail(jwtFilter.getCurrentUser());
+            Integer memberSubscriptionCount = subscriptionRepo.countMemberSubscriptionsByEmail(jwtFilter.getCurrentUser());
+            Integer userTestimonialCount = testimonialRepo.countUserTestimonialsByEmail(jwtFilter.getCurrentUser());
+            Integer centerTestimonialCount = testimonialRepo.countCenterTestimonialsByEmail(jwtFilter.getCurrentUser());
 
             Map<String, Object> map = new HashMap<>();
             if (jwtFilter.isAdmin()) {
                 map.put("users", userRepo.count());
                 map.put("partners", partnerRepo.count());
-                map.put("categories", categoryRepo.count());
-                map.put("tags", tagRepo.count());
-                map.put("trainers", trainerRepo.count());
-                map.put("centers", centerRepo.count());
-                map.put("newsletters", newsletterRepo.count());
-                map.put("contact-us", contactUsRepo.count());
-                map.put("todo-lists", todoListRepo.count());
-                map.put("muscle-groups", muscleGroupRepo.count());
+                map.put("todos", todoListRepo.count());
                 map.put("exercises", exerciseRepo.count());
+                map.put("clients", clientRepo.count());
+                map.put("members", memberRepo.count());
+                map.put("all-categories", categoryRepo.count());
+                map.put("tags", tagRepo.count());
+                map.put("all-trainers", trainerRepo.count());
+                map.put("all-centers", centerRepo.count());
+                map.put("newsletters", newsletterRepo.count());
+                map.put("all-contact-us", contactUsRepo.count());
+                map.put("all-testimonials", testimonialRepo.count());
+                map.put("muscle-groups", muscleGroupRepo.count());
+                map.put("payments", paymentRepo.count());
+                map.put("subscriptions", subscriptionRepo.count());
+                map.put("tasks", taskRepo.count());
+                map.put("sub-tasks", subTaskRepo.count());
             }
             else if (jwtFilter.isUser()) {
             }
             else if (jwtFilter.isTrainer()) {
+                map.put("clients-tasks", trainerTaskCount);
+                map.put("my-clients", trainerClientCount);
             }
             else if (jwtFilter.isCenter()) {
+                map.put("my-members", centerMemberCount);
+                map.put("members-testimonial", centerTestimonialCount);
             }
+            else if (jwtFilter.isMember()) {
+                map.put("my-subscriptions", memberSubscriptionCount);
+            }
+            else if(jwtFilter.isClient()){
+                map.put("my-tasks", clientTaskCount);
+                map.put("my-subscriptions", clientSubscriptionCount);
+            }
+            map.put("my-testimonials", userTestimonialCount);
             map.put("my-orders", userOrdersCount);
             map.put("partnership", partnerApplicationCount);
             map.put("my-todos", myTodoCount);

@@ -10,14 +10,6 @@ import java.util.List;
 public interface PaymentRepo extends JpaRepository<Payment, Integer> {
 
     /**
-     * Find a payment by name.
-     *
-     * @param name The name of the payment to search for.
-     * @return The found payment or null if not found.
-     */
-    Payment findByName(String name);
-
-    /**
      * Find payments by payer (user).
      *
      * @param user The user who made the payments to search for.

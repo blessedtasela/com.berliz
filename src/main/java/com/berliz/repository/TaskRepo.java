@@ -57,4 +57,8 @@ public interface TaskRepo extends JpaRepository<Task, Integer> {
      * @return List of tasks whose status is true.
      */
     List<Task> getActiveTasks();
+
+    Integer countClientTasksByEmail(String email);
+
+    Integer countTrainerTasksByEmail(String email);
 }

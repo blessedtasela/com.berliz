@@ -30,4 +30,5 @@ public interface PartnerRepo extends JpaRepository<Partner, Integer> {
     List<Partner> getActivePartners();
 
     Integer countPartnerByEmail(@Param("email") String email);
+
 }

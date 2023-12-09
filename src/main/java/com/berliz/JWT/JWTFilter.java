@@ -124,6 +124,10 @@ public class JWTFilter extends OncePerRequestFilter {
         return "center".equalsIgnoreCase((String) claims.get("role"));
     }
 
+    public boolean isMember() {
+        return "member".equalsIgnoreCase((String) claims.get("role"));
+    }
+
     public boolean isStore() {
         return "store".equalsIgnoreCase((String) claims.get("role"));
     }
@@ -135,7 +139,7 @@ public class JWTFilter extends OncePerRequestFilter {
     public boolean isBerlizUser() {
         String role = (String) claims.get("role");
         if (role != null) {
-            String[] validRoles = {"admin", "user", "client", "trainer", "center", "store", "driver"};
+            String[] validRoles = {"admin", "user", "client", "trainer", "center", "store", "driver", "member"};
             for (String validRole : validRoles) {
                 if (validRole.equalsIgnoreCase(role)) {
                     return true;
