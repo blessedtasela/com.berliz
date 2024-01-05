@@ -50,6 +50,9 @@ public class ClientServiceImplement implements ClientService {
     EmailUtilities emailUtilities;
 
     @Autowired
+    PaymentRepo paymentRepo;
+
+    @Autowired
     SubscriptionRepo subscriptionRepo;
 
     @Autowired
@@ -67,13 +70,13 @@ public class ClientServiceImplement implements ClientService {
             }
 
             if (jwtFilter.isAdmin()) {
-                if (requestMap.get("id").isEmpty()) {
+                if (requestMap.get("userId").isEmpty()) {
                     return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide userId");
                 }
 
-                User user = userRepo.findByEmail(requestMap.get("email"));
+                User user = userRepo.findByUserId(Integer.valueOf(requestMap.get("userId")));
                 if (user == null) {
-                    return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "User email not found in db");
+                    return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "User id not found in db");
                 }
 
                 String userRole = user.getRole();
@@ -173,8 +176,8 @@ public class ClientServiceImplement implements ClientService {
             }
 
             User user = client.getUser();
-            double height = Double.parseDouble(requestMap.get("height"));
-            client.setHeight(height);
+            double heightInCM = Double.parseDouble(requestMap.get("height"));
+            client.setHeight(heightInCM);
             double weight = Double.parseDouble(requestMap.get("weight"));
             client.setWeight(weight);
             String dobString = user.getDob();
@@ -183,23 +186,22 @@ public class ClientServiceImplement implements ClientService {
             LocalDate dobLocalDate = dob.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
             LocalDate currentDate = LocalDate.now();
             Period period = Period.between(dobLocalDate, currentDate);
-            Integer age = period.getYears();
-            double BMI = weight / (height * height);
-            double bodyFat = 1.2 * BMI + 0.23 * age - 5.4;
-            client.setBodyFat(bodyFat);
-
-            String categoryIdsString = requestMap.get("categoryIds");
-            if (!categoryIdsString.isEmpty()) {
-                String[] categoryIdsArray = categoryIdsString.split(",");
-                Set<Category> categories = new HashSet<>();
-                for (String categoryIdString : categoryIdsArray) {
-                    int categoryId = Integer.parseInt(categoryIdString.trim());
-                    Category category = categoryRepo.findById(categoryId)
-                            .orElseThrow(() -> new EntityNotFoundException("Exercise not found with ID: " + categoryId));
-                    categories.add(category);
-                }
-                client.setCategories(categories);
+            int age = period.getYears();
+            double heightInM = heightInCM / 100.0;
+            double BMI = weight / (heightInM * heightInM);
+            String gender = user.getGender().toLowerCase();
+            double genderCoefficient = 0.0;
+            if ("male".equalsIgnoreCase(gender)) {
+                genderCoefficient = 0.29288;
+            } else if ("female".equalsIgnoreCase(gender)) {
+                genderCoefficient = 0.29669;
+            } else {
+                genderCoefficient = 0.29225;
             }
+
+            Integer caloriesIntake = Integer.valueOf(requestMap.get("caloriesIntake"));
+            double bodyFat = (1.2 * BMI + 0.23 * age - 5.4 - genderCoefficient) * (caloriesIntake / 1000.0);
+            client.setBodyFat(bodyFat);
 
             List<Subscription> subscriptions = subscriptionRepo.findByUser(user);
             if (!subscriptions.isEmpty()) {
@@ -211,7 +213,7 @@ public class ClientServiceImplement implements ClientService {
             client.setMode(requestMap.get("mode"));
             client.setTargetWeight(Double.parseDouble(requestMap.get("targetWeight")));
             client.setDietaryRestrictions(requestMap.get("dietaryRestrictions"));
-            client.setCalorieIntake(Integer.valueOf(requestMap.get("caloriesIntake")));
+            client.setCaloriesIntake(caloriesIntake);
             client.setDietaryPreferences(requestMap.get("dietaryPreferences"));
             client.setMedicalConditions(requestMap.get("medicalConditions"));
             client.setLastUpdate(new Date());
@@ -225,7 +227,7 @@ public class ClientServiceImplement implements ClientService {
                         " updated your client information";
             }
 
-            simpMessagingTemplate.convertAndSend("/topic/updateClient", client);
+            simpMessagingTemplate.convertAndSend("/topic/updateClient", savedClient);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -265,35 +267,58 @@ public class ClientServiceImplement implements ClientService {
     public ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException {
         try {
             log.info("Inside updateStatus {}", id);
-            String status;
             if (!jwtFilter.isAdmin()) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
+
             Optional<Client> optional = clientRepo.findById(id);
             if (optional.isEmpty()) {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Client not found");
             }
+
             log.info("Inside optional {}", optional);
-            status = optional.get().getStatus();
             Client client = optional.get();
+            String status = client.getStatus();
+            User user = userRepo.findByUserId(client.getUser().getId());
+
+            if (user == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "User not found for client");
+            }
+
+            boolean hasActiveSubscription = false;
+            for (Subscription subscription : client.getSubscriptions()) {
+                if ("true".equalsIgnoreCase(subscription.getStatus())) {
+                    hasActiveSubscription = true;
+                    break;
+                }
+            }
+
+            if (!hasActiveSubscription) {
+                log.info("No active subscriptions found for client {}", id);
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND,
+                        "Cannot update client's status. No active subscriptions found");
+            }
+
+
             String responseMessage;
             if (status.equalsIgnoreCase("true")) {
                 status = "false";
                 responseMessage = "Client Status updated successfully. Now Deactivated";
+                emailUtilities.sendStatusMailToUser("false", "Client", user.getEmail());
             } else {
                 status = "true";
                 responseMessage = "Client Status updated successfully. Now Activated";
+                emailUtilities.sendStatusMailToUser("true", "Client", user.getEmail());
             }
 
             client.setStatus(status);
             clientRepo.save(client);
             simpMessagingTemplate.convertAndSend("/topic/updateClientStatus", client);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
-        } catch (
-                Exception ex) {
+        } catch (Exception ex) {
             ex.printStackTrace();
+            return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
         }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
@@ -316,8 +341,8 @@ public class ClientServiceImplement implements ClientService {
         Client client = new Client();
         client.setUser(user);
 
-        double height = Double.parseDouble(requestMap.get("height"));
-        client.setHeight(height);
+        double heightInCM = Double.parseDouble(requestMap.get("height"));
+        client.setHeight(heightInCM);
         double weight = Double.parseDouble(requestMap.get("weight"));
         client.setWeight(weight);
         String dobString = user.getDob();
@@ -326,23 +351,22 @@ public class ClientServiceImplement implements ClientService {
         LocalDate dobLocalDate = dob.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         LocalDate currentDate = LocalDate.now();
         Period period = Period.between(dobLocalDate, currentDate);
-        Integer age = period.getYears();
-        double BMI = weight / (height * height);
-        double bodyFat = 1.2 * BMI + 0.23 * age - 5.4;
-        client.setBodyFat(bodyFat);
-
-        String categoryIdsString = requestMap.get("categoryIds");
-        if (!categoryIdsString.isEmpty()) {
-            String[] categoryIdsArray = categoryIdsString.split(",");
-            Set<Category> categories = new HashSet<>();
-            for (String categoryIdString : categoryIdsArray) {
-                int categoryId = Integer.parseInt(categoryIdString.trim());
-                Category category = categoryRepo.findById(categoryId)
-                        .orElseThrow(() -> new EntityNotFoundException("Exercise not found with ID: " + categoryId));
-                categories.add(category);
-            }
-            client.setCategories(categories);
+        int age = period.getYears();
+        double heightInM = heightInCM / 100.0;
+        double BMI = weight / (heightInM * heightInM);
+        String gender = user.getGender().toLowerCase();
+        double genderCoefficient = 0.0;
+        if ("male".equalsIgnoreCase(gender)) {
+            genderCoefficient = 0.29288;
+        } else if ("female".equalsIgnoreCase(gender)) {
+            genderCoefficient = 0.29669;
+        } else {
+            genderCoefficient = 0.29225;
         }
+
+        Integer caloriesIntake = Integer.valueOf(requestMap.get("caloriesIntake"));
+        double bodyFat = (1.2 * BMI + 0.23 * age - 5.4 - genderCoefficient) * (caloriesIntake / 1000.0);
+        client.setBodyFat(bodyFat);
 
         List<Subscription> subscriptions = subscriptionRepo.findByUser(user);
         if (!subscriptions.isEmpty()) {
@@ -354,7 +378,7 @@ public class ClientServiceImplement implements ClientService {
         client.setMode(requestMap.get("mode"));
         client.setTargetWeight(Double.parseDouble(requestMap.get("targetWeight")));
         client.setDietaryRestrictions(requestMap.get("dietaryRestrictions"));
-        client.setCalorieIntake(Integer.valueOf(requestMap.get("caloriesIntake")));
+        client.setCaloriesIntake(caloriesIntake);
         client.setDietaryPreferences(requestMap.get("dietaryPreferences"));
         client.setMedicalConditions(requestMap.get("medicalConditions"));
         client.setDate(new Date());
@@ -370,22 +394,18 @@ public class ClientServiceImplement implements ClientService {
                     && requestMap.containsKey("height")
                     && requestMap.containsKey("weight")
                     && requestMap.containsKey("medicalConditions")
-                    && requestMap.containsKey("dietaryPreference")
+                    && requestMap.containsKey("dietaryPreferences")
                     && requestMap.containsKey("dietaryRestrictions")
-                    && requestMap.containsKey("calorieIntake")
-                    && requestMap.containsKey("categoryIds")
-                    && requestMap.containsKey("mode")
+                    && requestMap.containsKey("caloriesIntake")
                     && requestMap.containsKey("motivation")
                     && requestMap.containsKey("targetWeight");
         } else {
             return requestMap.containsKey("height")
                     && requestMap.containsKey("weight")
                     && requestMap.containsKey("medicalConditions")
-                    && requestMap.containsKey("dietaryPreference")
+                    && requestMap.containsKey("dietaryPreferences")
                     && requestMap.containsKey("dietaryRestrictions")
-                    && requestMap.containsKey("calorieIntake")
-                    && requestMap.containsKey("categoryIds")
-                    && requestMap.containsKey("mode")
+                    && requestMap.containsKey("caloriesIntake")
                     && requestMap.containsKey("motivation")
                     && requestMap.containsKey("targetWeight");
         }

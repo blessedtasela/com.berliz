@@ -22,6 +22,9 @@ public interface UserRest {
     @GetMapping(path = "/get")
     ResponseEntity<List<User>> getAllUsers();
 
+    @GetMapping(path = "/getActiveUsers")
+    ResponseEntity<List<User>> getActiveUsers();
+
     @PutMapping(path = "/updateStatus/{id}")
     ResponseEntity<String> updateStatus(@PathVariable Integer id);
 

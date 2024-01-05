@@ -7,6 +7,8 @@ import org.hibernate.annotations.DynamicUpdate;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 @NamedQuery(name = "Subscription.findActiveSubscriptionByUser",
         query = "select s from Subscription s where s.status='true' AND s.user = :user")
@@ -35,7 +37,7 @@ public class Subscription implements Serializable {
     private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @ManyToOne
@@ -46,18 +48,28 @@ public class Subscription implements Serializable {
     @JoinColumn(name = "center_id")
     private Center center;
 
-    @ManyToOne
-    @JoinColumn(name = "payment_id")
-    private Payment payment;
-
     @Column(name = "startDate", columnDefinition = "DATE")
     private Date startDate;
 
     @Column(name = "endDate", columnDefinition = "DATE")
     private Date endDate;
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "client_category",
+            joinColumns = @JoinColumn(name = "client_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    private Set<Category> categories = new HashSet<>();
+
     @Column(name = "months")
     private Integer months;
+
+    @Column(name = "amount")
+    private double amount;
+
+    @Column(name = "mode")
+    private String mode;
 
     @Column(name = "date", columnDefinition = "DATE")
     private Date date;

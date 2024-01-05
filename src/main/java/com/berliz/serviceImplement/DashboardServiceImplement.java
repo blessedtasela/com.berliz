@@ -64,6 +64,8 @@ public class DashboardServiceImplement implements DashboardService {
     TrainerLikeRepo trainerLikeRepo;
 
     @Autowired
+    TrainerPricingRepo trainerPricingRepo;
+    @Autowired
     MuscleGroupRepo muscleGroupRepo;
 
     @Autowired
@@ -113,22 +115,23 @@ public class DashboardServiceImplement implements DashboardService {
             if (jwtFilter.isAdmin()) {
                 map.put("users", userRepo.count());
                 map.put("partners", partnerRepo.count());
-                map.put("todos", todoListRepo.count());
+                map.put("todo-lists", todoListRepo.count());
                 map.put("exercises", exerciseRepo.count());
                 map.put("clients", clientRepo.count());
                 map.put("members", memberRepo.count());
-                map.put("all-categories", categoryRepo.count());
+                map.put("categories", categoryRepo.count());
                 map.put("tags", tagRepo.count());
-                map.put("all-trainers", trainerRepo.count());
-                map.put("all-centers", centerRepo.count());
+                map.put("trainers", trainerRepo.count());
+                map.put("centers", centerRepo.count());
                 map.put("newsletters", newsletterRepo.count());
-                map.put("all-contact-us", contactUsRepo.count());
-                map.put("all-testimonials", testimonialRepo.count());
+                map.put("contact-us", contactUsRepo.count());
+                map.put("testimonials", testimonialRepo.count());
                 map.put("muscle-groups", muscleGroupRepo.count());
                 map.put("payments", paymentRepo.count());
                 map.put("subscriptions", subscriptionRepo.count());
                 map.put("tasks", taskRepo.count());
                 map.put("sub-tasks", subTaskRepo.count());
+                map.put("trainer-pricing", trainerPricingRepo.count());
             }
             else if (jwtFilter.isUser()) {
             }

@@ -26,6 +26,8 @@ import java.util.Set;
 
 @NamedQuery(name = "User.getActiveUsers", query = "select u from User u where u.status='true'")
 
+@NamedQuery(name = "User.findAllAdmins", query = "select u from User u where u.role='admin'")
+
 @Data
 @Entity
 @DynamicInsert

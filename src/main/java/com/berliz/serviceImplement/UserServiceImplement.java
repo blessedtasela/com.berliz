@@ -225,6 +225,21 @@ public class UserServiceImplement implements UserService {
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @Override
+    public ResponseEntity<List<User>> getActiveUsers() {
+        try {
+            if (jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(userRepo.getActiveUsers(), HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+
     /**
      * Deactivate the user's account. This method is used to mark the user's account as inactive.
      *
@@ -490,6 +505,7 @@ public class UserServiceImplement implements UserService {
         }
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
+
 
     /**
      * Check if a user token is valid.

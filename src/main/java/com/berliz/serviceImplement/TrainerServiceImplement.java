@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.*;
 
 @Slf4j
@@ -51,6 +52,9 @@ public class TrainerServiceImplement implements TrainerService {
 
     @Autowired
     FileUtilities fileUtilities;
+
+    @Autowired
+    TrainerPricingRepo trainerPricingRepo;
 
     @Autowired
     SimpMessagingTemplate simpMessagingTemplate;
@@ -419,6 +423,168 @@ public class TrainerServiceImplement implements TrainerService {
             ex.printStackTrace();
         }
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> addTrainerPricing(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside addTrainerPricing {}", requestMap);
+            boolean isValid = validateTrainerPricingRequestFromMap(requestMap, false);
+            log.info("Is request valid? {}", isValid);
+
+            if (!jwtFilter.isAdmin() || jwtFilter.isTrainer()) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValid) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            if (jwtFilter.isAdmin()) {
+                if (requestMap.get("trainerId").isEmpty()) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide trainerId");
+                }
+
+                Trainer trainer = trainerRepo.findByTrainerId(Integer.valueOf(requestMap.get("trainerId")));
+                if (trainer == null) {
+                    return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer not found in db");
+                }
+
+                TrainerPricing trainerPricing = trainerPricingRepo.findByTrainer(trainer);
+                if (trainerPricing != null) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "TrainerPricing already exits for " +
+                            trainer.getName());
+                }
+
+                getTrainerPricingFromMap(requestMap, trainer);
+                return BerlizUtilities.buildResponse(HttpStatus.OK, "You have successfully added pricing for "
+                        + trainer.getName());
+            } else {
+                User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+                Trainer trainer = trainerRepo.findByUserId(user.getId());
+                if (trainer == null) {
+                    return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "You are not authorized to make this request, " +
+                            "Please contact admin to check your trainer status");
+                }
+
+                TrainerPricing trainerPricing = trainerPricingRepo.findByTrainer(trainer);
+                if (trainerPricing != null) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Hello " + trainer.getName() +
+                            ", you already have an active pricing");
+                }
+
+                getTrainerPricingFromMap(requestMap, trainer);
+                return BerlizUtilities.buildResponse(HttpStatus.OK, "Congratulations" + trainer.getName() +
+                        "!, your pricing has been added successfully");
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+
+    }
+
+    @Override
+    public ResponseEntity<String> updateTrainerPricing(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside updateTrainerPricing {}", requestMap);
+            boolean isValid = validateTrainerPricingRequestFromMap(requestMap, true);
+            log.info("Is request valid? {}", isValid);
+
+            if (!jwtFilter.isAdmin() || jwtFilter.isTrainer()) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValid) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            Optional<TrainerPricing> optional = trainerPricingRepo.findById(Integer.valueOf(requestMap.get("id")));
+            if (optional.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "TrainerPricing ID not found");
+            }
+
+            TrainerPricing trainerPricing = optional.get();
+            String currentUser = jwtFilter.getCurrentUser();
+            if (!(jwtFilter.isAdmin()
+                    || trainerPricing.getTrainer().getPartner().getUser().getEmail().equals(currentUser))) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            BigDecimal priceOnline = new BigDecimal(requestMap.get("priceOnline"));
+            trainerPricing.setPriceOnline(priceOnline);
+            BigDecimal priceHybrid = new BigDecimal(requestMap.get("priceHybrid"));
+            trainerPricing.setPriceHybrid(priceHybrid);
+            BigDecimal pricePersonal = new BigDecimal(requestMap.get("pricePersonal"));
+            trainerPricing.setPricePersonal(pricePersonal);
+            BigDecimal discount2Programs = new BigDecimal(requestMap.get("discount2Programs"));
+            trainerPricing.setDiscount2Programs(discount2Programs);
+            BigDecimal discount3Months = new BigDecimal(requestMap.get("discount3Months"));
+            trainerPricing.setDiscount3Months(discount3Months);
+            BigDecimal discount6Months = new BigDecimal(requestMap.get("discount6Months"));
+            trainerPricing.setDiscount6Months(discount6Months);
+            BigDecimal discount9Months = new BigDecimal(requestMap.get("discount9Months"));
+            trainerPricing.setDiscount9Months(discount9Months);
+            BigDecimal discount12Months = new BigDecimal(requestMap.get("discount12Months"));
+            trainerPricing.setDiscount12Months(discount12Months);
+            trainerPricing.setLastUpdate(new Date());
+            TrainerPricing savedTrainerPricing = trainerPricingRepo.save(trainerPricing);
+            String responseMessage;
+            if (jwtFilter.isAdmin()) {
+                responseMessage = trainerPricing.getTrainer().getName()+ "'s TrainerPricing updated successfully";
+            } else {
+                responseMessage = "Hello " +
+                        trainerPricing.getTrainer().getName() + " you have successfully " +
+                        " updated your pricing information";
+            }
+
+            simpMessagingTemplate.convertAndSend("/topic/updateTrainerPricing", savedTrainerPricing);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<TrainerPricing>> getTrainerPricing() {
+        try {
+            log.info("Inside getTrainerPricing");
+            if (!jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+            List<TrainerPricing> trainerPricing = trainerPricingRepo.findAll();
+            return new ResponseEntity<>(trainerPricing, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> deleteTrainerPricing(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside deleteTrainerPricing {}", id);
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            boolean authorizedUser = user.getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN);
+            if (!(jwtFilter.isAdmin() && authorizedUser)) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            Optional<TrainerPricing> optional = trainerPricingRepo.findById(id);
+            if (optional.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "TrainerPricing id not found");
+            }
+
+            TrainerPricing trainerPricing = optional.get();
+            trainerPricingRepo.delete(trainerPricing);
+            simpMessagingTemplate.convertAndSend("/topic/deleteTrainerPricing", trainerPricing);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "TrainerPricing deleted successfully");
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
 
     }
 
@@ -436,6 +602,28 @@ public class TrainerServiceImplement implements TrainerService {
                 && requestMap.containsKey("experience")
                 && requestMap.containsKey("likes")
                 && requestMap.containsKey("categoryIds");
+    }
+
+    private boolean validateTrainerPricingRequestFromMap(Map<String, String> requestMap, boolean isValid) {
+        if (isValid) {
+            return requestMap.containsKey("id")
+                    && requestMap.containsKey("priceOnline")
+                    && requestMap.containsKey("priceHybrid")
+                    && requestMap.containsKey("pricePersonal")
+                    && requestMap.containsKey("discount3Months")
+                    && requestMap.containsKey("discount6Months")
+                    && requestMap.containsKey("discount9Months")
+                    && requestMap.containsKey("discount12Months")
+                    && requestMap.containsKey("discount2Programs");
+        }
+        return requestMap.containsKey("priceOnline")
+                && requestMap.containsKey("priceHybrid")
+                && requestMap.containsKey("pricePersonal")
+                && requestMap.containsKey("discount3Months")
+                && requestMap.containsKey("discount6Months")
+                && requestMap.containsKey("discount9Months")
+                && requestMap.containsKey("discount12Months")
+                && requestMap.containsKey("discount2Programs");
     }
 
     /**
@@ -525,7 +713,7 @@ public class TrainerServiceImplement implements TrainerService {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer name is already taken. Please choose another name");
             }
 
-           getTrainerFromMap(trainerRequest);
+            getTrainerFromMap(trainerRequest);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer added successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -607,6 +795,33 @@ public class TrainerServiceImplement implements TrainerService {
     private boolean isTrainerNameAlreadyExists(String TrainerName) {
         Trainer TrainerByName = trainerRepo.findByName(TrainerName);
         return TrainerByName != null;
+    }
+
+    private Trainer getTrainerPricingFromMap(Map<String, String> requestMap, Trainer trainer) throws IOException {
+        TrainerPricing trainerPricing = new TrainerPricing();
+        trainerPricing.setTrainer(trainer);
+        BigDecimal priceOnline = new BigDecimal(requestMap.get("priceOnline"));
+        trainerPricing.setPriceOnline(priceOnline);
+        BigDecimal priceHybrid = new BigDecimal(requestMap.get("priceHybrid"));
+        trainerPricing.setPriceHybrid(priceHybrid);
+        BigDecimal pricePersonal = new BigDecimal(requestMap.get("pricePersonal"));
+        trainerPricing.setPricePersonal(pricePersonal);
+        BigDecimal discount2Programs = new BigDecimal(requestMap.get("discount2Programs"));
+        trainerPricing.setDiscount2Programs(discount2Programs);
+        BigDecimal discount3Months = new BigDecimal(requestMap.get("discount3Months"));
+        trainerPricing.setDiscount3Months(discount3Months);
+        BigDecimal discount6Months = new BigDecimal(requestMap.get("discount6Months"));
+        trainerPricing.setDiscount6Months(discount6Months);
+        BigDecimal discount9Months = new BigDecimal(requestMap.get("discount9Months"));
+        trainerPricing.setDiscount9Months(discount9Months);
+        BigDecimal discount12Months = new BigDecimal(requestMap.get("discount12Months"));
+        trainerPricing.setDiscount12Months(discount12Months);
+        trainerPricing.setDate(new Date());
+        trainerPricing.setLastUpdate(new Date());
+
+        TrainerPricing savedTrainerPricing = trainerPricingRepo.save(trainerPricing);
+        simpMessagingTemplate.convertAndSend("/topic/getTrainerPricingFromMap", savedTrainerPricing);
+        return trainer;
     }
 
 }

@@ -194,6 +194,22 @@ public class TaskServiceImplement implements TaskService {
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @Override
+    public ResponseEntity<List<Task>> getClientTasks() {
+        try {
+            log.info("Inside getTrainerTasks");
+            User user = userRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (!jwtFilter.isUser() && user == null) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            List<Task> tasks = taskRepo.findByUser(user);
+            return new ResponseEntity<>(tasks, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 
     @Override
     public ResponseEntity<List<Task>> getActiveTasks() {

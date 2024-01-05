@@ -4,6 +4,7 @@ import com.berliz.DTO.TrainerRequest;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Trainer;
 import com.berliz.models.TrainerLike;
+import com.berliz.models.TrainerPricing;
 import com.berliz.rest.TrainerRest;
 import com.berliz.services.TrainerService;
 import com.berliz.utils.BerlizUtilities;
@@ -152,6 +153,13 @@ public class TrainerRestImplement implements TrainerRest {
         return new ResponseEntity<>(new Trainer(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    /**
+     * Likes a trainer based on the provided trainer ID.
+     *
+     * @param id The ID of the trainer to be liked.
+     * @return A ResponseEntity containing a message about the like operation.
+     * @throws JsonProcessingException If there is an issue processing JSON.
+     */
     @Override
     public ResponseEntity<String> likeTrainer(Integer id) throws JsonProcessingException {
         try {
@@ -162,6 +170,12 @@ public class TrainerRestImplement implements TrainerRest {
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
+    /**
+     * Retrieves a list of TrainerLikes.
+     *
+     * @return A ResponseEntity containing the list of TrainerLikes.
+     * @throws JsonProcessingException If there is an issue processing JSON.
+     */
     @Override
     public ResponseEntity<List<TrainerLike>> getTrainerLikes() throws JsonProcessingException {
         try {
@@ -171,4 +185,71 @@ public class TrainerRestImplement implements TrainerRest {
         }
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    /**
+     * Adds trainer pricing based on the provided request map.
+     *
+     * @param requestMap A map containing the necessary parameters for adding trainer pricing.
+     * @return A ResponseEntity containing a message about the add operation.
+     * @throws JsonProcessingException If there is an issue processing JSON.
+     */
+    @Override
+    public ResponseEntity<String> addTrainerPricing(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return trainerService.addTrainerPricing(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    /**
+     * Updates trainer pricing based on the provided request map.
+     *
+     * @param requestMap A map containing the necessary parameters for updating trainer pricing.
+     * @return A ResponseEntity containing a message about the update operation.
+     * @throws JsonProcessingException If there is an issue processing JSON.
+     */
+    @Override
+    public ResponseEntity<String> updateTrainerPricing(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return trainerService.updateTrainerPricing(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    /**
+     * Retrieves a list of TrainerPricing.
+     *
+     * @return A ResponseEntity containing the list of TrainerPricing.
+     */
+    @Override
+    public ResponseEntity<List<TrainerPricing>> getTrainerPricing() {
+        try {
+            return trainerService.getTrainerPricing();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Deletes trainer pricing based on the provided trainer pricing ID.
+     *
+     * @param id The ID of the trainer pricing to be deleted.
+     * @return A ResponseEntity containing a message about the delete operation.
+     * @throws JsonProcessingException If there is an issue processing JSON.
+     */
+    @Override
+    public ResponseEntity<String> deleteTrainerPricing(Integer id) throws JsonProcessingException {
+        try {
+            return trainerService.deleteTrainerPricing(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
 }

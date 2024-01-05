@@ -3,6 +3,7 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Payment;
+import com.berliz.models.Subscription;
 import com.berliz.models.User;
 import com.berliz.repository.*;
 import com.berliz.services.PaymentService;
@@ -18,6 +19,9 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 
 @Slf4j
@@ -46,13 +50,15 @@ public class PaymentServiceImplement implements PaymentService {
     EmailUtilities emailUtilities;
 
     @Autowired
+    SubscriptionRepo subscriptionRepo;
+
+    @Autowired
     SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
     public ResponseEntity<String> addPayment(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             log.info("Inside addMember {}", requestMap);
-            User payer = userRepo.findByEmail(jwtFilter.getCurrentUser());
             boolean isValid = validateRequestFromMap(requestMap, false);
             log.info("Is request valid? {}", isValid);
 
@@ -61,7 +67,7 @@ public class PaymentServiceImplement implements PaymentService {
             }
 
             if (jwtFilter.isAdmin()) {
-                if (requestMap.get("id").isEmpty()) {
+                if (requestMap.get("userId").isEmpty()) {
                     return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide userId");
                 }
 
@@ -81,7 +87,12 @@ public class PaymentServiceImplement implements PaymentService {
                     return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "User has an active payment already. " +
                             "Please cancel all subscriptions to continue");
                 }
-                getPaymentFromMap(requestMap, user, payer);
+                Subscription subscription = subscriptionRepo.findActiveSubscriptionByUser(user);
+                if (subscription == null) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "User has no active subscription. " +
+                            "Please add a subscription to continue");
+                }
+                getPaymentFromMap(requestMap);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "You have successfully added "
                         + user.getFirstname() + " as a client");
             } else {
@@ -95,7 +106,7 @@ public class PaymentServiceImplement implements PaymentService {
                     return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Your payment is active. " +
                             "Please cancel all payments to add a new one");
                 }
-                getPaymentFromMap(requestMap, user, payer);
+                getPaymentFromMap(requestMap);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Hello "
                         + user.getFirstname() + " your payment has been saved successfully");
             }
@@ -166,6 +177,12 @@ public class PaymentServiceImplement implements PaymentService {
                             " Your payment is now active");
                 }
             }
+
+            Subscription subscription = subscriptionRepo.findActiveSubscriptionByUser(payment.getUser());
+            if (subscription != null) {
+                payment.setSubscription(subscription);
+            }
+
             payment.setPaymentMethod(requestMap.get("paymentMethod"));
             payment.setAmount(Double.parseDouble(requestMap.get("amount")));
             payment.setLastUpdate(new Date());
@@ -266,8 +283,27 @@ public class PaymentServiceImplement implements PaymentService {
         return new ResponseEntity<>(new Payment(), HttpStatus.NOT_FOUND);
     }
 
-    private void getPaymentFromMap(Map<String, String> requestMap, User user, User payer) throws ParseException {
+    private void getPaymentFromMap(Map<String, String> requestMap) throws ParseException {
+        User payer = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(requestMap.get("email"));
         Payment payment = new Payment();
+
+        Subscription subscription = subscriptionRepo.findActiveSubscriptionByUser(user);
+        if (subscription != null) {
+            payment.setSubscription(subscription);
+        }
+
+//        String startDateString = requestMap.get("startDate");
+//        Integer months = Integer.valueOf(requestMap.get("months"));
+//        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+//        Date startDate = dateFormat.parse(startDateString);
+//        LocalDate startDateLocaleDate = startDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+//        LocalDate endDateLocalDate = startDateLocaleDate.plusMonths(months);
+//        Date endDate = Date.from(endDateLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+//        subscription.setStartDate(startDate);
+//        subscription.setMonths(months);
+//        subscription.setEndDate(endDate);
+
         payment.setUser(user);
         payment.setPayer(payer);
         payment.setPaymentMethod(requestMap.get("paymentMethod"));

@@ -8,6 +8,7 @@ import com.berliz.services.SubscriptionService;
 import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.EmailUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -52,6 +53,9 @@ public class SubscriptionServiceImplement implements SubscriptionService {
     SubscriptionRepo subscriptionRepo;
 
     @Autowired
+    CategoryRepo categoryRepo;
+
+    @Autowired
     SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
@@ -66,11 +70,11 @@ public class SubscriptionServiceImplement implements SubscriptionService {
             }
 
             if (jwtFilter.isAdmin()) {
-                if (requestMap.get("id").isEmpty()) {
+                if (requestMap.get("userId").isEmpty()) {
                     return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide userId");
                 }
 
-                User user = userRepo.findByEmail(requestMap.get("email"));
+                User user = userRepo.findByUserId(Integer.valueOf(requestMap.get("userId")));
                 if (user == null) {
                     return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "User email not found in db");
                 }
@@ -89,7 +93,7 @@ public class SubscriptionServiceImplement implements SubscriptionService {
 
                 getSubscriptionFromMap(requestMap, user);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "You have successfully added "
-                        + user.getFirstname() + " as a client");
+                        + user.getFirstname() + " subscription");
             } else {
                 Integer userId = jwtFilter.getCurrentUserId();
                 User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
@@ -173,11 +177,6 @@ public class SubscriptionServiceImplement implements SubscriptionService {
                 }
             }
 
-            User user = subscription.getUser();
-            Payment payment = paymentRepo.findActivePaymentByUser(user);
-            if (payment != null) {
-                subscription.setPayment(payment);
-            }
             Trainer trainer = trainerRepo.findByTrainerId(Integer.valueOf(requestMap.get("trainerId")));
             if (trainer != null) {
                 subscription.setTrainer(trainer);
@@ -302,11 +301,6 @@ public class SubscriptionServiceImplement implements SubscriptionService {
         Subscription subscription = new Subscription();
         subscription.setUser(user);
 
-        Payment payment = paymentRepo.findActivePaymentByUser(user);
-        if (payment != null) {
-            subscription.setPayment(payment);
-        }
-
         Trainer trainer = trainerRepo.findByTrainerId(Integer.valueOf(requestMap.get("trainerId")));
         if (trainer != null) {
             subscription.setTrainer(trainer);
@@ -317,17 +311,21 @@ public class SubscriptionServiceImplement implements SubscriptionService {
             subscription.setCenter(center);
         }
 
-
-        String startDateString = requestMap.get("startDate");
-        Integer months = Integer.valueOf(requestMap.get("months"));
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-        Date startDate = dateFormat.parse(startDateString);
-        LocalDate startDateLocaleDate = startDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-        LocalDate endDateLocalDate = startDateLocaleDate.plusMonths(months);
-        Date endDate = Date.from(endDateLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
-        subscription.setStartDate(startDate);
-        subscription.setMonths(months);
-        subscription.setEndDate(endDate);
+        String categoryIdsString = requestMap.get("categoryIds");
+        if (!categoryIdsString.isEmpty()) {
+            String[] categoryIdsArray = categoryIdsString.split(",");
+            Set<Category> categories = new HashSet<>();
+            for (String categoryIdString : categoryIdsArray) {
+                int categoryId = Integer.parseInt(categoryIdString.trim());
+                Category category = categoryRepo.findById(categoryId)
+                        .orElseThrow(() -> new EntityNotFoundException("Exercise not found with ID: " + categoryId));
+                categories.add(category);
+            }
+            subscription.setCategories(categories);
+        }
+        subscription.setMode(requestMap.get("mode"));
+       subscription.setMonths(Integer.valueOf(requestMap.get("months")));
+//        subscription.setAmount();
         subscription.setDate(new Date());
         subscription.setLastUpdate(new Date());
         subscription.setStatus("false");
@@ -338,10 +336,16 @@ public class SubscriptionServiceImplement implements SubscriptionService {
     private boolean validateRequestFromMap(Map<String, String> requestMap, boolean validId) {
         if (validId) {
             return requestMap.containsKey("id")
-                    && requestMap.containsKey("startDate")
+                    && requestMap.containsKey("trainerId")
+                    && requestMap.containsKey("centerId")
+                    && requestMap.containsKey("categoryIds")
+                    && requestMap.containsKey("mode")
                     && requestMap.containsKey("months");
         } else {
-            return requestMap.containsKey("startDate")
+            return requestMap.containsKey("trainerId")
+                    && requestMap.containsKey("centerId")
+                    && requestMap.containsKey("categoryIds")
+                    && requestMap.containsKey("mode")
                     && requestMap.containsKey("months");
         }
     }

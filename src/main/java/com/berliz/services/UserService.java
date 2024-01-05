@@ -52,4 +52,6 @@ public interface UserService {
     ResponseEntity<String> refreshToken(Map<String, String> requestMap) throws JsonProcessingException;
 
     ResponseEntity<String> updateBio(Map<String, String> requestMap) throws JsonProcessingException;
+
+    ResponseEntity<List<User>> getActiveUsers();
 }

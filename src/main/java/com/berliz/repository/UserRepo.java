@@ -20,6 +20,10 @@ public interface UserRepo extends JpaRepository<User, Integer> {
 
     List<String> getAllAdminsMail();
 
+    List<User> getActiveUsers();
+
+    List<User> findAllAdmins();
+
     @Transactional
     @Modifying
     Integer updateStatus(@PathVariable("id") Integer id, @PathVariable("status") String status);

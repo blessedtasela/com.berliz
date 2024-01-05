@@ -53,16 +53,8 @@ public class Client implements Serializable {
     @Column(name = "dietaryRestrictions")
     private String dietaryRestrictions;
 
-    @Column(name = "calorieIntake", columnDefinition = "INTEGER")
-    private Integer calorieIntake;
-
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "client_category",
-            joinColumns = @JoinColumn(name = "client_id"),
-            inverseJoinColumns = @JoinColumn(name = "category_id")
-    )
-    private Set<Category> categories = new HashSet<>();
+    @Column(name = "caloriesIntake", columnDefinition = "INTEGER")
+    private Integer caloriesIntake;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

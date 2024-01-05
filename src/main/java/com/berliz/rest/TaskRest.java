@@ -63,6 +63,14 @@ public interface TaskRest {
     ResponseEntity<List<Task>> getTrainerTasks();
 
     /**
+     * Get a list of active tasks.
+     *
+     * @return ResponseEntity containing the list of active tasks.
+     */
+    @GetMapping(path = "/getClientTasks")
+    ResponseEntity<List<Task>> getClientTasks();
+
+    /**
      * Get a specific task by ID.
      *
      * @param id The ID of the task to retrieve.

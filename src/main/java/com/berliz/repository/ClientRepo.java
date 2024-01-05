@@ -17,14 +17,6 @@ public interface ClientRepo extends JpaRepository<Client, Integer> {
     Client findByUser(User user);
 
     /**
-     * Find clients by category.
-     *
-     * @param category The category of the clients to search for.
-     * @return List of clients matching the category.
-     */
-    List<Client> findByCategories(Category category);
-
-    /**
      * Get a list of all active clients.
      *
      * @return List of clients whose status is true.

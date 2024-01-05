@@ -28,11 +28,15 @@ public class Payment implements Serializable {
     private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @ManyToOne
-    @JoinColumn(name = "payer_id")
+    @JoinColumn(name = "subscription_id")
+    private Subscription subscription;
+
+    @ManyToOne
+    @JoinColumn(name = "payer_id", nullable = false)
     private User payer;
 
     @Column(name = "payment_method")

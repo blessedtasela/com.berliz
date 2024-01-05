@@ -56,6 +56,16 @@ public class UserRestImplement implements UserRest {
     }
 
     @Override
+    public ResponseEntity<List<User>> getActiveUsers() {
+        try {
+            return userService.getActiveUsers();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<List<User>>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
     public ResponseEntity<String> updateStatus(Integer id) {
         try {
             return userService.updateStatus(id);

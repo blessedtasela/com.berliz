@@ -41,19 +41,8 @@ public interface SubscriptionRepo extends JpaRepository<Subscription, Integer> {
      */
     List<Subscription> findByCenter(Center center);
 
-    /**
-     * Find subscriptions by payment.
-     *
-     * @param payment The payment associated with the subscriptions to search for.
-     * @return List of subscriptions associated with the payment.
-     */
-    List<Subscription> findByPayment(Payment payment);
+    List<Client> findByCategories(Category category);
 
-    /**
-     * Get a list of all active subscriptions.
-     *
-     * @return List of subscriptions whose status is true.
-     */
     List<Subscription> getActiveSubscriptions();
 
     Integer countClientSubscriptionsByEmail(String email);

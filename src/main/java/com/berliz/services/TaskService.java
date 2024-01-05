@@ -32,4 +32,6 @@ public interface TaskService {
     ResponseEntity<String> deleteSubTask(Integer id) throws JsonProcessingException;
 
     ResponseEntity<List<Task>> getTrainerTasks();
+
+    ResponseEntity<List<Task>> getClientTasks();
 }
