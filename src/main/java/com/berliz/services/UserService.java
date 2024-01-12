@@ -13,7 +13,7 @@ public interface UserService {
 
     ResponseEntity<String> signUp(SignupRequest request) throws JsonProcessingException;
 
-    ResponseEntity<String> confirmAccount(String email) throws JsonProcessingException;
+    void confirmAccount(String email) throws JsonProcessingException;
 
     ResponseEntity<String> activateAccount(Map<String, String> requestMap) throws JsonProcessingException;
 
@@ -54,4 +54,6 @@ public interface UserService {
     ResponseEntity<String> updateBio(Map<String, String> requestMap) throws JsonProcessingException;
 
     ResponseEntity<List<User>> getActiveUsers();
+
+    ResponseEntity<String> quickAdd(Map<String, String> requestMap) throws JsonProcessingException;
 }

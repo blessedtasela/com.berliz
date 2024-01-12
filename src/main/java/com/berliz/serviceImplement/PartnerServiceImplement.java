@@ -77,6 +77,11 @@ public class PartnerServiceImplement implements PartnerService {
                     return buildResponse(HttpStatus.NOT_FOUND, "User id not found in db");
                 }
 
+                if (jwtFilter.isAccountIncomplete(user)) {
+                    return buildResponse(HttpStatus.UNAUTHORIZED,
+                            "User account registration is incomplete. Please update user account information.");
+                }
+
                 String userRole = user.getRole();
                 boolean validateAdminRole = userRole.equalsIgnoreCase("admin");
                 if (validateAdminRole) {
@@ -96,6 +101,11 @@ public class PartnerServiceImplement implements PartnerService {
                 User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
                 if (user ==  null) {
                     return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid user");
+                }
+
+                if (jwtFilter.isAccountIncomplete(user)) {
+                    return buildResponse(HttpStatus.UNAUTHORIZED,
+                            "Account registration is incomplete. Please update account information.");
                 }
 
                 Partner userPartner = partnerRepo.findByUserId(userId);
@@ -484,4 +494,5 @@ public class PartnerServiceImplement implements PartnerService {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(responseBodyJson);
     }
+
 }

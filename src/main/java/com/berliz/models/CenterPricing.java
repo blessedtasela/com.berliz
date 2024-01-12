@@ -13,10 +13,10 @@ import java.util.Date;
 @Entity
 @DynamicInsert
 @DynamicUpdate
-@Table(name = "center_pricing")
+@Table(name = "centerPricing")
 public class CenterPricing implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long SerialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

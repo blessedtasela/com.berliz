@@ -36,6 +36,16 @@ public class UserRestImplement implements UserRest {
     }
 
     @Override
+    public ResponseEntity<String> quickAdd(Map<String, String> requestMap) {
+        try {
+            return userService.quickAdd(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
     public ResponseEntity<String> login(Map<String, String> requestMap) {
         try {
             return userService.login(requestMap);

@@ -1,11 +1,11 @@
 package com.berliz.rest;
 
 import com.berliz.DTO.CenterRequest;
+import com.berliz.DTO.PhotoAlbum;
 import com.berliz.DTO.TrainerRequest;
-import com.berliz.models.Center;
-import com.berliz.models.CenterLike;
-import com.berliz.models.Trainer;
-import com.berliz.models.TrainerLike;
+import com.berliz.DTO.VideoAlbum;
+import com.berliz.models.*;
+import com.berliz.repository.CenterVideoAlbumRepo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,102 +19,162 @@ import java.util.Map;
 @RequestMapping(path = "/center")
 public interface CenterRest {
 
-    /**
-     * Add a new center.
-     *
-     * @param centerRequest Request body containing center details.
-     * @return ResponseEntity indicating the result of the center addition operation.
-     */
     @PostMapping(path = "/add")
     ResponseEntity<String> addCenter(@ModelAttribute CenterRequest centerRequest) throws JsonProcessingException;
 
-    /**
-     * Get a list of all centers.
-     *
-     * @return ResponseEntity containing the list of all centers.
-     */
     @GetMapping(path = "/get")
     ResponseEntity<List<Center>> getAllCenters();
 
-    /**
-     * Get a list of active centers.
-     *
-     * @return ResponseEntity containing the list of all centers whose status are true.
-     */
     @GetMapping(path = "/getActiveCenters")
     ResponseEntity<List<Center>> getActiveCenters();
 
-    /**
-     * Update an existing center's details.
-     *
-     * @param requestMap Request body containing updated center details.
-     * @return ResponseEntity indicating the result of the center update operation.
-     */
     @PutMapping(path = "/update")
     ResponseEntity<String> updateCenter(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
 
-    /**
-     * Delete a center.
-     *
-     * @param id The ID of the center to delete.
-     * @return ResponseEntity indicating the result of the center deletion operation.
-     */
+    @PutMapping(path = "/updateMyCenterTrainers")
+    ResponseEntity<String> updateMyCenterTrainers(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
     @DeleteMapping(path = "/delete/{id}")
     ResponseEntity<String> deleteCenter(@PathVariable Integer id) throws JsonProcessingException;
 
-    /**
-     * Update the status of a center.
-     *
-     * @param id The ID of the center to update.
-     * @return ResponseEntity indicating the result of the center status update operation.
-     */
     @PutMapping(path = "/updateStatus/{id}")
     ResponseEntity<String> updateStatus(@PathVariable Integer id) throws JsonProcessingException;
 
-    /**
-     * Get a center by its user ID.
-     *
-     * @param id The user ID associated with the center.
-     * @return ResponseEntity containing the center with the specified user ID.
-     */
     @GetMapping(path = "/getByUserId")
     ResponseEntity<Center> getByUserId(@PathVariable Integer id);
 
-    /**
-     * Get a center.
-     *
-     * @return ResponseEntity containing the center with the specified ID.
-     */
     @GetMapping(path = "/getCenter")
     ResponseEntity<Center> getCenter();
 
-    /**
-     * like a center by its ID.
-     *
-     * @return ResponseEntity containing the center with the specified ID.
-     */
-    /**
-     * like a trainer by its ID.
-     *
-     * @return ResponseEntity containing the trainer with the specified ID.
-     */
     @PutMapping(path = "/like/{id}")
     ResponseEntity<String> likeCenter(@PathVariable Integer id) throws JsonProcessingException;
 
-    /**
-     * Get list of trainers that are liked
-     *
-     * @return ResponseEntity containing the status of the operation
-     */
     @GetMapping(path = "/getCenterLikes")
     ResponseEntity<List<CenterLike>> getCenterLikes() throws JsonProcessingException;
 
-    /**
-     * Update the center photo.
-     *
-     * @return ResponseEntity indicating the result of the operation.
-     */
     @PutMapping(path = "/updatePhoto")
     ResponseEntity<String> updatePhoto(@ModelAttribute CenterRequest centerRequest) throws JsonProcessingException;
 
+    @PostMapping(path = "/addCenterAnnouncement")
+    ResponseEntity<String> addCenterAnnouncement(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateCenterAnnouncement")
+    ResponseEntity<String> updateCenterAnnouncement(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @DeleteMapping(path = "/deleteCenterAnnouncement/{id}")
+    ResponseEntity<String> deleteCenterAnnouncement(@PathVariable Integer id) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateCenterAnnouncementStatus/{id}")
+    ResponseEntity<String> updateCenterAnnouncementStatus(@PathVariable Integer id) throws JsonProcessingException;
+
+    @GetMapping(path = "/getAllCenterAnnouncements")
+    ResponseEntity<List<CenterAnnouncement>> getAllCenterAnnouncements();
+
+    @GetMapping(path = "/getMyCenterAnnouncements")
+    ResponseEntity<List<CenterAnnouncement>> getMyCenterAnnouncements();
+
+    @PutMapping(path = "/addCenterEquipment")
+    ResponseEntity<String> addCenterEquipment(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateCenterEquipment")
+    ResponseEntity<String> updateCenterEquipment(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @DeleteMapping(path = "/deleteCenterEquipment/{id}")
+    ResponseEntity<String> deleteCenterEquipment(@PathVariable Integer id) throws JsonProcessingException;
+
+    @GetMapping(path = "/getAllCenterEquipments")
+    ResponseEntity<List<CenterEquipment>> getAllCenterEquipments();
+
+    @GetMapping(path = "/getMyCenterEquipments")
+    ResponseEntity<List<CenterEquipment>> getMyCenterEquipments();
+
+    @PostMapping(path = "/addCenterIntroduction")
+    ResponseEntity<String> addCenterIntroduction(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateCenterIntroduction")
+    ResponseEntity<String> updateCenterIntroduction(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @DeleteMapping(path = "/deleteCenterIntroduction/{id}")
+    ResponseEntity<String> deleteCenterIntroduction(@PathVariable Integer id) throws JsonProcessingException;
+
+    @GetMapping(path = "/getAllCenterIntroductions")
+    ResponseEntity<List<CenterIntroduction>> getAllCenterIntroductions();
+
+    @GetMapping(path = "/getMyCenterIntroductions")
+    ResponseEntity<List<CenterIntroduction>> getMyCenterIntroductions();
+
+    @PostMapping(path = "/addCenterLocation")
+    ResponseEntity<String> addCenterLocation(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateCenterLocation")
+    ResponseEntity<String> updateCenterLocation(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @DeleteMapping(path = "/deleteCenterLocation/{id}")
+    ResponseEntity<String> deleteCenterLocation(@PathVariable Integer id) throws JsonProcessingException;
+
+    @GetMapping(path = "/getAllCenterLocations")
+    ResponseEntity<List<CenterLocation>> getAllCenterLocations();
+
+    @GetMapping(path = "/getMyCenterLocations")
+    ResponseEntity<List<CenterLocation>> getMyCenterLocations();
+
+    @PutMapping(path = "/addCenterPhotoAlbum")
+    ResponseEntity<String> addCenterPhotoAlbum(@ModelAttribute PhotoAlbum photoAlbum) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateCenterPhotoAlbum")
+    ResponseEntity<String> updateCenterPhotoAlbum(@ModelAttribute PhotoAlbum photoAlbum) throws JsonProcessingException;
+
+    @DeleteMapping(path = "/deleteCenterPhotoAlbum/{id}")
+    ResponseEntity<String> deleteCenterPhotoAlbum(@PathVariable Integer id) throws JsonProcessingException;
+
+    @GetMapping(path = "/getAllCenterPhotoAlbums")
+    ResponseEntity<List<CenterPhotoAlbum>> getAllCenterPhotoAlbums();
+
+    @GetMapping(path = "/getMyCenterPhotoAlbums")
+    ResponseEntity<List<CenterPhotoAlbum>> getMyCenterPhotoAlbums();
+
+    @PutMapping(path = "/addCenterPricing")
+    ResponseEntity<String> addCenterPricing(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateCenterPricing")
+    ResponseEntity<String> updateCenterPricing(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @DeleteMapping(path = "/deleteCenterPricing/{id}")
+    ResponseEntity<String> deleteCenterPricing(@PathVariable Integer id) throws JsonProcessingException;
+
+    @GetMapping(path = "/getAllCenterPricing")
+    ResponseEntity<List<CenterPricing>> getAllCenterPricing();
+
+    @GetMapping(path = "/getMyCenterPricing")
+    ResponseEntity<List<CenterPricing>> getMyCenterPricing();
+
+    @PutMapping(path = "/addCenterTrainer")
+    ResponseEntity<String> addCenterTrainer(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateCenterTrainer")
+    ResponseEntity<String> updateCenterTrainer(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @DeleteMapping(path = "/deleteCenterTrainer/{id}")
+    ResponseEntity<String> deleteCenterTraining(@PathVariable Integer id) throws JsonProcessingException;
+
+    @GetMapping(path = "/getAllCenterTrainers")
+    ResponseEntity<List<CenterTrainer>> getAllCenterTrainers();
+
+    @GetMapping(path = "/getMyCenterTrainers")
+    ResponseEntity<List<CenterTrainer>> getMyCenterTrainers();
+
+    @PostMapping(path = "/addCenterVideoAlbum")
+    ResponseEntity<String> addCenterVideoAlbum(@ModelAttribute VideoAlbum videoAlbum) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateCenterVideoAlbum")
+    ResponseEntity<String> updateCenterVideoAlbum(@ModelAttribute VideoAlbum videoAlbum) throws JsonProcessingException;
+
+    @DeleteMapping(path = "/deleteCenterVideoAlbum/{id}")
+    ResponseEntity<String> deleteCenterVideoAlbum(@PathVariable Integer id) throws JsonProcessingException;
+
+    @GetMapping(path = "/getAllCenterVideoAlbums")
+    ResponseEntity<List<CenterVideoAlbum>> getAllCenterVideoAlbums();
+
+    @GetMapping(path = "/getMyCenterVideoAlbums")
+    ResponseEntity<List<CenterVideoAlbum>> getMyCenterVideoAlbums();
 }

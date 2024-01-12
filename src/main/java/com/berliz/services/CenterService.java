@@ -1,8 +1,9 @@
 package com.berliz.services;
 
 import com.berliz.DTO.CenterRequest;
-import com.berliz.models.Center;
-import com.berliz.models.CenterLike;
+import com.berliz.DTO.PhotoAlbum;
+import com.berliz.DTO.VideoAlbum;
+import com.berliz.models.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 
@@ -14,87 +15,111 @@ import java.util.Map;
  */
 public interface CenterService {
 
-    /**
-     * Adds a new center based on the provided request map.
-     *
-     * @param centerRequest The map containing the center's details
-     * @return The response entity indicating the outcome of the operation
-     */
     ResponseEntity<String> addCenter(CenterRequest centerRequest) throws JsonProcessingException;
 
-    /**
-     * Retrieves a list of all centers.
-     *
-     * @return The response entity containing the list of centers
-     */
     ResponseEntity<List<Center>> getAllCenters();
 
-    /**
-     * Updates the details of a center based on the provided request map.
-     *
-     * @param requestMap The map containing the updated center details
-     * @return The response entity indicating the outcome of the operation
-     */
     ResponseEntity<String> updateCenter(Map<String, String> requestMap) throws JsonProcessingException;
 
-    /**
-     * Deletes a center with the specified ID.
-     *
-     * @param id The ID of the center to delete
-     * @return The response entity indicating the outcome of the operation
-     */
+    ResponseEntity<String> updateMyCenterTrainers(Map<String, String> requestMap);
+
     ResponseEntity<String> deleteCenter(Integer id) throws JsonProcessingException;
 
-    /**
-     * Updates the status of a center.
-     *
-     * @param id The ID of the center to update
-     * @return The response entity indicating the outcome of the operation
-     */
     ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException;
 
-
-    /**
-     * Retrieves a center by its ID.
-     *
-     * @return The response entity containing the retrieved center
-     */
     ResponseEntity<Center> getCenter();
 
-    /**
-     * Retrieves a center by the user ID.
-     *
-     * @param id The user ID
-     * @return The response entity containing the retrieved center
-     */
     ResponseEntity<Center> getByUserId(Integer id);
 
-    /**
-     * Like a center by its ID.
-     *
-     * @param id The center ID
-     * @return The response entity indicating the outcome of the operation
-     */
     ResponseEntity<String> likeCenter(Integer id) throws JsonProcessingException;
 
-    /**
-     * Get list of Centers that are liked
-     *
-     * @return The response entity indicating the outcome of the operation
-     */
     ResponseEntity<List<CenterLike>> getCenterLikes();
 
-    /**
-     * Update a center photo
-     *
-     * @return The response entity indicating the outcome of the operation
-     */
     ResponseEntity<String> updatePhoto(CenterRequest centerRequest) throws JsonProcessingException;
 
-    /**
-     * Get the list of active centers
-     *
-     * @return The response entity indicating the outcome of the operation
-     */
     ResponseEntity<List<Center>> getActiveCenters();
+
+    ResponseEntity<String> addCenterAnnouncement(Map<String, String> requestMap);
+
+    ResponseEntity<String> updateCenterAnnouncement(Map<String, String> requestMap);
+
+    ResponseEntity<String> deleteCenterAnnouncement(Integer id);
+
+    ResponseEntity<String> updateCenterAnnouncementStatus(Integer id);
+
+    ResponseEntity<List<CenterAnnouncement>> getAllCenterAnnouncements();
+
+    ResponseEntity<List<CenterAnnouncement>> getMyCenterAnnouncements();
+
+    ResponseEntity<String> addCenterEquipment(Map<String, String> requestMap);
+
+    ResponseEntity<String> updateCenterEquipment(Map<String, String> requestMap);
+
+    ResponseEntity<String> deleteCenterEquipment(Integer id);
+
+    ResponseEntity<List<CenterEquipment>> getAllCenterEquipments();
+
+    ResponseEntity<List<CenterEquipment>> getMyCenterEquipments();
+
+    ResponseEntity<String> addCenterIntroduction(Map<String, String> requestMap);
+
+    ResponseEntity<String> updateCenterIntroduction(Map<String, String> requestMap);
+
+    ResponseEntity<String> deleteCenterIntroduction(Integer id);
+
+    ResponseEntity<List<CenterIntroduction>> getAllCenterIntroductions();
+
+    ResponseEntity<List<CenterIntroduction>> getMyCenterIntroductions();
+
+    ResponseEntity<String> addCenterLocation(Map<String, String> requestMap);
+
+    ResponseEntity<String> updateCenterLocation(Map<String, String> requestMap);
+
+    ResponseEntity<String> deleteCenterLocation(Integer id);
+
+    ResponseEntity<List<CenterLocation>> getAllCenterLocations();
+
+    ResponseEntity<List<CenterLocation>> getMyCenterLocations();
+
+    ResponseEntity<String> addCenterPhotoAlbum(PhotoAlbum photoAlbum);
+
+    ResponseEntity<String> updateCenterPhotoAlbum(PhotoAlbum photoAlbum);
+
+    ResponseEntity<String> deleteCenterPhotoAlbum(Integer id);
+
+    ResponseEntity<List<CenterPhotoAlbum>> getAllCenterPhotoAlbums();
+
+    ResponseEntity<List<CenterPhotoAlbum>> getMyCenterPhotoAlbums();
+
+    ResponseEntity<String> addCenterPricing(Map<String, String> requestMap);
+
+    ResponseEntity<String> updateCenterPricing(Map<String, String> requestMap);
+
+    ResponseEntity<String> deleteCenterPricing(Integer id);
+
+    ResponseEntity<List<CenterPricing>> getAllCenterPricing();
+
+    ResponseEntity<List<CenterPricing>> getMyCenterPricing();
+
+    ResponseEntity<String> addCenterTrainer(Map<String, String> requestMap);
+
+    ResponseEntity<String> updateCenterTrainer(Map<String, String> requestMap);
+
+    ResponseEntity<String> deleteCenterTraining(Integer id);
+
+    ResponseEntity<List<CenterTrainer>> getAllCenterTrainers();
+
+    ResponseEntity<List<CenterTrainer>> getMyCenterTrainers();
+
+    ResponseEntity<String> addCenterVideoAlbum(VideoAlbum videoAlbum);
+
+    ResponseEntity<String> updateCenterVideoAlbum(VideoAlbum videoAlbum);
+
+    ResponseEntity<String> deleteCenterVideoAlbum(Integer id);
+
+    ResponseEntity<List<CenterVideoAlbum>> getAllCenterVideoAlbums();
+
+    ResponseEntity<List<CenterVideoAlbum>> getMyCenterVideoAlbums();
+
+
 }

@@ -16,6 +16,9 @@ public interface UserRest {
     @PostMapping(path = "/signup")
     ResponseEntity<String> signUp(@ModelAttribute SignupRequest request);
 
+    @PostMapping(path = "/quickAdd")
+    ResponseEntity<String> quickAdd(@RequestBody() Map<String, String> requestMap);
+
     @PostMapping(path = "/login")
     ResponseEntity<String> login(@RequestBody() Map<String, String> requestMap);
 

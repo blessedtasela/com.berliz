@@ -11,8 +11,8 @@ import java.util.Date;
 @Entity
 @DynamicInsert
 @DynamicUpdate
-@Table(name = "trainerBenefit")
-public class TrainerBenefit {
+@Table(name = "trainerFeatureVideo")
+public class TrainerFeatureVideo {
 
     private static final long SerialVersionUID = 1L;
 
@@ -25,8 +25,11 @@ public class TrainerBenefit {
     @JoinColumn(name = "trainer_fk", nullable = false)
     private Trainer trainer;
 
-    @Column(name = "benefit", columnDefinition = "TEXT")
-    private String benefit;
+    @Column(name = "video")
+    private String video;
+
+    @Column(name = "motivation", columnDefinition = "TEXT")
+    private String motivation;
 
     @Column(name = "date", columnDefinition = "DATE")
     private Date date;

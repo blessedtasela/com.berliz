@@ -99,26 +99,27 @@ public class UserServiceImplement implements UserService {
      * Confirm a user's account activation by sending a confirmation code to their email address.
      *
      * @param email The email address of the user whose account needs to be confirmed.
-     * @return A ResponseEntity<String> indicating the result of the confirmation process.
      * @throws JsonProcessingException If there is an issue processing JSON data.
      */
-    public ResponseEntity<String> confirmAccount(String email) throws JsonProcessingException {
+    public void confirmAccount(String email) throws JsonProcessingException {
         try {
             User user = userRepo.findByEmail(email);
             if (!Objects.isNull(user)
                     && !Strings.isNullOrEmpty(String.valueOf(user.getEmail().equalsIgnoreCase(email)))) {
                 if ("true".equalsIgnoreCase(user.getStatus())) {
-                    return buildResponse(HttpStatus.BAD_REQUEST, "Account is already active");
+                    buildResponse(HttpStatus.BAD_REQUEST, "Account is already active");
+                    return;
                 }
                 emailUtilities.validateSignupMail(user.getEmail(), "Activate Account");
-                return buildResponse(HttpStatus.OK, "A confirmation code has been sent to your email");
+                buildResponse(HttpStatus.OK, "A confirmation code has been sent to your email");
             } else {
-                return buildResponse(HttpStatus.NOT_FOUND, "Email not found");
+                buildResponse(HttpStatus.NOT_FOUND, "Email not found");
             }
+            return;
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+        buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     /**
@@ -182,7 +183,7 @@ public class UserServiceImplement implements UserService {
                             String responseBodyJson = objectMapper.writeValueAsString(responseBody);
 
                             return ResponseEntity.status(HttpStatus.OK)
-                                    .contentType(MediaType.ALL.APPLICATION_JSON)
+                                    .contentType(MediaType.APPLICATION_JSON)
                                     .body(responseBodyJson);
                         } else {
                             return buildResponse(HttpStatus.BAD_REQUEST, "Please activate your account to continue");
@@ -239,6 +240,32 @@ public class UserServiceImplement implements UserService {
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @Override
+    public ResponseEntity<String> quickAdd(Map<String, String> requestMap) throws JsonProcessingException {
+        log.info("Inside quickAdd {}", requestMap);
+        try {
+            boolean isValidRequest = requestMap.containsKey("email") && requestMap.containsKey("password");
+            log.info("is request valid? {}", isValidRequest);
+
+            if (!isValidRequest) {
+                return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            User user = userRepo.findByEmail(requestMap.get("email"));
+            if (!Objects.isNull(user)) {
+                return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.EMAIL_EXISTS);
+            }
+            user = new User();
+            user.setEmail(requestMap.get("email"));
+            user.setPassword(passwordEncoder.encode(requestMap.get("password")));
+            userRepo.save(user);
+            confirmAccount(requestMap.get("email"));
+            return buildResponse(HttpStatus.OK, BerlizConstants.SIGNUP_SUCCESS);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
 
     /**
      * Deactivate the user's account. This method is used to mark the user's account as inactive.
@@ -431,7 +458,7 @@ public class UserServiceImplement implements UserService {
             log.info("Inside optional {}", optional);
             User user = optional.get();
             return ResponseEntity.status(HttpStatus.OK)
-                    .contentType(MediaType.ALL.APPLICATION_JSON)
+                    .contentType(MediaType.APPLICATION_JSON)
                     .body(user);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -475,7 +502,7 @@ public class UserServiceImplement implements UserService {
             String responseBodyJson = objectMapper.writeValueAsString(responseBody);
 
             return ResponseEntity.status(HttpStatus.OK)
-                    .contentType(MediaType.ALL.APPLICATION_JSON)
+                    .contentType(MediaType.APPLICATION_JSON)
                     .body(responseBodyJson);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -486,7 +513,7 @@ public class UserServiceImplement implements UserService {
     @Override
     public ResponseEntity<String> updateBio(Map<String, String> requestMap) throws JsonProcessingException {
         try {
-            log.info("Inside updateBio", requestMap);
+            log.info("Inside updateBio {}", requestMap);
             User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
             if (user == null) {
                 return buildResponse(HttpStatus.NOT_FOUND, "User is null");
@@ -536,7 +563,7 @@ public class UserServiceImplement implements UserService {
     @Override
     public ResponseEntity<String> changePassword(Map<String, String> requestMap) throws JsonProcessingException {
         try {
-            log.info("Inside changePassword", requestMap);
+            log.info("Inside changePassword {}", requestMap);
             User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
 
             if (user == null) {
@@ -566,6 +593,7 @@ public class UserServiceImplement implements UserService {
     @Override
     public ResponseEntity<String> changePasswordAdmin(Map<String, String> requestMap) throws JsonProcessingException {
         try {
+            log.info("Inside changePasswordAdmin {}", requestMap);
             if (jwtFilter.isAdmin()) {
                 if (!(requestMap.containsKey("id") && requestMap.containsKey("newPassword"))) {
                     return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
@@ -662,7 +690,7 @@ public class UserServiceImplement implements UserService {
             User user;
             String responseMessage;
 
-            if (!validateUpdateUserMap(requestMap)) {
+            if (validateUpdateUserMap(requestMap)) {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
@@ -715,9 +743,10 @@ public class UserServiceImplement implements UserService {
     @Override
     public ResponseEntity<String> updateSuperUser(Map<String, String> requestMap) throws JsonProcessingException {
         try {
+            log.info("Inside updateSuperUser {}", requestMap);
             User superUser = userRepo.findByEmail(jwtFilter.getCurrentUser());
             log.info("Inside updateUserAdmin {}", requestMap);
-            if (!validateUpdateUserMap(requestMap)) {
+            if (validateUpdateUserMap(requestMap)) {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
@@ -854,10 +883,9 @@ public class UserServiceImplement implements UserService {
      * Create a User object from the provided SignupRequest data.
      *
      * @param request The SignupRequest object containing user registration data.
-     * @return A User object created from the SignupRequest data.
      * @throws IOException If there is an issue with reading the profile photo data.
      */
-    private User getUserFromMap(SignupRequest request) throws IOException {
+    private void getUserFromMap(SignupRequest request) throws IOException {
         User user = new User();
         byte[] image = request.getProfilePhoto().getBytes();
 
@@ -881,7 +909,6 @@ public class UserServiceImplement implements UserService {
         user.setLastUpdate(new Date());
         User savedUser = userRepo.save(user);
         simpMessagingTemplate.convertAndSend("/topic/getUserFromMap", savedUser);
-        return user;
     }
 
     /**
@@ -893,17 +920,17 @@ public class UserServiceImplement implements UserService {
     private boolean validateUpdateUserMap(Map<String, String> requestMap) {
         // Check if the requestMap contains all the required fields to make an update
 
-        return requestMap.containsKey("firstname")
-                && requestMap.containsKey("lastname")
-                && requestMap.containsKey("phone")
-                && requestMap.containsKey("dob")
-                && requestMap.containsKey("gender")
-                && requestMap.containsKey("country")
-                && requestMap.containsKey("state")
-                && requestMap.containsKey("city")
-                && requestMap.containsKey("address")
-                && requestMap.containsKey("bio")
-                && requestMap.containsKey("postalCode");
+        return !requestMap.containsKey("firstname")
+                || !requestMap.containsKey("lastname")
+                || !requestMap.containsKey("phone")
+                || !requestMap.containsKey("dob")
+                || !requestMap.containsKey("gender")
+                || !requestMap.containsKey("country")
+                || !requestMap.containsKey("state")
+                || !requestMap.containsKey("city")
+                || !requestMap.containsKey("address")
+                || !requestMap.containsKey("bio")
+                || !requestMap.containsKey("postalCode");
     }
 
     // Helper method to update user entity with data from the request map

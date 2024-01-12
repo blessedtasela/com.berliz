@@ -1,5 +1,6 @@
 package com.berliz.JWT;
 
+import com.berliz.models.User;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -54,7 +55,7 @@ public class JWTFilter extends OncePerRequestFilter {
             if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
                 token = authorizationHeader.substring(7);
                 username = jwtUtility.extractUsername(token);
-                userId = Integer.valueOf(jwtUtility.extractUserId(token));
+                userId = jwtUtility.extractUserId(token);
                 claims = jwtUtility.extractAllClaims(token);
             }
             if ("OPTIONS".equalsIgnoreCase(httpServletRequest.getMethod())) {
@@ -81,7 +82,7 @@ public class JWTFilter extends OncePerRequestFilter {
     private boolean isWebSocketRequest(HttpServletRequest request) {
         // Check if the "Upgrade" header contains "websocket"
         String upgradeHeader = request.getHeader("Upgrade");
-        return upgradeHeader != null && "websocket".equalsIgnoreCase(upgradeHeader);
+        return "websocket".equalsIgnoreCase(upgradeHeader);
     }
 
     public String getCurrentUser() {
@@ -147,6 +148,19 @@ public class JWTFilter extends OncePerRequestFilter {
             }
         }
         return false;
+    }
+
+    public boolean isAccountIncomplete(User user) {
+        return user.getFirstname() == null || user.getFirstname().isEmpty() ||
+                user.getLastname() == null || user.getLastname().isEmpty() ||
+                user.getAddress() == null || user.getAddress().isEmpty() ||
+                user.getCountry() == null || user.getCountry().isEmpty() ||
+                user.getGender() == null || user.getGender().isEmpty() ||
+                user.getCity() == null || user.getCity().isEmpty() ||
+                user.getPhone() == null || user.getPhone().isEmpty() ||
+                user.getBio() == null || user.getBio().isEmpty() ||
+                user.getPostalCode() == null ||
+                user.getProfilePhoto() == null;
     }
 
 }

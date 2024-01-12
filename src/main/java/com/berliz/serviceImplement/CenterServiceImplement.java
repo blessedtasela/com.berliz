@@ -1,6 +1,8 @@
 package com.berliz.serviceImplement;
 
 import com.berliz.DTO.CenterRequest;
+import com.berliz.DTO.PhotoAlbum;
+import com.berliz.DTO.VideoAlbum;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.*;
@@ -42,6 +44,24 @@ public class CenterServiceImplement implements CenterService {
 
     @Autowired
     UserRepo userRepo;
+
+    @Autowired
+    CenterVideoAlbumRepo centerVideoAlbumRepo;
+
+    @Autowired
+    CenterPhotoAlbumRepo centerPhotoAlbumRepo;
+
+    @Autowired
+    CenterTrainerRepo centerTrainerRepo;
+
+    @Autowired
+    CenterLocationRepo centerLocationRepo;
+
+    @Autowired
+    CenterIntroductionRepo centerIntroductionRepo;
+
+    @Autowired
+    CenterAnnouncementRepo centerAnnouncementRepo;
 
     @Autowired
     CenterLikeRepo centerLikeRepo;
@@ -133,6 +153,11 @@ public class CenterServiceImplement implements CenterService {
             ex.printStackTrace();
         }
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateMyCenterTrainers(Map<String, String> requestMap) {
+        return null;
     }
 
 
@@ -433,6 +458,211 @@ public class CenterServiceImplement implements CenterService {
             ex.printStackTrace();
         }
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterAnnouncement(Map<String, String> requestMap) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterAnnouncement(Map<String, String> requestMap) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterAnnouncement(Integer id) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterAnnouncementStatus(Integer id) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterAnnouncement>> getAllCenterAnnouncements() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterAnnouncement>> getMyCenterAnnouncements() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterEquipment(Map<String, String> requestMap) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterEquipment(Map<String, String> requestMap) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterEquipment(Integer id) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterEquipment>> getAllCenterEquipments() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterEquipment>> getMyCenterEquipments() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterIntroduction(Map<String, String> requestMap) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterIntroduction(Map<String, String> requestMap) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterIntroduction(Integer id) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterIntroduction>> getAllCenterIntroductions() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterIntroduction>> getMyCenterIntroductions() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterLocation(Map<String, String> requestMap) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterLocation(Map<String, String> requestMap) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterLocation(Integer id) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterLocation>> getAllCenterLocations() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterLocation>> getMyCenterLocations() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterPhotoAlbum(PhotoAlbum photoAlbum) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterPhotoAlbum(PhotoAlbum photoAlbum) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterPhotoAlbum(Integer id) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterPhotoAlbum>> getAllCenterPhotoAlbums() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterPhotoAlbum>> getMyCenterPhotoAlbums() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterPricing(Map<String, String> requestMap) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterPricing(Map<String, String> requestMap) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterPricing(Integer id) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterPricing>> getAllCenterPricing() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterPricing>> getMyCenterPricing() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterTrainer(Map<String, String> requestMap) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterTrainer(Map<String, String> requestMap) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterTraining(Integer id) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterTrainer>> getAllCenterTrainers() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterTrainer>> getMyCenterTrainers() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterVideoAlbum(VideoAlbum videoAlbum) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterVideoAlbum(VideoAlbum videoAlbum) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterVideoAlbum(Integer id) {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterVideoAlbum>> getAllCenterVideoAlbums() {
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<List<CenterVideoAlbum>> getMyCenterVideoAlbums() {
+        return null;
     }
 
 

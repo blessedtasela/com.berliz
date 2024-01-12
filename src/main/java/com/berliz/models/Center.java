@@ -85,6 +85,14 @@ public class Center implements Serializable {
     )
     private Set<Category> categorySet = new HashSet<>();
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "centerTrainers",
+            joinColumns = @JoinColumn(name = "centerId"),
+            inverseJoinColumns = @JoinColumn(name = "trainerId")
+    )
+    private Set<Trainer> trainers = new HashSet<>();
+
     @Column(name = "date", columnDefinition = "DATE")
     private Date date;
 

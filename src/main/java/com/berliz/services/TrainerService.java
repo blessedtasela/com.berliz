@@ -1,11 +1,10 @@
 package com.berliz.services;
 
-import com.berliz.DTO.TrainerRequest;
-import com.berliz.models.Trainer;
-import com.berliz.models.TrainerLike;
-import com.berliz.models.TrainerPricing;
+import com.berliz.DTO.*;
+import com.berliz.models.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ModelAttribute;
 
 import java.util.List;
 import java.util.Map;
@@ -42,4 +41,66 @@ public interface TrainerService {
     ResponseEntity<List<TrainerPricing>> getTrainerPricing();
 
     ResponseEntity<String> deleteTrainerPricing(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<String> addTrainerPhotoAlbum(PhotoAlbum photoAlbum) throws JsonProcessingException;
+
+    ResponseEntity<String> updateTrainerPhotoAlbum(PhotoAlbum photoAlbum) throws JsonProcessingException;
+
+    ResponseEntity<String> deleteTrainerPhotoAlbum(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<List<TrainerPhotoAlbum>> getAllTrainerPhotoAlbums();
+
+    ResponseEntity<List<TrainerPhotoAlbum>> getMyTrainerPhotoAlbums();
+
+    ResponseEntity<String> addTrainerBenefit(Map<String, String> requestMap) throws JsonProcessingException;
+
+    ResponseEntity<String> updateTrainerBenefit(Map<String, String> requestMap) throws JsonProcessingException;
+
+    ResponseEntity<String> deleteTrainerBenefit(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<List<TrainerBenefit>> getAllTrainerBenefits();
+
+    ResponseEntity<List<TrainerBenefit>> getMyTrainerBenefits();
+
+    ResponseEntity<String> addTrainerIntroduction(@ModelAttribute Introduction introduction) throws JsonProcessingException;
+
+    ResponseEntity<String> updateTrainerIntroduction(@ModelAttribute Introduction introduction) throws JsonProcessingException;
+
+    ResponseEntity<String> deleteTrainerIntroduction(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<List<TrainerIntroduction>> getAllTrainerIntroductions();
+
+    ResponseEntity<TrainerIntroduction> getMyTrainerIntroduction();
+
+    ResponseEntity<String> addTrainerVideoAlbum(VideoAlbum videoAlbum) throws JsonProcessingException;
+
+    ResponseEntity<String> updateTrainerVideoAlbum(VideoAlbum videoAlbum) throws JsonProcessingException;
+
+    ResponseEntity<String> deleteTrainerVideoAlbum(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<List<TrainerVideoAlbum>> getAllTrainerVideoAlbums();
+
+    ResponseEntity<List<TrainerVideoAlbum>> getMyTrainerVideoAlbums();
+
+    ResponseEntity<String> addTrainerClientReview(ClientReview clientReview);
+
+    ResponseEntity<String> updateTrainerClientReview(ClientReview clientReview);
+
+    ResponseEntity<String> deleteTrainerClientReview(Integer id);
+
+    ResponseEntity<List<TrainerClientReview>> getAllTrainerClientReviews();
+
+    ResponseEntity<List<TrainerClientReview>> getActiveTrainerClientReviews();
+
+    ResponseEntity<List<TrainerClientReview>> getMyTrainerClientReviews();
+
+    ResponseEntity<String> addTrainerFeatureVideo(FeatureVideo featureVideo);
+
+    ResponseEntity<String> updateTrainerFeatureVideo(FeatureVideo featureVideo);
+
+    ResponseEntity<String> deleteTrainerFeatureVideo(Integer id);
+
+    ResponseEntity<List<TrainerFeatureVideo>> getAllTrainerFeatureVideos();
+
+    ResponseEntity<List<TrainerFeatureVideo>> getMyTrainerFeatureVideos();
 }

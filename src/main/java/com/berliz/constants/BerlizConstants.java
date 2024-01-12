@@ -18,6 +18,18 @@ public class BerlizConstants {
 
     public static final String PROFILE_PICTURE_LOCATION = "C:\\berliz-app\\com.berliz\\src\\profile_photo\\";
 
+    public static final String TRAINER_PHOTO_ALBUM_LOCATION = "C:\\berliz-project\\back-end\\com.berliz\\src\\main\\resources\\trainer_photo_album\\";
+
+    public static final String TRAINER_VIDEO_ALBUM_LOCATION = "C:\\berliz-project\\back-end\\com.berliz\\src\\main\\resources\\trainer_video_album";
+
+    public static final String TRAINER_FEATURE_VIDEO = "C:\\berliz-project\\back-end\\com.berliz\\src\\main\\resources\\trainer_feature_video\\";
+
+    public static final String TRAINER_CLIENT_REVIEW = "C:\\berliz-project\\back-end\\com.berliz\\src\\main\\resources\\trainer_client_review\\";
+
+    public static final String CENTER_PHOTO_ALBUM_LOCATION = "C:\\berliz-project\\back-end\\com.berliz\\src\\main\\resources\\center_photo_album\\";
+
+    public static final String CENTER_VIDEO_ALBUM_LOCATION = "C:\\berliz-project\\back-end\\com.berliz\\src\\main\\resources\\center_video_album\\";
+
     public static final String BERLIZ_URL = "http://localhost:4200";
 
     public static final String BERLIZ_SUPER_ADMIN = "berlizworld@gmail.com";

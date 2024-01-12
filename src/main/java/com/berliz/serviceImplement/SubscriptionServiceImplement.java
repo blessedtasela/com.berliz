@@ -79,6 +79,11 @@ public class SubscriptionServiceImplement implements SubscriptionService {
                     return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "User email not found in db");
                 }
 
+                if (jwtFilter.isAccountIncomplete(user)) {
+                    return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED,
+                            "User account registration is incomplete. Please update user account information.");
+                }
+
                 String userRole = user.getRole();
                 boolean validateAdminRole = userRole.equalsIgnoreCase("admin");
                 if (validateAdminRole) {
@@ -95,10 +100,14 @@ public class SubscriptionServiceImplement implements SubscriptionService {
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "You have successfully added "
                         + user.getFirstname() + " subscription");
             } else {
-                Integer userId = jwtFilter.getCurrentUserId();
                 User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
                 if (user == null) {
                     return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Invalid user");
+                }
+
+                if (jwtFilter.isAccountIncomplete(user)) {
+                    return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED,
+                            "Account registration is incomplete. Please update account information to continue.");
                 }
 
                 Subscription subscription = subscriptionRepo.findActiveSubscriptionByUser(user);

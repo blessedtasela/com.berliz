@@ -1,9 +1,10 @@
 package com.berliz.restImplement;
 
 import com.berliz.DTO.CenterRequest;
+import com.berliz.DTO.PhotoAlbum;
+import com.berliz.DTO.VideoAlbum;
 import com.berliz.constants.BerlizConstants;
-import com.berliz.models.Center;
-import com.berliz.models.CenterLike;
+import com.berliz.models.*;
 import com.berliz.rest.CenterRest;
 import com.berliz.services.CenterService;
 import com.berliz.utils.BerlizUtilities;
@@ -26,13 +27,6 @@ public class CenterRestImplement implements CenterRest {
     @Autowired
     CenterService centerService;
 
-    /**
-     * Add a new center.
-     *
-     * @param centerRequest The request map containing center details.
-     * @return ResponseEntity containing a response message.
-     * @throws JsonProcessingException if there is an issue with JSON processing.
-     */
     @Override
     public ResponseEntity<String> addCenter(CenterRequest centerRequest) throws JsonProcessingException {
         try {
@@ -43,11 +37,6 @@ public class CenterRestImplement implements CenterRest {
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
-    /**
-     * Get a list of all centers.
-     *
-     * @return ResponseEntity containing a list of centers.
-     */
     @Override
     public ResponseEntity<List<Center>> getAllCenters() {
         try {
@@ -69,13 +58,6 @@ public class CenterRestImplement implements CenterRest {
 
     }
 
-    /**
-     * Update an existing center.
-     *
-     * @param requestMap The request map containing center details.
-     * @return ResponseEntity containing a response message.
-     * @throws JsonProcessingException if there is an issue with JSON processing.
-     */
     @Override
     public ResponseEntity<String> updateCenter(Map<String, String> requestMap) throws JsonProcessingException {
         try {
@@ -86,13 +68,16 @@ public class CenterRestImplement implements CenterRest {
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
-    /**
-     * Delete a center by its ID.
-     *
-     * @param id The ID of the center to be deleted.
-     * @return ResponseEntity containing a response message.
-     * @throws JsonProcessingException if there is an issue with JSON processing.
-     */
+    @Override
+    public ResponseEntity<String> updateMyCenterTrainers(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.updateMyCenterTrainers(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
     @Override
     public ResponseEntity<String> deleteCenter(Integer id) throws JsonProcessingException {
         try {
@@ -103,13 +88,6 @@ public class CenterRestImplement implements CenterRest {
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
-    /**
-     * Update the status of a center.
-     *
-     * @param id The ID of the center to be updated.
-     * @return ResponseEntity containing a response message.
-     * @throws JsonProcessingException if there is an issue with JSON processing.
-     */
     @Override
     public ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException {
         try {
@@ -120,12 +98,6 @@ public class CenterRestImplement implements CenterRest {
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
-    /**
-     * Get a center by user ID.
-     *
-     * @param id The ID of the user.
-     * @return ResponseEntity containing a center object.
-     */
     @Override
     public ResponseEntity<Center> getByUserId(Integer id) {
         try {
@@ -137,11 +109,6 @@ public class CenterRestImplement implements CenterRest {
         return new ResponseEntity<>(new Center(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    /**
-     * Get a center.
-     *
-     * @return ResponseEntity containing a center object.
-     */
     @Override
     public ResponseEntity<Center> getCenter() {
         try {
@@ -153,13 +120,6 @@ public class CenterRestImplement implements CenterRest {
         return new ResponseEntity<>(new Center(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    /**
-     * Like a center by its ID.
-     *
-     * @param id The ID of the center to be liked.
-     * @return ResponseEntity containing a response message.
-     * @throws JsonProcessingException if there is an issue with JSON processing.
-     */
     @Override
     public ResponseEntity<String> likeCenter(Integer id) throws JsonProcessingException {
         try {
@@ -188,6 +148,416 @@ public class CenterRestImplement implements CenterRest {
             ex.printStackTrace();
         }
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterAnnouncement(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.addCenterAnnouncement(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterAnnouncement(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.updateCenterAnnouncement(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterAnnouncement(Integer id) throws JsonProcessingException {
+        try {
+            return centerService.deleteCenterAnnouncement(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterAnnouncementStatus(Integer id) throws JsonProcessingException {
+        try {
+            return centerService.updateCenterAnnouncementStatus(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterAnnouncement>> getAllCenterAnnouncements() {
+        try {
+            return centerService.getAllCenterAnnouncements();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterAnnouncement>> getMyCenterAnnouncements() {
+        try {
+            return centerService.getMyCenterAnnouncements();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterEquipment(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.addCenterEquipment(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterEquipment(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.updateCenterEquipment(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterEquipment(Integer id) throws JsonProcessingException {
+        try {
+            return centerService.deleteCenterEquipment(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterEquipment>> getAllCenterEquipments() {
+        try {
+            return centerService.getAllCenterEquipments();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterEquipment>> getMyCenterEquipments() {
+        try {
+            return centerService.getMyCenterEquipments();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterIntroduction(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.addCenterIntroduction(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterIntroduction(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.updateCenterIntroduction(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterIntroduction(Integer id) throws JsonProcessingException {
+        try {
+            return centerService.deleteCenterIntroduction(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterIntroduction>> getAllCenterIntroductions() {
+        try {
+            return centerService.getAllCenterIntroductions();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterIntroduction>> getMyCenterIntroductions() {
+        try {
+            return centerService.getMyCenterIntroductions();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterLocation(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.addCenterLocation(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterLocation(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.updateCenterLocation(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterLocation(Integer id) throws JsonProcessingException {
+        try {
+            return centerService.deleteCenterLocation(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterLocation>> getAllCenterLocations() {
+        try {
+            return centerService.getAllCenterLocations();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterLocation>> getMyCenterLocations() {
+        try {
+            return centerService.getMyCenterLocations();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterPhotoAlbum(PhotoAlbum photoAlbum) throws JsonProcessingException {
+        try {
+            return centerService.addCenterPhotoAlbum(photoAlbum);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterPhotoAlbum(PhotoAlbum photoAlbum) throws JsonProcessingException {
+        try {
+            return centerService.updateCenterPhotoAlbum(photoAlbum);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterPhotoAlbum(Integer id) throws JsonProcessingException {
+        try {
+            return centerService.deleteCenterPhotoAlbum(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterPhotoAlbum>> getAllCenterPhotoAlbums() {
+        try {
+            return centerService.getAllCenterPhotoAlbums();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterPhotoAlbum>> getMyCenterPhotoAlbums() {
+        try {
+            return centerService.getMyCenterPhotoAlbums();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterPricing(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.addCenterPricing(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterPricing(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.updateCenterPricing(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterPricing(Integer id) throws JsonProcessingException {
+        try {
+            return centerService.deleteCenterPricing(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterPricing>> getAllCenterPricing() {
+        try {
+            return centerService.getAllCenterPricing();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterPricing>> getMyCenterPricing() {
+        try {
+            return centerService.getMyCenterPricing();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterTrainer(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.addCenterTrainer(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterTrainer(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return centerService.updateCenterTrainer(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterTraining(Integer id) throws JsonProcessingException {
+        try {
+            return centerService.deleteCenterTraining(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterTrainer>> getAllCenterTrainers() {
+        try {
+            return centerService.getAllCenterTrainers();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterTrainer>> getMyCenterTrainers() {
+        try {
+            return centerService.getMyCenterTrainers();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterVideoAlbum(VideoAlbum videoAlbum) throws JsonProcessingException {
+        try {
+            return centerService.addCenterVideoAlbum(videoAlbum);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterVideoAlbum(VideoAlbum videoAlbum) throws JsonProcessingException {
+        try {
+            return centerService.updateCenterVideoAlbum(videoAlbum);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterVideoAlbum(Integer id) throws JsonProcessingException {
+        try {
+            return centerService.deleteCenterVideoAlbum(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterVideoAlbum>> getAllCenterVideoAlbums() {
+        try {
+            return centerService.getAllCenterVideoAlbums();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterVideoAlbum>> getMyCenterVideoAlbums() {
+        try {
+            return centerService.getMyCenterVideoAlbums();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 }

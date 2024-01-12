@@ -6,13 +6,15 @@ import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @Entity
 @DynamicInsert
 @DynamicUpdate
-@Table(name = "trainerBenefit")
-public class TrainerBenefit {
+@Table(name = "centerTrainer")
+public class CenterTrainer {
 
     private static final long SerialVersionUID = 1L;
 
@@ -22,15 +24,19 @@ public class TrainerBenefit {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "trainer_fk", nullable = false)
-    private Trainer trainer;
-
-    @Column(name = "benefit", columnDefinition = "TEXT")
-    private String benefit;
+    @JoinColumn(name = "center_id", nullable = false)
+    private Center center;
 
     @Column(name = "date", columnDefinition = "DATE")
     private Date date;
 
-    @Column(name = "last_update", columnDefinition = "DATE")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "trainer_fk", nullable = false)
+    private Trainer trainer;
+
+    @Column(name = "lastUpdate", columnDefinition = "DATE")
     private Date lastUpdate;
+
+    @Column(name = "status")
+    private String status;
 }
