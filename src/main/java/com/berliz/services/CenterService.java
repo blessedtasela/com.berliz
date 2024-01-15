@@ -91,31 +91,31 @@ public interface CenterService {
 
     ResponseEntity<List<CenterPhotoAlbum>> getMyCenterPhotoAlbums();
 
-    ResponseEntity<String> addCenterPricing(Map<String, String> requestMap);
+    ResponseEntity<String> addCenterPricing(Map<String, String> requestMap) throws JsonProcessingException;
 
-    ResponseEntity<String> updateCenterPricing(Map<String, String> requestMap);
+    ResponseEntity<String> updateCenterPricing(Map<String, String> requestMap) throws JsonProcessingException;
 
-    ResponseEntity<String> deleteCenterPricing(Integer id);
+    ResponseEntity<String> deleteCenterPricing(Integer id) throws JsonProcessingException;
 
     ResponseEntity<List<CenterPricing>> getAllCenterPricing();
 
-    ResponseEntity<List<CenterPricing>> getMyCenterPricing();
+    ResponseEntity<CenterPricing> getMyCenterPricing();
 
-    ResponseEntity<String> addCenterTrainer(Map<String, String> requestMap);
+    ResponseEntity<String> addCenterTrainer(Map<String, String> requestMap) throws JsonProcessingException;
 
-    ResponseEntity<String> updateCenterTrainer(Map<String, String> requestMap);
+    ResponseEntity<String> updateCenterTrainerStatus(Integer id) throws JsonProcessingException;
 
-    ResponseEntity<String> deleteCenterTraining(Integer id);
+    ResponseEntity<String> deleteCenterTrainer(Integer id) throws JsonProcessingException;
 
     ResponseEntity<List<CenterTrainer>> getAllCenterTrainers();
 
     ResponseEntity<List<CenterTrainer>> getMyCenterTrainers();
 
-    ResponseEntity<String> addCenterVideoAlbum(VideoAlbumRequest videoAlbumRequest);
+    ResponseEntity<String> addCenterVideoAlbum(VideoAlbumRequest videoAlbumRequest) throws JsonProcessingException;
 
-    ResponseEntity<String> updateCenterVideoAlbum(VideoAlbumRequest videoAlbumRequest);
+    ResponseEntity<String> updateCenterVideoAlbum(VideoAlbumRequest videoAlbumRequest) throws JsonProcessingException;
 
-    ResponseEntity<String> deleteCenterVideoAlbum(Integer id);
+    ResponseEntity<String> deleteCenterVideoAlbum(Integer id) throws JsonProcessingException;
 
     ResponseEntity<List<CenterVideoAlbum>> getAllCenterVideoAlbums();
 

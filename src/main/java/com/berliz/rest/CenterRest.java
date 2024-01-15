@@ -145,16 +145,16 @@ public interface CenterRest {
     ResponseEntity<List<CenterPricing>> getAllCenterPricing();
 
     @GetMapping(path = "/getMyCenterPricing")
-    ResponseEntity<List<CenterPricing>> getMyCenterPricing();
+    ResponseEntity<CenterPricing> getMyCenterPricing();
 
     @PutMapping(path = "/addCenterTrainer")
     ResponseEntity<String> addCenterTrainer(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
 
-    @PutMapping(path = "/updateCenterTrainer")
-    ResponseEntity<String> updateCenterTrainer(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+    @PutMapping(path = "/updateCenterTrainerStatus/{id}")
+    ResponseEntity<String> updateCenterTrainerStatus(@PathVariable Integer id) throws JsonProcessingException;
 
     @DeleteMapping(path = "/deleteCenterTrainer/{id}")
-    ResponseEntity<String> deleteCenterTraining(@PathVariable Integer id) throws JsonProcessingException;
+    ResponseEntity<String> deleteCenterTrainer(@PathVariable Integer id) throws JsonProcessingException;
 
     @GetMapping(path = "/getAllCenterTrainers")
     ResponseEntity<List<CenterTrainer>> getAllCenterTrainers();

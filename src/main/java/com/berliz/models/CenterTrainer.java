@@ -27,12 +27,12 @@ public class CenterTrainer {
     @JoinColumn(name = "center_id", nullable = false)
     private Center center;
 
-    @Column(name = "date", columnDefinition = "DATE")
-    private Date date;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "trainer_fk", nullable = false)
     private Trainer trainer;
+
+    @Column(name = "date", columnDefinition = "DATE")
+    private Date date;
 
     @Column(name = "lastUpdate", columnDefinition = "DATE")
     private Date lastUpdate;

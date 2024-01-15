@@ -52,8 +52,11 @@ public interface TrainerRest {
     @PutMapping(path = "/updateTrainerPricing")
     ResponseEntity<String> updateTrainerPricing(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
 
-    @GetMapping(path = "/getTrainerPricing")
-    ResponseEntity<List<TrainerPricing>> getTrainerPricing();
+    @GetMapping(path = "/getAllTrainerPricing")
+    ResponseEntity<List<TrainerPricing>> getAllTrainerPricing();
+
+    @GetMapping(path = "/getMyTrainerPricing")
+    ResponseEntity<TrainerPricing> getMyTrainerPricing();
 
     @DeleteMapping(path = "/deleteTrainerPricing/{id}")
     ResponseEntity<String> deleteTrainerPricing(@PathVariable Integer id) throws JsonProcessingException;
@@ -150,4 +153,7 @@ public interface TrainerRest {
 
     @GetMapping(path = "/getTrainerClientReviewLikes")
     ResponseEntity<List<ClientReviewLike>> getClientReviewLikes() throws JsonProcessingException;
+
+    @GetMapping(path = "/getMyCenterTrainers")
+    ResponseEntity<List<CenterTrainer>> getMyCenterTrainers() throws JsonProcessingException;
 }

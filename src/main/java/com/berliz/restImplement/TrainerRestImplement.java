@@ -147,13 +147,23 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<List<TrainerPricing>> getTrainerPricing() {
+    public ResponseEntity<List<TrainerPricing>> getAllTrainerPricing() {
         try {
-            return trainerService.getTrainerPricing();
+            return trainerService.getAllTrainerPricing();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<TrainerPricing> getMyTrainerPricing() {
+        try {
+            return trainerService.getMyTrainerPricing();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new TrainerPricing(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
@@ -471,6 +481,16 @@ public class TrainerRestImplement implements TrainerRest {
     public ResponseEntity<List<ClientReviewLike>> getClientReviewLikes() throws JsonProcessingException {
         try {
             return trainerService.getClientReviewLikes();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterTrainer>> getMyCenterTrainers() throws JsonProcessingException {
+        try {
+            return trainerService.getMyCenterTrainers();
         } catch (Exception ex) {
             ex.printStackTrace();
         }

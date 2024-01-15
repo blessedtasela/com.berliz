@@ -10,4 +10,6 @@ public interface CenterTrainerRepo extends JpaRepository<CenterTrainer, Integer>
     List<CenterTrainer> findByTrainer(Trainer trainer);
 
     List<CenterTrainer> findByCenter(Center center);
+
+    boolean existsByCenterAndTrainer(Center center, Trainer trainer);
 }

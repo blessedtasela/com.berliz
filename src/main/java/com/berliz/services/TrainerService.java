@@ -39,7 +39,9 @@ public interface TrainerService {
 
     ResponseEntity<String> updateTrainerPricing(Map<String, String> requestMap) throws JsonProcessingException;
 
-    ResponseEntity<List<TrainerPricing>> getTrainerPricing();
+    ResponseEntity<List<TrainerPricing>> getAllTrainerPricing();
+
+    ResponseEntity<TrainerPricing> getMyTrainerPricing();
 
     ResponseEntity<String> deleteTrainerPricing(Integer id) throws JsonProcessingException;
 
@@ -105,4 +107,5 @@ public interface TrainerService {
 
     ResponseEntity<List<ClientReviewLike>> getClientReviewLikes();
 
+    ResponseEntity<List<CenterTrainer>> getMyCenterTrainers();
 }

@@ -82,6 +82,9 @@ public class TrainerServiceImplement implements TrainerService {
     ClientReviewRepo clientReviewRepo;
 
     @Autowired
+    CenterTrainerRepo centerTrainerRepo;
+
+    @Autowired
     ClientReviewLikeRepo clientReviewLikeRepo;
 
     @Autowired
@@ -483,8 +486,7 @@ public class TrainerServiceImplement implements TrainerService {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
-            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
-            Trainer trainer = trainerRepo.findByUserId(user.getId());
+            Trainer trainer = trainerRepo.findByUserId(jwtFilter.getCurrentUserId());
             if (jwtFilter.isAdmin()) {
                 if (requestMap.get("trainerId").isEmpty()) {
                     return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide trainerId");
@@ -532,7 +534,6 @@ public class TrainerServiceImplement implements TrainerService {
             ex.printStackTrace();
         }
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-
     }
 
     /**
@@ -612,7 +613,7 @@ public class TrainerServiceImplement implements TrainerService {
      * indicating the success or failure of the retrieval operation.
      */
     @Override
-    public ResponseEntity<List<TrainerPricing>> getTrainerPricing() {
+    public ResponseEntity<List<TrainerPricing>> getAllTrainerPricing() {
         try {
             log.info("Inside getTrainerPricing");
             if (!jwtFilter.isAdmin()) {
@@ -624,6 +625,33 @@ public class TrainerServiceImplement implements TrainerService {
             ex.printStackTrace();
         }
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Retrieves the pricing information  for a specific trainer.
+     *
+     * @return A ResponseEntity<<TrainerPricing> containing the  TrainerPricing object,
+     * indicating the success or failure of the retrieval operation.
+     */
+    @Override
+    public ResponseEntity<TrainerPricing> getMyTrainerPricing() {
+        try {
+            log.info("Inside getMyCenterPricing");
+            if (!(jwtFilter.isAdmin()) || jwtFilter.isCenter()) {
+                return new ResponseEntity<>(new TrainerPricing(), HttpStatus.UNAUTHORIZED);
+            }
+
+            Trainer trainer = trainerRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (trainer == null) {
+                return new ResponseEntity<>(new TrainerPricing(), HttpStatus.UNAUTHORIZED);
+            }
+
+            TrainerPricing trainerPricing = trainerPricingRepo.findByTrainer(trainer);
+            return new ResponseEntity<>(trainerPricing, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new TrainerPricing(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     /**
@@ -1646,6 +1674,27 @@ public class TrainerServiceImplement implements TrainerService {
             return new ResponseEntity<>(clientReviewLikes, HttpStatus.OK);
         } catch (Exception ex) {
             log.error("Something went wrong while performing operation", ex);
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterTrainer>> getMyCenterTrainers() {
+        try {
+            log.info("Inside getMyCenterTrainers");
+            if (!(jwtFilter.isAdmin()) || jwtFilter.isCenter()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            Trainer trainer = trainerRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (trainer == null) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            List<CenterTrainer> centerTrainers = centerTrainerRepo.findByTrainer(trainer);
+            return new ResponseEntity<>(centerTrainers, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }

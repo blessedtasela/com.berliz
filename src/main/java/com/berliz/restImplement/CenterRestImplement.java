@@ -459,13 +459,13 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<List<CenterPricing>> getMyCenterPricing() {
+    public ResponseEntity<CenterPricing> getMyCenterPricing() {
         try {
             return centerService.getMyCenterPricing();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(new CenterPricing(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
@@ -479,9 +479,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> updateCenterTrainer(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> updateCenterTrainerStatus(Integer id) throws JsonProcessingException {
         try {
-            return centerService.updateCenterTrainer(requestMap);
+            return centerService.updateCenterTrainerStatus(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -489,9 +489,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> deleteCenterTraining(Integer id) throws JsonProcessingException {
+    public ResponseEntity<String> deleteCenterTrainer(Integer id) throws JsonProcessingException {
         try {
-            return centerService.deleteCenterTraining(id);
+            return centerService.deleteCenterTrainer(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

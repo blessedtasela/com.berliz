@@ -20,9 +20,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.MessageFormat;
 import java.util.*;
 
 @Slf4j
@@ -500,7 +502,7 @@ public class CenterServiceImplement implements CenterService {
                     "Hello " + center.getName() + ", you have successfully added an announcement to your center profile ";
 
             // check if all trainer entities are added and set the trainer status to true
-            String resultMessage = canUpdateCenterStatus(center, "true");
+            String resultMessage = canUpdateCenterStatus(center, center.getStatus());
             if (resultMessage.startsWith("Conditions")) {
                 center.setStatus("true");
                 centerRepo.save(center);
@@ -1288,7 +1290,6 @@ public class CenterServiceImplement implements CenterService {
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
-
     @Override
     public ResponseEntity<String> deleteCenterPhotoAlbum(Integer id) throws JsonProcessingException {
         try {
@@ -1342,7 +1343,7 @@ public class CenterServiceImplement implements CenterService {
 
             Center center = centerRepo.findByUserId(jwtFilter.getCurrentUserId());
             if (center == null) {
-                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.NOT_FOUND);
             }
 
             List<CenterPhotoAlbum> centerPhotoAlbums = centerPhotoAlbumRepo.findByCenter(center);
@@ -1354,78 +1355,569 @@ public class CenterServiceImplement implements CenterService {
     }
 
     @Override
-    public ResponseEntity<String> addCenterPricing(Map<String, String> requestMap) {
-        return null;
+    public ResponseEntity<String> addCenterPricing(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside addCenterPricing {}", requestMap);
+            boolean isValid = validateCenterPricingRequestFromMap(requestMap, false);
+            log.info("Is request valid? {}", isValid);
+
+            if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer())) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValid) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            Center center = centerRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (jwtFilter.isAdmin()) {
+                if (requestMap.get("centerId").isEmpty()) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide centerId");
+                }
+
+                center = centerRepo.findByCenterId(Integer.valueOf(requestMap.get("centerId")));
+            }
+
+            if (center == null) {
+                String centerNotFoundResponse = jwtFilter.isAdmin() ? "Center not found in db" : "You are not authorized to make this request, " +
+                        "Please contact admin to check your center status";
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, centerNotFoundResponse);
+            }
+
+            CenterPricing centerPricing = centerPricingRepo.findByCenter(center);
+            if (centerPricing != null) {
+                String centerPricingExitsResponse = jwtFilter.isAdmin() ? "Center pricing already exits for " +
+                        center.getName() : "Hello " + center.getName() +
+                        ", you already have an active pricing";
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, centerPricingExitsResponse);
+            }
+
+
+            getCenterPricingFromMap(requestMap, center);
+            String responseMessage = jwtFilter.isAdmin() ?
+                    center.getName() + ", pricing have successfully been added to their profile " :
+                    "Congratulations! " + center.getName() +
+                            ", your pricing has been added to your center profile successfully";
+
+            // check if all trainer entities are added and set the trainer status to true
+            String resultMessage = canUpdateCenterStatus(center, "true");
+            if (resultMessage.startsWith("Conditions")) {
+                center.setStatus("true");
+                centerRepo.save(center);
+                responseMessage = jwtFilter.isAdmin() ?
+                        center.getName() + ", pricing have successfully been added to their profile " +
+                                "and their center account has been activated successfully" :
+                        "Congratulations! " + center.getName() +
+                                ", your pricing has been added successfully " +
+                                "and your center account has been successfully activated";
+            }
+
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
-    public ResponseEntity<String> updateCenterPricing(Map<String, String> requestMap) {
-        return null;
+    public ResponseEntity<String> updateCenterPricing(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside updateCenterPricing {}", requestMap);
+            boolean isValid = validateCenterPricingRequestFromMap(requestMap, true);
+            log.info("Is request valid? {}", isValid);
+
+            if (!jwtFilter.isAdmin() || jwtFilter.isTrainer()) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValid) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            Optional<CenterPricing> optional = centerPricingRepo.findById(Integer.valueOf(requestMap.get("id")));
+            if (optional.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center pricing ID not found");
+            }
+
+            CenterPricing centerPricing = optional.get();
+            String currentUser = jwtFilter.getCurrentUser();
+            if (!(jwtFilter.isAdmin()
+                    || centerPricing.getCenter().getPartner().getUser().getEmail().equals(currentUser))) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            BigDecimal price = new BigDecimal(requestMap.get("price"));
+            centerPricing.setPrice(price);
+            BigDecimal discount2Programs = new BigDecimal(requestMap.get("discount2Programs"));
+            centerPricing.setDiscount2Programs(discount2Programs);
+            BigDecimal discount3Months = new BigDecimal(requestMap.get("discount3Months"));
+            centerPricing.setDiscount3Months(discount3Months);
+            BigDecimal discount6Months = new BigDecimal(requestMap.get("discount6Months"));
+            centerPricing.setDiscount6Months(discount6Months);
+            BigDecimal discount9Months = new BigDecimal(requestMap.get("discount9Months"));
+            centerPricing.setDiscount9Months(discount9Months);
+            BigDecimal discount12Months = new BigDecimal(requestMap.get("discount12Months"));
+            centerPricing.setDiscount12Months(discount12Months);
+            centerPricing.setLastUpdate(new Date());
+            CenterPricing savedcenterPricing = centerPricingRepo.save(centerPricing);
+            String responseMessage;
+            if (jwtFilter.isAdmin()) {
+                responseMessage = centerPricing.getCenter().getName() + "'s centerPricing updated successfully";
+            } else {
+                responseMessage = "Hello " +
+                        centerPricing.getCenter().getName() + " you have successfully " +
+                        " updated your pricing information";
+            }
+
+            simpMessagingTemplate.convertAndSend("/topic/updateCenterPricing", savedcenterPricing);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
-    public ResponseEntity<String> deleteCenterPricing(Integer id) {
-        return null;
+    public ResponseEntity<String> deleteCenterPricing(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside deleteCenterPricing {}", id);
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            boolean authorizedUser = user.getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN);
+            if (!(jwtFilter.isAdmin() && authorizedUser)) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            Optional<CenterPricing> optional = centerPricingRepo.findById(id);
+            if (optional.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "CenterPricing id not found");
+            }
+
+            CenterPricing centerPricing = optional.get();
+            centerPricingRepo.delete(centerPricing);
+            simpMessagingTemplate.convertAndSend("/topic/deleteCenterPricing", centerPricing);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "CenterPricing deleted successfully");
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
     public ResponseEntity<List<CenterPricing>> getAllCenterPricing() {
-        return null;
+        try {
+            log.info("Inside getAllCenterPricing");
+            if (!jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+            List<CenterPricing> centerPricing = centerPricingRepo.findAll();
+            return new ResponseEntity<>(centerPricing, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
-    public ResponseEntity<List<CenterPricing>> getMyCenterPricing() {
-        return null;
+    public ResponseEntity<CenterPricing> getMyCenterPricing() {
+        try {
+            log.info("Inside getMyCenterPricing");
+            if (!(jwtFilter.isAdmin()) || jwtFilter.isCenter()) {
+                return new ResponseEntity<>(new CenterPricing(), HttpStatus.UNAUTHORIZED);
+            }
+
+            Center center = centerRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (center == null) {
+                return new ResponseEntity<>(new CenterPricing(), HttpStatus.UNAUTHORIZED);
+            }
+
+            CenterPricing centerPricing = centerPricingRepo.findByCenter(center);
+            return new ResponseEntity<>(centerPricing, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new CenterPricing(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
-    public ResponseEntity<String> addCenterTrainer(Map<String, String> requestMap) {
-        return null;
+    public ResponseEntity<String> addCenterTrainer(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside addCenterTrainer {}", requestMap);
+            boolean isValid = requestMap != null;
+            log.info("Is request valid? {}", isValid);
+            if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer() || jwtFilter.isCenter())) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValid) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            Center center = null;
+            Trainer trainer = null;
+            if (jwtFilter.isAdmin()) {
+                if (requestMap.get("centerId").isEmpty() || requestMap.get("trainerId").isEmpty()) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide center and trainer ids");
+                }
+
+                center = centerRepo.findByCenterId(Integer.valueOf(requestMap.get("centerId")));
+                trainer = trainerRepo.findByTrainerId(Integer.valueOf(requestMap.get("trainerId")));
+            }
+
+            if (jwtFilter.isCenter()) {
+                if (requestMap.get("centerId").isEmpty()) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Center must provide trainer id");
+                }
+                center = centerRepo.findByUserId(jwtFilter.getCurrentUserId());
+                trainer = trainerRepo.findByTrainerId(Integer.valueOf(requestMap.get("trainerId")));
+            }
+
+            if (jwtFilter.isTrainer()) {
+                if (requestMap.get("centerId").isEmpty()) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer must provide center id");
+                }
+
+                trainer = trainerRepo.findByTrainerId(jwtFilter.getCurrentUserId());
+                center = centerRepo.findByCenterId(Integer.valueOf(requestMap.get("centerId")));
+            }
+
+            if (center == null) {
+                String centerNotFoundResponse = jwtFilter.isAdmin() ? "Center not found in db" : "You are not authorized to make this request, " +
+                        "Please contact admin to check center status";
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, centerNotFoundResponse);
+            }
+
+            if (trainer == null) {
+                String centerNotFoundResponse = jwtFilter.isAdmin() ? "Trainer not found in db" : "You are not authorized to make this request, " +
+                        "Please contact admin to check trainer status";
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, centerNotFoundResponse);
+            }
+
+            boolean exists = centerTrainerRepo.existsByCenterAndTrainer(center, trainer);
+            String existsResponseMessage;
+            if (exists) {
+                if (jwtFilter.isAdmin()) {
+                    existsResponseMessage = "Trainer already assigned to " + center.getName();
+                } else if (jwtFilter.isCenter()) {
+                    existsResponseMessage = "Hello " + center.getName() + ", you already have this trainer assigned";
+                } else {
+                    existsResponseMessage = "Hello " + trainer.getName() + ", you already have this center assigned";
+                }
+
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, existsResponseMessage);
+            }
+
+
+            getCenterTrainerFromMap(center, trainer);
+            String responseMessage;
+            if (jwtFilter.isAdmin()) {
+                responseMessage = MessageFormat.format("Trainer {0} has been successfully assigned to {1}", trainer.getName(), center.getName());
+            } else if (jwtFilter.isTrainer()) {
+                responseMessage = MessageFormat.format("Hello {0}, you have been successfully assigned as the trainer for {1}", trainer.getName(), center.getName());
+            } else {
+                responseMessage = MessageFormat.format("Hello {0}, you have successfully added {1} as the trainer for your center", center.getName(), trainer.getName());
+            }
+
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
-    public ResponseEntity<String> updateCenterTrainer(Map<String, String> requestMap) {
-        return null;
+    public ResponseEntity<String> updateCenterTrainerStatus(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside updateCenterTrainerStatus {}", id);
+            boolean isValid = id != null;
+            log.info("Is request valid? {}", isValid);
+            if (!(jwtFilter.isAdmin() || jwtFilter.isCenter())) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValid) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+
+            Center center;
+            if (jwtFilter.isCenter()) {
+                center = centerRepo.findByUserId(jwtFilter.getCurrentUserId());
+                if (center == null) {
+                    String centerNotFoundResponse = "You are not authorized to make this request, " +
+                            "Please contact admin to check center status";
+                    return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, centerNotFoundResponse);
+                }
+            }
+
+            Optional<CenterTrainer> optional = centerTrainerRepo.findById(id);
+            CenterTrainer centerTrainer = optional.orElse(null);
+
+            if (centerTrainer == null) {
+                String centerTrainerNotFoundResponse = jwtFilter.isAdmin() ? "Center trainer entity not found in db" :
+                        "You are not authorized to make this request, " +
+                                "Please contact admin to check center trainer entity status";
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, centerTrainerNotFoundResponse);
+            }
+
+            center = centerTrainer.getCenter();
+            Trainer trainer = centerTrainer.getTrainer();
+            boolean validUser = jwtFilter.isAdmin() || (jwtFilter.isCenter() && centerTrainer.getCenter().equals(center));
+            if (!validUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            String status = centerTrainer.getStatus();
+            String newStatus = status.equalsIgnoreCase("true") ? "false" : "true";
+            centerTrainer.setStatus(newStatus);
+
+            String responseMessage;
+            String activationMessage;
+
+            if (jwtFilter.isAdmin()) {
+                activationMessage = newStatus.equals("true") ? "activated" : "deactivated";
+                responseMessage = MessageFormat.format("Center {0} has been successfully {1} for {2}", center.getName(), activationMessage, trainer.getName());
+            } else {
+                activationMessage = newStatus.equals("true") ? "activated" : "deactivated";
+                responseMessage = MessageFormat.format("Hello {0}, you have successfully {1} {2} as the trainer for your center", center.getName(), activationMessage, trainer.getName());
+            }
+
+            CenterTrainer savedCenterTrainer = centerTrainerRepo.save(centerTrainer);
+            simpMessagingTemplate.convertAndSend("/topic/updateCenterTrainerStatus", savedCenterTrainer);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
-    public ResponseEntity<String> deleteCenterTraining(Integer id) {
-        return null;
+    public ResponseEntity<String> deleteCenterTrainer(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside deleteCenterTrainer {}", id);
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            boolean authorizedUser = user.getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN);
+            if (!(jwtFilter.isAdmin() && authorizedUser)) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            Optional<CenterTrainer> optional = centerTrainerRepo.findById(id);
+            if (optional.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center trainer id not found");
+            }
+
+            centerTrainerRepo.delete(optional.get());
+            simpMessagingTemplate.convertAndSend("/topic/deleteCenterTrainer", centerTrainerRepo);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Center trainer deleted successfully");
+        } catch (Exception ex) {
+            log.error("Something went wrong while performing operation", ex);
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
+
 
     @Override
     public ResponseEntity<List<CenterTrainer>> getAllCenterTrainers() {
-        return null;
+        try {
+            log.info("Inside getAllCenterTrainers");
+            if (!jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+            List<CenterTrainer> centerTrainers = centerTrainerRepo.findAll();
+            return new ResponseEntity<>(centerTrainers, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
     public ResponseEntity<List<CenterTrainer>> getMyCenterTrainers() {
-        return null;
+        try {
+            log.info("Inside getMyCenterTrainers");
+            if (!(jwtFilter.isAdmin()) || jwtFilter.isCenter()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            Center center = centerRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (center == null) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            List<CenterTrainer> centerTrainers = centerTrainerRepo.findByCenter(center);
+            return new ResponseEntity<>(centerTrainers, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
-    public ResponseEntity<String> addCenterVideoAlbum(VideoAlbumRequest videoAlbumRequest) {
-        return null;
+    public ResponseEntity<String> addCenterVideoAlbum(VideoAlbumRequest videoAlbumRequest) throws JsonProcessingException {
+        try {
+            log.info("Inside addCenterVideoAlbum {}", videoAlbumRequest);
+            boolean isValid = videoAlbumRequest.isValidRequest(false);
+            log.info("Is request valid? {}", isValid);
+
+            if (!(jwtFilter.isAdmin() || jwtFilter.isCenter())) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValid) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            Center center = centerRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (jwtFilter.isAdmin()) {
+                if (videoAlbumRequest.getCenterId() == null) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide center Id");
+                }
+
+                center = centerRepo.findByCenterId(videoAlbumRequest.getCenterId());
+            }
+
+            if (center == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center not found in db");
+            }
+
+            getCenterVideoAlbumFromMap(videoAlbumRequest, center);
+            String responseMessage = jwtFilter.isAdmin() ?
+                    center.getName() + "'s, center video have successfully been added to their album" :
+                    "Hello " + center.getName() + ", you have successfully added a video to your center profile ";
+
+            // check if all center entities are added and set the center status to true
+            String resultMessage = canUpdateCenterStatus(center, "true");
+            if (resultMessage.startsWith("Conditions")) {
+                center.setStatus("true");
+                centerRepo.save(center);
+                responseMessage = jwtFilter.isAdmin() ?
+                        center.getName() + "'s, center video have successfully been added to their album" +
+                                " and their center account has been activated successfully" :
+                        "Hello " + center.getName() + ", you have successfully added a video to your center profile " +
+                                " and your center account has been successfully activated";
+            }
+
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
-    public ResponseEntity<String> updateCenterVideoAlbum(VideoAlbumRequest videoAlbumRequest) {
-        return null;
+    public ResponseEntity<String> updateCenterVideoAlbum(VideoAlbumRequest videoAlbumRequest) throws JsonProcessingException {
+        try {
+            log.info("Inside updateCenterVideoAlbum {}", videoAlbumRequest);
+            Integer userId = jwtFilter.getCurrentUserId();
+            boolean isValid = videoAlbumRequest.isValidRequest(true);
+            log.info("Is request valid? {}", isValid);
+
+            if (!jwtFilter.isAdmin() || !jwtFilter.isCenter()) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValid || videoAlbumRequest.getId() == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            CenterVideoAlbum centerVideoAlbum = centerVideoAlbumRepo.findById(videoAlbumRequest.getId()).orElse(null);
+            if (centerVideoAlbum == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center video album not found in db");
+            }
+
+            boolean validUser = jwtFilter.isAdmin() ||
+                    (jwtFilter.isCenter() && userId.equals(centerVideoAlbum
+                            .getCenter().getPartner().getUser().getId()));
+            if (!validUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            Center center = centerVideoAlbum.getCenter();
+            String filesFolderPath = BerlizConstants.CENTER_VIDEO_ALBUM_LOCATION;
+            long numericUUID = UUID.randomUUID().getMostSignificantBits();
+            String truncatedUUID = String.valueOf(numericUUID).substring(0, 15);
+            String fileName = generateFileName(center.getName(), "video", truncatedUUID);
+            writeToFile(filesFolderPath, fileName, videoAlbumRequest.getVideo());
+
+            // Save location details to the database
+            centerVideoAlbum.setComment(videoAlbumRequest.getComment());
+            centerVideoAlbum.setVideo(fileName);
+            center.setLastUpdate(new Date());
+            CenterVideoAlbum savedCenterVideoAlbum = centerVideoAlbumRepo.save(centerVideoAlbum);
+            String responseMessage = jwtFilter.isAdmin() ?
+                    center.getName() + "!, photo have successfully been updated in their profile" :
+                    "Hello " + center.getName() + "!, you have successfully updated your center's photo";
+            simpMessagingTemplate.convertAndSend("/topic/updateCenterVideoAlbum", savedCenterVideoAlbum);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
+
     @Override
-    public ResponseEntity<String> deleteCenterVideoAlbum(Integer id) {
-        return null;
+    public ResponseEntity<String> deleteCenterVideoAlbum(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside deleteCenterVideoAlbum {}", id);
+            Optional<CenterVideoAlbum> optional = centerVideoAlbumRepo.findById(id);
+            CenterVideoAlbum centerVideoAlbum = optional.orElse(null);
+
+            if (centerVideoAlbum == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center video album id not found");
+            }
+
+            if (!isAuthorizedToDeleteCenterVideoAlbum(centerVideoAlbum)) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (centerVideoAlbum.getCenter().getStatus().equalsIgnoreCase("false")) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Center is inactive, Cannot complete request");
+            }
+
+            centerVideoAlbumRepo.delete(centerVideoAlbum);
+            simpMessagingTemplate.convertAndSend("/topic/deleteCenterVideoAlbum", centerVideoAlbum);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Center video deleted from album successfully");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
     public ResponseEntity<List<CenterVideoAlbum>> getAllCenterVideoAlbums() {
-        return null;
+        try {
+            log.info("Inside getAllCenterVideoAlbums");
+            if (!jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+            List<CenterVideoAlbum> centerVideoAlbums = centerVideoAlbumRepo.findAll();
+            return new ResponseEntity<>(centerVideoAlbums, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
     public ResponseEntity<List<CenterVideoAlbum>> getMyCenterVideoAlbums() {
-        return null;
+        try {
+            log.info("Inside getMyCenterVideoAlbums");
+            if (!(jwtFilter.isAdmin()) || jwtFilter.isCenter()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            Center center = centerRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (center == null) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.NOT_FOUND);
+            }
+
+            List<CenterVideoAlbum> centerVideoAlbums = centerVideoAlbumRepo.findByCenter(center);
+            return new ResponseEntity<>(centerVideoAlbums, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 
@@ -1781,6 +2273,86 @@ public class CenterServiceImplement implements CenterService {
         simpMessagingTemplate.convertAndSend("/topic/getCenterPhotoAlbumFromMap", savedCenterPhotoAlbum);
     }
 
+    private void getCenterVideoAlbumFromMap(VideoAlbumRequest videoAlbumRequest, Center center) throws IOException {
+        CenterVideoAlbum centerVideoAlbum = new CenterVideoAlbum();
+        String filesFolderPath = BerlizConstants.CENTER_VIDEO_ALBUM_LOCATION;
+        long numericUUID = UUID.randomUUID().getMostSignificantBits();
+        String truncatedUUID = String.valueOf(numericUUID).substring(0, 15);
+        String fileName = generateFileName(center.getName(), "video", truncatedUUID);
+        writeToFile(filesFolderPath, fileName, videoAlbumRequest.getVideo());
+
+        // Save location details to the database
+        centerVideoAlbum.setCenter(center);
+        centerVideoAlbum.setComment(videoAlbumRequest.getComment());
+        centerVideoAlbum.setVideo(fileName);
+        centerVideoAlbum.setDate(new Date());
+        centerVideoAlbum.setLastUpdate(new Date());
+
+        CenterVideoAlbum savedCenterVideoAlbum = centerVideoAlbumRepo.save(centerVideoAlbum);
+        simpMessagingTemplate.convertAndSend("/topic/getCenterVideoAlbumFromMap", savedCenterVideoAlbum);
+    }
+
+    private void getCenterPricingFromMap(Map<String, String> requestMap, Center center) {
+        CenterPricing centerPricing = new CenterPricing();
+        centerPricing.setCenter(center);
+
+        // Extract pricing information from the request map
+        BigDecimal price = new BigDecimal(requestMap.get("price"));
+        centerPricing.setPrice(price);
+
+        // Extract discount information from the request map
+        BigDecimal discount2Programs = new BigDecimal(requestMap.get("discount2Programs"));
+        centerPricing.setDiscount2Programs(discount2Programs);
+        BigDecimal discount3Months = new BigDecimal(requestMap.get("discount3Months"));
+        centerPricing.setDiscount3Months(discount3Months);
+        BigDecimal discount6Months = new BigDecimal(requestMap.get("discount6Months"));
+        centerPricing.setDiscount6Months(discount6Months);
+        BigDecimal discount9Months = new BigDecimal(requestMap.get("discount9Months"));
+        centerPricing.setDiscount9Months(discount9Months);
+        BigDecimal discount12Months = new BigDecimal(requestMap.get("discount12Months"));
+        centerPricing.setDiscount12Months(discount12Months);
+
+        // Set date and last update timestamps
+        centerPricing.setDate(new Date());
+        centerPricing.setLastUpdate(new Date());
+
+        // Save centerPricing entity and broadcast the updated information
+        CenterPricing savedCenterPricing = centerPricingRepo.save(centerPricing);
+        simpMessagingTemplate.convertAndSend("/topic/getCenterPricingFromMap", savedCenterPricing);
+    }
+
+
+    private boolean validateCenterPricingRequestFromMap(Map<String, String> requestMap, boolean isValid) {
+        if (isValid) {
+            return requestMap.containsKey("id")
+                    && requestMap.containsKey("price")
+                    && requestMap.containsKey("discount3Months")
+                    && requestMap.containsKey("discount6Months")
+                    && requestMap.containsKey("discount9Months")
+                    && requestMap.containsKey("discount12Months")
+                    && requestMap.containsKey("discount2Programs");
+        }
+        return requestMap.containsKey("price")
+                && requestMap.containsKey("discount3Months")
+                && requestMap.containsKey("discount6Months")
+                && requestMap.containsKey("discount9Months")
+                && requestMap.containsKey("discount12Months")
+                && requestMap.containsKey("discount2Programs");
+    }
+
+    private void getCenterTrainerFromMap(Center center, Trainer trainer) {
+        CenterTrainer centerTrainer = new CenterTrainer();
+        centerTrainer.setCenter(center);
+        centerTrainer.setTrainer(trainer);
+        centerTrainer.setDate(new Date());
+        centerTrainer.setLastUpdate(new Date());
+        centerTrainer.setStatus("false");
+
+        // Save centerTrainer entity and broadcast the updated information
+        CenterTrainer savedCenterTrainer = centerTrainerRepo.save(centerTrainer);
+        simpMessagingTemplate.convertAndSend("/topic/getCenterTrainerFromMap", savedCenterTrainer);
+    }
+
     private String generateFileName(String centerName, String itemName, String type) {
         long numericUUID = UUID.randomUUID().getMostSignificantBits();
         String truncatedUUID = String.valueOf(numericUUID).substring(0, 15);
@@ -1897,14 +2469,14 @@ public class CenterServiceImplement implements CenterService {
     }
 
     /**
-     * Checks if the current user is authorized to delete a TrainerVideoAlbum.
+     * Checks if the current user is authorized to delete a CenterVideoAlbum.
      *
-     * @param trainerVideoAlbum The TrainerVideoAlbum to be checked for authorization.
+     * @param centerVideoAlbum The CenterVideoAlbum to be checked for authorization.
      * @return True if the user is authorized, false otherwise.
      */
-    private boolean isAuthorizedToDeleteTrainerVideoAlbum(TrainerVideoAlbum trainerVideoAlbum) {
+    private boolean isAuthorizedToDeleteCenterVideoAlbum(CenterVideoAlbum centerVideoAlbum) {
         User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
-        boolean authorizedUser = user.getEmail().equalsIgnoreCase(trainerVideoAlbum.getTrainer().getPartner().getUser().getEmail());
+        boolean authorizedUser = user.getEmail().equalsIgnoreCase(centerVideoAlbum.getCenter().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
     }
 
