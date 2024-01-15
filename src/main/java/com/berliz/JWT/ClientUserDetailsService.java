@@ -1,6 +1,6 @@
 package com.berliz.JWT;
 
-import com.berliz.repository.UserRepo;
+import com.berliz.repositories.UserRepo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.User;

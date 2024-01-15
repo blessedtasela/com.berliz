@@ -3,7 +3,7 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Tag;
-import com.berliz.repository.TagRepo;
+import com.berliz.repositories.TagRepo;
 import com.berliz.services.TagService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

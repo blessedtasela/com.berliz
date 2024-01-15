@@ -11,37 +11,15 @@ import java.util.Map;
 @RequestMapping(path = "/partner")
 public interface PartnerRest {
 
-    /**
-     * Adds a new partner.
-     *
-     * @param request The PartnerRequest containing partner information to add.
-     * @return ResponseEntity indicating the result of the partner addition operation.
-     */
     @PostMapping(path = "/add")
     ResponseEntity<String> addPartner(@ModelAttribute PartnerRequest request);
 
-    /**
-     * Retrieves a list of all partners.
-     *
-     * @return ResponseEntity containing a list of all partners.
-     */
     @GetMapping(path = "/get")
     ResponseEntity<List<Partner>> getAllPartners();
 
-    /**
-     * Retrieves a list of active partners.
-     *
-     * @return ResponseEntity containing a list of active partners.
-     */
     @GetMapping(path = "/getActivePartners")
     ResponseEntity<List<Partner>> getActivePartners();
 
-    /**
-     * Updates partner information.
-     *
-     * @param requestMap A map containing partner information to update.
-     * @return ResponseEntity indicating the result of the partner update operation.
-     */
     @PutMapping(path = "/update")
     ResponseEntity<String> updatePartner(@RequestBody Map<String, String> requestMap);
 

@@ -3,7 +3,7 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.*;
-import com.berliz.repository.*;
+import com.berliz.repositories.*;
 import com.berliz.services.TaskService;
 import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.EmailUtilities;

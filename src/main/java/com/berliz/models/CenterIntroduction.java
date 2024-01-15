@@ -28,8 +28,8 @@ public class CenterIntroduction {
     @Column(name = "introduction", columnDefinition = "TEXT")
     private String introduction;
 
-    @Column(name = "coverPhoto")
-    private String coverPhoto;
+    @Column(name = "coverPhoto", columnDefinition = "BYTEA")
+    private byte [] coverPhoto;
 
     @Column(name = "date", columnDefinition = "DATE")
     private Date date;

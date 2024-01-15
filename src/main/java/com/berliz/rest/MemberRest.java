@@ -16,28 +16,12 @@ import java.util.Map;
 @RequestMapping(path = "/member")
 public interface MemberRest {
 
-    /**
-     * Add a new member.
-     *
-     * @param requestMap Request body containing member details.
-     * @return ResponseEntity indicating the result of the member addition operation.
-     */
     @PostMapping(path = "/add")
     ResponseEntity<String> addMember(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
 
-    /**
-     * Get a list of all members.
-     *
-     * @return ResponseEntity containing the list of all members.
-     */
     @GetMapping(path = "/get")
     ResponseEntity<List<Member>> getAllMembers();
 
-    /**
-     * Get a list of active members.
-     *
-     * @return ResponseEntity containing the list of all members whose status is true.
-     */
     @GetMapping(path = "/getActiveMembers")
     ResponseEntity<List<Member>> getActiveMembers();
 

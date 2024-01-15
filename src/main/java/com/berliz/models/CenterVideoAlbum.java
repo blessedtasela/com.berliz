@@ -5,6 +5,7 @@ import lombok.Data;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 @Data
@@ -39,4 +40,18 @@ public class CenterVideoAlbum {
 
     @Column(name = "lastUpdate", columnDefinition = "DATE")
     private Date lastUpdate;
+
+    @PrePersist
+    public void prePersist() {
+        this.uuid = generateUuid();
+    }
+
+    private String generateUuid() {
+        String centerName = this.center.getName();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+        String dateCreated = dateFormat.format(this.date);
+        String id = String.valueOf(this.id);
+
+        return centerName + "_" + dateCreated + "_ID-" + id;
+    }
 }

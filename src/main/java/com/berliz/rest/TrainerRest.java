@@ -2,6 +2,7 @@ package com.berliz.rest;
 
 import com.berliz.DTO.*;
 import com.berliz.models.*;
+import com.berliz.models.ClientReview;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -58,10 +59,10 @@ public interface TrainerRest {
     ResponseEntity<String> deleteTrainerPricing(@PathVariable Integer id) throws JsonProcessingException;
 
     @PutMapping(path = "/addTrainerPhotoAlbum")
-    ResponseEntity<String> addTrainerPhotoAlbum(@ModelAttribute PhotoAlbum photoAlbum) throws JsonProcessingException;
+    ResponseEntity<String> addTrainerPhotoAlbum(@ModelAttribute PhotoAlbumRequest photoAlbumRequest) throws JsonProcessingException;
 
     @PutMapping(path = "/updateTrainerPhotoAlbum")
-    ResponseEntity<String> updateTrainerPhotoAlbum(@ModelAttribute PhotoAlbum photoAlbum) throws JsonProcessingException;
+    ResponseEntity<String> updateTrainerPhotoAlbum(@ModelAttribute PhotoAlbumRequest photoAlbumRequest) throws JsonProcessingException;
 
     @DeleteMapping(path = "/deleteTrainerPhotoAlbum/{id}")
     ResponseEntity<String> deleteTrainerPhotoAlbum(@PathVariable Integer id) throws JsonProcessingException;
@@ -88,10 +89,10 @@ public interface TrainerRest {
     ResponseEntity<List<TrainerBenefit>> getMyTrainerBenefits();
 
     @PutMapping(path = "/addTrainerIntroduction")
-    ResponseEntity<String> addTrainerIntroduction(@ModelAttribute Introduction introduction) throws JsonProcessingException;
+    ResponseEntity<String> addTrainerIntroduction(@ModelAttribute IntroductionRequest introductionRequest) throws JsonProcessingException;
 
     @PutMapping(path = "/updateTrainerIntroduction")
-    ResponseEntity<String> updateTrainerIntroduction(@ModelAttribute Introduction introduction) throws JsonProcessingException;
+    ResponseEntity<String> updateTrainerIntroduction(@ModelAttribute IntroductionRequest introductionRequest) throws JsonProcessingException;
 
     @DeleteMapping(path = "/deleteTrainerIntroduction/{id}")
     ResponseEntity<String> deleteTrainerIntroduction(@PathVariable Integer id) throws JsonProcessingException;
@@ -103,10 +104,10 @@ public interface TrainerRest {
     ResponseEntity<TrainerIntroduction> getMyTrainerIntroduction();
 
     @PostMapping(path = "/addTrainerVideoAlbum")
-    ResponseEntity<String> addTrainerVideoAlbum(@ModelAttribute VideoAlbum videoAlbum) throws JsonProcessingException;
+    ResponseEntity<String> addTrainerVideoAlbum(@ModelAttribute VideoAlbumRequest videoAlbumRequest) throws JsonProcessingException;
 
     @PutMapping(path = "/updateTrainerVideoAlbum")
-    ResponseEntity<String> updateTrainerVideoAlbum(@ModelAttribute VideoAlbum videoAlbum) throws JsonProcessingException;
+    ResponseEntity<String> updateTrainerVideoAlbum(@ModelAttribute VideoAlbumRequest videoAlbumRequest) throws JsonProcessingException;
 
     @DeleteMapping(path = "/deleteTrainerVideoAlbum/{id}")
     ResponseEntity<String> deleteTrainerVideoAlbum(@PathVariable Integer id) throws JsonProcessingException;
@@ -117,29 +118,23 @@ public interface TrainerRest {
     @GetMapping(path = "/getMyTrainerVideoAlbums")
     ResponseEntity<List<TrainerVideoAlbum>> getMyTrainerVideoAlbums();
 
-    @PostMapping(path = "/addTrainerClientReview")
-    ResponseEntity<String> addTrainerClientReview(@ModelAttribute ClientReview clientReview) throws JsonProcessingException;
+    @PutMapping(path = "/disableClientReview/{id}")
+    ResponseEntity<String> disableClientReview(@PathVariable Integer id) throws JsonProcessingException;
 
-    @PutMapping(path = "/updateTrainerClientReview")
-    ResponseEntity<String> updateTrainerClientReview(@ModelAttribute ClientReview clientReview) throws JsonProcessingException;
+    @GetMapping(path = "/getMyClientReviews")
+    ResponseEntity<List<ClientReview>> getMyClientReviews();
 
-    @DeleteMapping(path = "/deleteTrainerClientReview/{id}")
-    ResponseEntity<String> deleteTrainerClientReview(@PathVariable Integer id) throws JsonProcessingException;
+    @GetMapping(path = "/getAllClientReviews")
+    ResponseEntity<List<ClientReview>> getAllClientReviews();
 
-    @GetMapping(path = "/getAllTrainerClientReviews")
-    ResponseEntity<List<TrainerClientReview>> getAllTrainerClientReviews();
-
-    @GetMapping(path = "/getActiveTrainerClientReviews")
-    ResponseEntity<List<TrainerClientReview>> getActiveTrainerClientReviews();
-
-    @GetMapping(path = "/getMyTrainerClientReviews")
-    ResponseEntity<List<TrainerClientReview>> getMyTrainerClientReviews();
+    @GetMapping(path = "/getActiveClientReviews/{id}")
+    ResponseEntity<List<ClientReview>> getActiveClientReviews(@PathVariable Integer id);
 
     @PostMapping(path = "/addTrainerFeatureVideo")
-    ResponseEntity<String> addTrainerFeatureVideo(@ModelAttribute FeatureVideo featureVideo) throws JsonProcessingException;
+    ResponseEntity<String> addTrainerFeatureVideo(@ModelAttribute FeatureVideoRequest featureVideoRequest) throws JsonProcessingException;
 
     @PutMapping(path = "/updateTrainerFeatureVideo")
-    ResponseEntity<String> updateTrainerFeatureVideo(@ModelAttribute FeatureVideo featureVideo) throws JsonProcessingException;
+    ResponseEntity<String> updateTrainerFeatureVideo(@ModelAttribute FeatureVideoRequest featureVideoRequest) throws JsonProcessingException;
 
     @DeleteMapping(path = "/deleteTrainerFeatureVideo/{id}")
     ResponseEntity<String> deleteTrainerFeatureVideo(@PathVariable Integer id) throws JsonProcessingException;
@@ -150,4 +145,9 @@ public interface TrainerRest {
     @GetMapping(path = "/getMyTrainerFeatureVideos")
     ResponseEntity<List<TrainerFeatureVideo>> getMyTrainerFeatureVideos();
 
+    @PutMapping(path = "/likeTrainerClientReview/{id}")
+    ResponseEntity<String> likeClientReview(@PathVariable Integer id) throws JsonProcessingException;
+
+    @GetMapping(path = "/getTrainerClientReviewLikes")
+    ResponseEntity<List<ClientReviewLike>> getClientReviewLikes() throws JsonProcessingException;
 }

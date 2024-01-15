@@ -6,7 +6,7 @@ import com.berliz.models.Category;
 import com.berliz.models.Member;
 import com.berliz.models.Subscription;
 import com.berliz.models.User;
-import com.berliz.repository.*;
+import com.berliz.repositories.*;
 import com.berliz.services.MemberService;
 import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.EmailUtilities;

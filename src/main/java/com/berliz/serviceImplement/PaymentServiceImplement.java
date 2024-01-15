@@ -5,7 +5,7 @@ import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Payment;
 import com.berliz.models.Subscription;
 import com.berliz.models.User;
-import com.berliz.repository.*;
+import com.berliz.repositories.*;
 import com.berliz.services.PaymentService;
 import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.EmailUtilities;
@@ -19,9 +19,6 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.*;
 
 @Slf4j

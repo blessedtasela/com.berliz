@@ -30,6 +30,10 @@ public class BerlizConstants {
 
     public static final String CENTER_VIDEO_ALBUM_LOCATION = "C:\\berliz-project\\back-end\\com.berliz\\src\\main\\resources\\center_video_album\\";
 
+    public static final String CENTER_EQUIPMENT_LOCATION = "C:\\berliz-project\\back-end\\com.berliz\\src\\main\\resources\\center_equipment\\";
+
+    public static final String CENTER_SUB_LOCATION = "C:\\berliz-project\\back-end\\com.berliz\\src\\main\\resources\\center_sub\\";
+
     public static final String BERLIZ_URL = "http://localhost:4200";
 
     public static final String BERLIZ_SUPER_ADMIN = "berlizworld@gmail.com";

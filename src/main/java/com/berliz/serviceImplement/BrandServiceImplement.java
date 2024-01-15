@@ -3,7 +3,7 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Brand;
-import com.berliz.repository.BrandRepo;
+import com.berliz.repositories.BrandRepo;
 import com.berliz.services.BrandService;
 import com.berliz.utils.BerlizUtilities;
 import com.google.common.base.Strings;

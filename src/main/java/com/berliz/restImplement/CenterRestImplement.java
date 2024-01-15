@@ -1,8 +1,6 @@
 package com.berliz.restImplement;
 
-import com.berliz.DTO.CenterRequest;
-import com.berliz.DTO.PhotoAlbum;
-import com.berliz.DTO.VideoAlbum;
+import com.berliz.DTO.*;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.*;
 import com.berliz.rest.CenterRest;
@@ -131,7 +129,7 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<List<CenterLike>> getCenterLikes() throws JsonProcessingException {
+    public ResponseEntity<List<CenterLike>> getCenterLikes() {
         try {
             return centerService.getCenterLikes();
         } catch (Exception ex) {
@@ -151,9 +149,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> addCenterAnnouncement(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> addCenterAnnouncement(AnnouncementRequest announcementRequest) throws JsonProcessingException {
         try {
-            return centerService.addCenterAnnouncement(requestMap);
+            return centerService.addCenterAnnouncement(announcementRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -161,9 +159,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> updateCenterAnnouncement(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> updateCenterAnnouncement(AnnouncementRequest announcementRequest) throws JsonProcessingException {
         try {
-            return centerService.updateCenterAnnouncement(requestMap);
+            return centerService.updateCenterAnnouncement(announcementRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -211,9 +209,19 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> addCenterEquipment(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<List<CenterAnnouncement>> getActiveCenterAnnouncements(Integer id) {
         try {
-            return centerService.addCenterEquipment(requestMap);
+            return centerService.getActiveCenterAnnouncements(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> addCenterEquipment(EquipmentRequest equipmentRequest) throws JsonProcessingException {
+        try {
+            return centerService.addCenterEquipment(equipmentRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -221,9 +229,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> updateCenterEquipment(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> updateCenterEquipment(EquipmentRequest equipmentRequest) throws JsonProcessingException {
         try {
-            return centerService.updateCenterEquipment(requestMap);
+            return centerService.updateCenterEquipment(equipmentRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -261,9 +269,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> addCenterIntroduction(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> addCenterIntroduction(IntroductionRequest introductionRequest) throws JsonProcessingException {
         try {
-            return centerService.addCenterIntroduction(requestMap);
+            return centerService.addCenterIntroduction(introductionRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -271,9 +279,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> updateCenterIntroduction(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> updateCenterIntroduction(IntroductionRequest introductionRequest) throws JsonProcessingException {
         try {
-            return centerService.updateCenterIntroduction(requestMap);
+            return centerService.updateCenterIntroduction(introductionRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -311,9 +319,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> addCenterLocation(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> addCenterLocation(LocationRequest locationRequest) throws JsonProcessingException {
         try {
-            return centerService.addCenterLocation(requestMap);
+            return centerService.addCenterLocation(locationRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -321,9 +329,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> updateCenterLocation(Map<String, String> requestMap) throws JsonProcessingException {
+    public ResponseEntity<String> updateCenterLocation(LocationRequest locationRequest) throws JsonProcessingException {
         try {
-            return centerService.updateCenterLocation(requestMap);
+            return centerService.updateCenterLocation(locationRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -361,9 +369,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> addCenterPhotoAlbum(PhotoAlbum photoAlbum) throws JsonProcessingException {
+    public ResponseEntity<String> addCenterPhotoAlbum(PhotoAlbumRequest photoAlbumRequest) throws JsonProcessingException {
         try {
-            return centerService.addCenterPhotoAlbum(photoAlbum);
+            return centerService.addCenterPhotoAlbum(photoAlbumRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -371,9 +379,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> updateCenterPhotoAlbum(PhotoAlbum photoAlbum) throws JsonProcessingException {
+    public ResponseEntity<String> updateCenterPhotoAlbum(PhotoAlbumRequest photoAlbumRequest) throws JsonProcessingException {
         try {
-            return centerService.updateCenterPhotoAlbum(photoAlbum);
+            return centerService.updateCenterPhotoAlbum(photoAlbumRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -511,9 +519,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> addCenterVideoAlbum(VideoAlbum videoAlbum) throws JsonProcessingException {
+    public ResponseEntity<String> addCenterVideoAlbum(VideoAlbumRequest videoAlbumRequest) throws JsonProcessingException {
         try {
-            return centerService.addCenterVideoAlbum(videoAlbum);
+            return centerService.addCenterVideoAlbum(videoAlbumRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -521,9 +529,9 @@ public class CenterRestImplement implements CenterRest {
     }
 
     @Override
-    public ResponseEntity<String> updateCenterVideoAlbum(VideoAlbum videoAlbum) throws JsonProcessingException {
+    public ResponseEntity<String> updateCenterVideoAlbum(VideoAlbumRequest videoAlbumRequest) throws JsonProcessingException {
         try {
-            return centerService.updateCenterVideoAlbum(videoAlbum);
+            return centerService.updateCenterVideoAlbum(videoAlbumRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

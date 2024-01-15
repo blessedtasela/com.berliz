@@ -4,7 +4,7 @@ import com.berliz.JWT.JWTFilter;
 import com.berliz.JWT.JWTUtility;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.User;
-import com.berliz.repository.UserRepo;
+import com.berliz.repositories.UserRepo;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;

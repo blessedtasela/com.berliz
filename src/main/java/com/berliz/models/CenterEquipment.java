@@ -44,7 +44,16 @@ public class CenterEquipment {
     @Column(name = "image")
     private String image;
 
-    @Column(name = "icon", columnDefinition = "INTEGER")
+    @Column(name = "sideView")
+    private String sideView;
+
+    @Column(name = "rearView")
+    private String rearView;
+
+    @Column(name = "frontView")
+    private String frontView;
+
+    @Column(name = "stockNumber", columnDefinition = "INTEGER")
     private Integer stockNumber;
 
     @Column(name = "date", columnDefinition = "DATE")

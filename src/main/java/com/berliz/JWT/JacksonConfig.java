@@ -28,7 +28,7 @@ public class JacksonConfig {
         module.addSerializer(TrainerVideoAlbum.class, new TrainerVideoAlbumSerializer());
         module.addSerializer(CenterPhotoAlbum.class, new CenterPhotoAlbumSerializer());
         module.addSerializer(CenterVideoAlbum.class, new CenterVideoAlbumSerializer());
-        module.addSerializer(TrainerClientReview.class, new TrainerClientReviewSerializer());
+        module.addSerializer(ClientReview.class, new ClientReviewSerializer());
         module.addSerializer(TrainerFeatureVideo.class, new TrainerFeatureVideoSerializer());
         objectMapper.registerModule(module);
         return objectMapper;

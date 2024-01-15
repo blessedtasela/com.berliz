@@ -1,8 +1,6 @@
 package com.berliz.services;
 
-import com.berliz.DTO.CenterRequest;
-import com.berliz.DTO.PhotoAlbum;
-import com.berliz.DTO.VideoAlbum;
+import com.berliz.DTO.*;
 import com.berliz.models.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
@@ -39,53 +37,55 @@ public interface CenterService {
 
     ResponseEntity<List<Center>> getActiveCenters();
 
-    ResponseEntity<String> addCenterAnnouncement(Map<String, String> requestMap);
+    ResponseEntity<String> addCenterAnnouncement(AnnouncementRequest announcementRequest) throws JsonProcessingException;
 
-    ResponseEntity<String> updateCenterAnnouncement(Map<String, String> requestMap);
+    ResponseEntity<String> updateCenterAnnouncement(AnnouncementRequest announcementRequest) throws JsonProcessingException;
 
-    ResponseEntity<String> deleteCenterAnnouncement(Integer id);
+    ResponseEntity<String> deleteCenterAnnouncement(Integer id) throws JsonProcessingException;
 
-    ResponseEntity<String> updateCenterAnnouncementStatus(Integer id);
+    ResponseEntity<String> updateCenterAnnouncementStatus(Integer id) throws JsonProcessingException;
 
     ResponseEntity<List<CenterAnnouncement>> getAllCenterAnnouncements();
 
     ResponseEntity<List<CenterAnnouncement>> getMyCenterAnnouncements();
 
-    ResponseEntity<String> addCenterEquipment(Map<String, String> requestMap);
+    ResponseEntity<List<CenterAnnouncement>> getActiveCenterAnnouncements(Integer id);
 
-    ResponseEntity<String> updateCenterEquipment(Map<String, String> requestMap);
+    ResponseEntity<String> addCenterEquipment(EquipmentRequest equipmentRequest) throws JsonProcessingException;
 
-    ResponseEntity<String> deleteCenterEquipment(Integer id);
+    ResponseEntity<String> updateCenterEquipment(EquipmentRequest equipmentRequest) throws JsonProcessingException;
+
+    ResponseEntity<String> deleteCenterEquipment(Integer id) throws JsonProcessingException;
 
     ResponseEntity<List<CenterEquipment>> getAllCenterEquipments();
 
     ResponseEntity<List<CenterEquipment>> getMyCenterEquipments();
 
-    ResponseEntity<String> addCenterIntroduction(Map<String, String> requestMap);
+    ResponseEntity<String> addCenterIntroduction(IntroductionRequest introductionRequest) throws JsonProcessingException;
 
-    ResponseEntity<String> updateCenterIntroduction(Map<String, String> requestMap);
+    ResponseEntity<String> updateCenterIntroduction(IntroductionRequest introductionRequest) throws JsonProcessingException;
 
-    ResponseEntity<String> deleteCenterIntroduction(Integer id);
+    ResponseEntity<String> deleteCenterIntroduction(Integer id) throws JsonProcessingException;
 
     ResponseEntity<List<CenterIntroduction>> getAllCenterIntroductions();
 
     ResponseEntity<List<CenterIntroduction>> getMyCenterIntroductions();
 
-    ResponseEntity<String> addCenterLocation(Map<String, String> requestMap);
+    ResponseEntity<String> addCenterLocation(LocationRequest locationRequest) throws JsonProcessingException;
 
-    ResponseEntity<String> updateCenterLocation(Map<String, String> requestMap);
+    ResponseEntity<String> updateCenterLocation(LocationRequest locationRequest) throws JsonProcessingException;
 
-    ResponseEntity<String> deleteCenterLocation(Integer id);
+    ResponseEntity<String> deleteCenterLocation(Integer id) throws JsonProcessingException;
 
     ResponseEntity<List<CenterLocation>> getAllCenterLocations();
 
     ResponseEntity<List<CenterLocation>> getMyCenterLocations();
 
-    ResponseEntity<String> addCenterPhotoAlbum(PhotoAlbum photoAlbum);
+    ResponseEntity<String> addCenterPhotoAlbum(PhotoAlbumRequest photoAlbumRequest) throws JsonProcessingException;
 
-    ResponseEntity<String> updateCenterPhotoAlbum(PhotoAlbum photoAlbum);
+    ResponseEntity<String> updateCenterPhotoAlbum(PhotoAlbumRequest photoAlbumRequest) throws JsonProcessingException;
 
-    ResponseEntity<String> deleteCenterPhotoAlbum(Integer id);
+    ResponseEntity<String> deleteCenterPhotoAlbum(Integer id) throws JsonProcessingException;
 
     ResponseEntity<List<CenterPhotoAlbum>> getAllCenterPhotoAlbums();
 
@@ -111,9 +111,9 @@ public interface CenterService {
 
     ResponseEntity<List<CenterTrainer>> getMyCenterTrainers();
 
-    ResponseEntity<String> addCenterVideoAlbum(VideoAlbum videoAlbum);
+    ResponseEntity<String> addCenterVideoAlbum(VideoAlbumRequest videoAlbumRequest);
 
-    ResponseEntity<String> updateCenterVideoAlbum(VideoAlbum videoAlbum);
+    ResponseEntity<String> updateCenterVideoAlbum(VideoAlbumRequest videoAlbumRequest);
 
     ResponseEntity<String> deleteCenterVideoAlbum(Integer id);
 

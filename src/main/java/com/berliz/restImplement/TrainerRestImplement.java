@@ -3,6 +3,7 @@ package com.berliz.restImplement;
 import com.berliz.DTO.*;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.*;
+import com.berliz.models.ClientReview;
 import com.berliz.rest.TrainerRest;
 import com.berliz.services.TrainerService;
 import com.berliz.utils.BerlizUtilities;
@@ -10,7 +11,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
@@ -167,9 +167,9 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<String> addTrainerPhotoAlbum(PhotoAlbum photoAlbum) throws JsonProcessingException {
+    public ResponseEntity<String> addTrainerPhotoAlbum(PhotoAlbumRequest photoAlbumRequest) throws JsonProcessingException {
         try {
-            return trainerService.addTrainerPhotoAlbum(photoAlbum);
+            return trainerService.addTrainerPhotoAlbum(photoAlbumRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -177,9 +177,9 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<String> updateTrainerPhotoAlbum(PhotoAlbum photoAlbum) throws JsonProcessingException {
+    public ResponseEntity<String> updateTrainerPhotoAlbum(PhotoAlbumRequest photoAlbumRequest) throws JsonProcessingException {
         try {
-            return trainerService.updateTrainerPhotoAlbum(photoAlbum);
+            return trainerService.updateTrainerPhotoAlbum(photoAlbumRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -267,9 +267,9 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<String> addTrainerIntroduction(Introduction introduction) throws JsonProcessingException {
+    public ResponseEntity<String> addTrainerIntroduction(IntroductionRequest introductionRequest) throws JsonProcessingException {
         try {
-            return trainerService.addTrainerIntroduction(introduction);
+            return trainerService.addTrainerIntroduction(introductionRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -277,9 +277,9 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<String> updateTrainerIntroduction( Introduction introduction) throws JsonProcessingException {
+    public ResponseEntity<String> updateTrainerIntroduction( IntroductionRequest introductionRequest) throws JsonProcessingException {
         try {
-            return trainerService.updateTrainerIntroduction(introduction);
+            return trainerService.updateTrainerIntroduction(introductionRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -317,9 +317,9 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<String> addTrainerVideoAlbum(VideoAlbum videoAlbum) throws JsonProcessingException {
+    public ResponseEntity<String> addTrainerVideoAlbum(VideoAlbumRequest videoAlbumRequest) throws JsonProcessingException {
         try {
-            return trainerService.addTrainerVideoAlbum(videoAlbum);
+            return trainerService.addTrainerVideoAlbum(videoAlbumRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -327,9 +327,9 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<String> updateTrainerVideoAlbum(VideoAlbum videoAlbum) throws JsonProcessingException {
+    public ResponseEntity<String> updateTrainerVideoAlbum(VideoAlbumRequest videoAlbumRequest) throws JsonProcessingException {
         try {
-            return trainerService.updateTrainerVideoAlbum(videoAlbum);
+            return trainerService.updateTrainerVideoAlbum(videoAlbumRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -367,9 +367,9 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<String> addTrainerClientReview(ClientReview clientReview) throws JsonProcessingException {
+    public ResponseEntity<String> disableClientReview(Integer id) throws JsonProcessingException {
         try {
-            return trainerService.addTrainerClientReview(clientReview);
+            return trainerService.disableClientReview(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -377,29 +377,9 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<String> updateTrainerClientReview(ClientReview clientReview) throws JsonProcessingException {
+    public ResponseEntity<List<ClientReview>> getMyClientReviews() {
         try {
-            return trainerService.updateTrainerClientReview(clientReview);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<String> deleteTrainerClientReview(Integer id) throws JsonProcessingException {
-        try {
-            return trainerService.deleteTrainerClientReview(id);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<List<TrainerClientReview>> getAllTrainerClientReviews() {
-        try {
-            return trainerService.getAllTrainerClientReviews();
+            return trainerService.getMyClientReviews();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -407,9 +387,20 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<List<TrainerClientReview>> getActiveTrainerClientReviews() {
+    public ResponseEntity<List<ClientReview>> getAllClientReviews() {
         try {
-            return trainerService.getActiveTrainerClientReviews();
+            return trainerService.getAllClientReviews();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+
+    @Override
+    public ResponseEntity<List<ClientReview>> getActiveClientReviews(Integer id) {
+        try {
+            return trainerService.getActiveClientReviews(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -417,19 +408,9 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<List<TrainerClientReview>> getMyTrainerClientReviews() {
+    public ResponseEntity<String> addTrainerFeatureVideo(FeatureVideoRequest featureVideoRequest) throws JsonProcessingException {
         try {
-            return trainerService.getMyTrainerClientReviews();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    @Override
-    public ResponseEntity<String> addTrainerFeatureVideo(FeatureVideo featureVideo) throws JsonProcessingException {
-        try {
-            return trainerService.addTrainerFeatureVideo(featureVideo);
+            return trainerService.addTrainerFeatureVideo(featureVideoRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -437,9 +418,9 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<String> updateTrainerFeatureVideo(FeatureVideo featureVideo) throws JsonProcessingException {
+    public ResponseEntity<String> updateTrainerFeatureVideo(FeatureVideoRequest featureVideoRequest) throws JsonProcessingException {
         try {
-            return trainerService.updateTrainerFeatureVideo(featureVideo);
+            return trainerService.updateTrainerFeatureVideo(featureVideoRequest);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -470,6 +451,26 @@ public class TrainerRestImplement implements TrainerRest {
     public ResponseEntity<List<TrainerFeatureVideo>> getMyTrainerFeatureVideos() {
         try {
             return trainerService.getMyTrainerFeatureVideos();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> likeClientReview(Integer id) throws JsonProcessingException {
+        try {
+            return trainerService.likeClientReview(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<ClientReviewLike>> getClientReviewLikes() throws JsonProcessingException {
+        try {
+            return trainerService.getClientReviewLikes();
         } catch (Exception ex) {
             ex.printStackTrace();
         }

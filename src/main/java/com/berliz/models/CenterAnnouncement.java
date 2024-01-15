@@ -7,6 +7,9 @@ import org.hibernate.annotations.DynamicUpdate;
 
 import java.util.Date;
 
+@NamedQuery(name = "CenterAnnouncement.getActiveCenterAnnouncements",
+        query = "select ca from CenterAnnouncement ca where ca.status='true' AND ca.center = :center")
+
 @Data
 @Entity
 @DynamicInsert
@@ -28,8 +31,8 @@ public class CenterAnnouncement {
     @Column(name = "announcement", columnDefinition = "TEXT")
     private String announcement;
 
-    @Column(name = "icon")
-    private String icon;
+    @Column(name = "icon", columnDefinition = "BYTEA")
+    private byte[] icon;
 
     @Column(name = "date", columnDefinition = "DATE")
     private Date date;

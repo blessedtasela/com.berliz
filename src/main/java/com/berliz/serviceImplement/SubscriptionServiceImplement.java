@@ -3,7 +3,7 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.*;
-import com.berliz.repository.*;
+import com.berliz.repositories.*;
 import com.berliz.services.SubscriptionService;
 import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.EmailUtilities;
@@ -327,14 +327,15 @@ public class SubscriptionServiceImplement implements SubscriptionService {
             for (String categoryIdString : categoryIdsArray) {
                 int categoryId = Integer.parseInt(categoryIdString.trim());
                 Category category = categoryRepo.findById(categoryId)
-                        .orElseThrow(() -> new EntityNotFoundException("Exercise not found with ID: " + categoryId));
+                        .orElseThrow(() -> new EntityNotFoundException("Category not found with ID: " + categoryId));
                 categories.add(category);
             }
             subscription.setCategories(categories);
         }
+
         subscription.setMode(requestMap.get("mode"));
-       subscription.setMonths(Integer.valueOf(requestMap.get("months")));
-//        subscription.setAmount();
+        subscription.setMonths(Integer.valueOf(requestMap.get("months")));
+        subscription.setAmount(amount);
         subscription.setDate(new Date());
         subscription.setLastUpdate(new Date());
         subscription.setStatus("false");

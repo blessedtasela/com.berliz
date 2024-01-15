@@ -17,6 +17,9 @@ import java.util.Set;
         query = "SELECT COUNT(c) FROM Client c JOIN c.subscriptions s " +
                 "JOIN s.trainer t JOIN t.partner p JOIN p.user u WHERE u.email = :email")
 
+@NamedQuery(name = "Client.findByUserId",
+        query = "SELECT c FROM Client c WHERE c.user.id = :id")
+
 @Data
 @Entity
 @DynamicInsert
