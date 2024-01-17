@@ -4,7 +4,7 @@ import com.berliz.DTO.*;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.*;
-import com.berliz.models.ClientReview;
+import com.berliz.models.TrainerReview;
 import com.berliz.repositories.*;
 import com.berliz.services.TrainerService;
 import com.berliz.utils.BerlizUtilities;
@@ -79,13 +79,13 @@ public class TrainerServiceImplement implements TrainerService {
     TrainerPricingRepo trainerPricingRepo;
 
     @Autowired
-    ClientReviewRepo clientReviewRepo;
+    TrainerReviewRepo trainerReviewRepo;
 
     @Autowired
     CenterTrainerRepo centerTrainerRepo;
 
     @Autowired
-    ClientReviewLikeRepo clientReviewLikeRepo;
+    TrainerReviewLikeRepo trainerReviewLikeRepo;
 
     @Autowired
     SimpMessagingTemplate simpMessagingTemplate;
@@ -1359,50 +1359,16 @@ public class TrainerServiceImplement implements TrainerService {
     }
 
     @Override
-    public ResponseEntity<String> disableClientReview(Integer id) throws JsonProcessingException {
+    public ResponseEntity<List<Client>> getMyClients() {
         try {
-            log.info("Inside disableClientReview {}", id);
-            if (!(jwtFilter.isAdmin() || jwtFilter.isClient())) {
-                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
-            Optional<ClientReview> optional = clientReviewRepo.findById(id);
-            if (optional.isEmpty()) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Client review ID not found");
-            }
-
-            log.info("Inside optional {}", optional);
-            ClientReview trainerClientReview = optional.get();
-            if (isAuthorizedToDeleteTrainerClientReview(trainerClientReview)) {
-                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
-            trainerClientReview.setStatus("false");
-            ClientReview savedClientReview = clientReviewRepo.save(trainerClientReview);
-            simpMessagingTemplate.convertAndSend("/topic/disableClientReview", savedClientReview);
-            return BerlizUtilities.buildResponse(HttpStatus.OK, "Review for " + trainerClientReview.getTrainer().getName() +
-                    " has been removed from feed successfully");
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<List<ClientReview>> getMyClientReviews() {
-        try {
-            log.info("Inside getMyClientReviews");
-            if (!(jwtFilter.isAdmin() || jwtFilter.isClient() || jwtFilter.isTrainer())) {
-                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
-            }
-
+            log.info("Inside getMyClients");
             Trainer trainer = trainerRepo.findByUserId(jwtFilter.getCurrentUserId());
             if (trainer == null) {
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
             }
 
-            List<ClientReview> trainerClientReviews = clientReviewRepo.findByTrainer(trainer);
-            return new ResponseEntity<>(trainerClientReviews, HttpStatus.OK);
+            List<Client> clients = clientRepo.getMyClientsByTrainer(trainer);
+            return new ResponseEntity<>(clients, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -1410,31 +1376,16 @@ public class TrainerServiceImplement implements TrainerService {
     }
 
     @Override
-    public ResponseEntity<List<ClientReview>> getAllClientReviews() {
+    public ResponseEntity<List<Client>> getMyActiveClients() {
         try {
-            log.info("Inside getAllClientReviews");
-            if (!jwtFilter.isAdmin()) {
-                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
-            }
-            List<ClientReview> trainerClientReviews = clientReviewRepo.findAll();
-            return new ResponseEntity<>(trainerClientReviews, HttpStatus.OK);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    @Override
-    public ResponseEntity<List<ClientReview>> getActiveClientReviews(Integer id) {
-        try {
-            log.info("Inside getActiveClientReviews");
-            Trainer trainer = trainerRepo.findByTrainerId(id);
+            log.info("Inside getMyActiveClients");
+            Trainer trainer = trainerRepo.findByUserId(jwtFilter.getCurrentUserId());
             if (trainer == null) {
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
             }
 
-            List<ClientReview> trainerClientReviews = clientReviewRepo.getActiveClientReviews(trainer);
-            return new ResponseEntity<>(trainerClientReviews, HttpStatus.OK);
+            List<Client> clients = clientRepo.getMyActiveClientsByTrainer(trainer);
+            return new ResponseEntity<>(clients, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -1617,11 +1568,11 @@ public class TrainerServiceImplement implements TrainerService {
     }
 
     @Override
-    public ResponseEntity<String> likeClientReview(Integer id) throws JsonProcessingException {
+    public ResponseEntity<String> likeTrainerReview(Integer id) throws JsonProcessingException {
         try {
             log.info("Inside likeClientReview {}", id);
-            Optional<ClientReview> optional = clientReviewRepo.findById(id);
-            ClientReview clientReview = optional.orElse(null);
+            Optional<TrainerReview> optional = trainerReviewRepo.findById(id);
+            TrainerReview trainerReview = optional.orElse(null);
             User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
             boolean validUser = jwtFilter.isBerlizUser();
 
@@ -1629,34 +1580,34 @@ public class TrainerServiceImplement implements TrainerService {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            if (clientReview == null) {
-                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Client review id not found");
+            if (trainerReview == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer review id not found");
             }
 
-            boolean hasLiked = clientReviewLikeRepo.existsByUserAndClientReview(user, clientReview);
+            boolean hasLiked = trainerReviewLikeRepo.existsByUserAndTrainerReview(user, trainerReview);
             String responseMessage;
             if (hasLiked) {
                 // dislike trainer
-                clientReviewLikeRepo.deleteByUserAndClientReview(user, clientReview);
-                clientReview.setLikes(clientReview.getLikes() - 1);
+                trainerReviewLikeRepo.deleteByUserAndTrainerReview(user, trainerReview);
+                trainerReview.setLikes(trainerReview.getLikes() - 1);
                 responseMessage = "Hello, " + user.getFirstname() + " you have disliked " +
-                        clientReview.getClient().getUser().getFirstname() + " review on" +
-                        clientReview.getTrainer().getName() + "'s profile";
+                        trainerReview.getClient().getUser().getFirstname() + " review on" +
+                        trainerReview.getTrainer().getName() + "'s profile";
             } else {
                 // like trainer
-                ClientReviewLike clientReviewLike = new ClientReviewLike();
-                clientReviewLike.setUser(user);
-                clientReviewLike.setClientReview(clientReview);
-                clientReviewLike.setDate(new Date());
-                clientReviewLikeRepo.save(clientReviewLike);
-                clientReview.setLikes(clientReview.getLikes() + 1);
+                TrainerReviewLike trainerReviewLike = new TrainerReviewLike();
+                trainerReviewLike.setUser(user);
+                trainerReviewLike.setTrainerReview(trainerReview);
+                trainerReviewLike.setDate(new Date());
+                trainerReviewLikeRepo.save(trainerReviewLike);
+                trainerReview.setLikes(trainerReview.getLikes() + 1);
                 responseMessage = "Hello, " + user.getFirstname() + " you just liked " +
-                        clientReview.getClient().getUser().getFirstname() + " review on" +
-                        clientReview.getTrainer().getName() + "'s profile";
+                        trainerReview.getClient().getUser().getFirstname() + " review on" +
+                        trainerReview.getTrainer().getName() + "'s profile";
             }
 
-            ClientReview savedClientReview = clientReviewRepo.save(clientReview);
-            simpMessagingTemplate.convertAndSend("/topic/likeClientReview", savedClientReview);
+            TrainerReview savedTrainerReview = trainerReviewRepo.save(trainerReview);
+            simpMessagingTemplate.convertAndSend("/topic/likeClientReview", savedTrainerReview);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
 
         } catch (Exception ex) {
@@ -1667,11 +1618,11 @@ public class TrainerServiceImplement implements TrainerService {
 
 
     @Override
-    public ResponseEntity<List<ClientReviewLike>> getClientReviewLikes() {
+    public ResponseEntity<List<TrainerReviewLike>> getTrainerReviewLikes() {
         try {
             log.info("Inside getTrainerLikes");
-            List<ClientReviewLike> clientReviewLikes = clientReviewLikeRepo.findAll();
-            return new ResponseEntity<>(clientReviewLikes, HttpStatus.OK);
+            List<TrainerReviewLike> trainerReviewLikes = trainerReviewLikeRepo.findAll();
+            return new ResponseEntity<>(trainerReviewLikes, HttpStatus.OK);
         } catch (Exception ex) {
             log.error("Something went wrong while performing operation", ex);
         }
@@ -1693,6 +1644,281 @@ public class TrainerServiceImplement implements TrainerService {
 
             List<CenterTrainer> centerTrainers = centerTrainerRepo.findByTrainer(trainer);
             return new ResponseEntity<>(centerTrainers, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> addTrainerReview(TrainerReviewRequest trainerReviewRequest) throws JsonProcessingException {
+        try {
+            log.info("Inside addTrainerReview {}", trainerReviewRequest);
+            boolean isValid = trainerReviewRequest != null;
+            log.info("Is request valid? {}", isValid);
+
+            if (!(jwtFilter.isAdmin() || jwtFilter.isClient())) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValid) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+                if (trainerReviewRequest.getTrainerId() == null) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "trainer id is invalid");
+                }
+
+                Trainer trainer = trainerRepo.findByTrainerId(trainerReviewRequest.getTrainerId());
+                if (trainer == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer not found in db");
+            }
+
+            Client client = clientRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (jwtFilter.isAdmin()) {
+                if (trainerReviewRequest.getTrainerId() == null) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide center Id");
+                }
+
+                client = clientRepo.findByUserId(trainerReviewRequest.getClientId());
+            }
+
+            if (client == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Client not found in db");
+            }
+
+            getTrainerReviewFromMap(trainerReviewRequest, trainer, client);
+            String responseMessage = jwtFilter.isAdmin() ?
+                    client.getUser().getFirstname() + "!, review for " + trainer.getName() + " have " +
+                            "successfully been added to their list" :
+                    "Hello " + client.getUser().getFirstname() + "!, you have successfully " +
+                            "added a review for your trainer " + trainer.getName();
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateTrainerReview(TrainerReviewRequest trainerReviewRequest) throws JsonProcessingException {
+        try {
+            log.info("Inside updateTrainerReview {}", trainerReviewRequest);
+            Integer userId = jwtFilter.getCurrentUserId();
+            boolean isValid = trainerReviewRequest != null;
+            log.info("Is request valid? {}", isValid);
+
+            if (!jwtFilter.isAdmin() || !jwtFilter.isClient()) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValid || trainerReviewRequest.getId() == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            TrainerReview trainerReview = trainerReviewRepo.findById(trainerReviewRequest.getId()).orElse(null);
+            if (trainerReview == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer review" +
+                        " for trainer not found in db");
+            }
+
+            boolean validUser = jwtFilter.isAdmin() ||
+                    (jwtFilter.isTrainer() && userId.equals(trainerReview
+                            .getClient().getUser().getId()));
+            if (!validUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            Trainer trainer = trainerReview.getTrainer();
+            String photoFolderPath = BerlizConstants.TRAINER_CLIENT_REVIEW;
+
+            String frontBeforePhotoName = generateUniqueName(trainer.getName() + "_client_front_before");
+            String frontAfterPhotoName = generateUniqueName(trainer.getName() + "_client_front_after");
+            String sideBeforePhotoName = generateUniqueName(trainer.getName() + "_client_side_before");
+            String sideAfterPhotoName = generateUniqueName(trainer.getName() + "_client_side_after");
+            String backBeforePhotoName = generateUniqueName(trainer.getName() + "_client_back_before");
+            String backAfterPhotoName = generateUniqueName(trainer.getName() + "_client_back_after");
+
+            Path frontBeforePath = Paths.get(photoFolderPath, frontBeforePhotoName);
+            Path frontAfterPath = Paths.get(photoFolderPath, frontAfterPhotoName);
+            Path sideBeforePath = Paths.get(photoFolderPath, sideBeforePhotoName);
+            Path sideAfterPath = Paths.get(photoFolderPath, sideAfterPhotoName);
+            Path backBeforePath = Paths.get(photoFolderPath, backBeforePhotoName);
+            Path backAfterPath = Paths.get(photoFolderPath, backAfterPhotoName);
+
+            Files.write(frontBeforePath, trainerReviewRequest.getFrontBefore().getBytes());
+            Files.write(frontAfterPath, trainerReviewRequest.getFrontAfter().getBytes());
+            Files.write(sideBeforePath, trainerReviewRequest.getSideBefore().getBytes());
+            Files.write(sideAfterPath, trainerReviewRequest.getSideAfter().getBytes());
+            Files.write(backBeforePath, trainerReviewRequest.getBackBefore().getBytes());
+            Files.write(backAfterPath, trainerReviewRequest.getBackAfter().getBytes());
+
+            // Save photo details to the database
+            trainerReview.setReview(trainerReviewRequest.getReview());
+            trainerReview.setFrontBefore(frontBeforePhotoName);
+            trainerReview.setFrontAfter(frontAfterPhotoName);
+            trainerReview.setSideBefore(sideBeforePhotoName);
+            trainerReview.setSideAfter(sideAfterPhotoName);
+            trainerReview.setBackBefore(backBeforePhotoName);
+            trainerReview.setBackAfter(backAfterPhotoName);
+            trainerReview.setLastUpdate(new Date());
+
+            TrainerReview savedTrainerReview = trainerReviewRepo.save(trainerReview);
+            String responseMessage = jwtFilter.isAdmin() ?
+                    "Trainer review for " + trainer.getName() + "!, has successfully been updated in their album" :
+                    "Hello " + trainerReview.getClient().getUser().getFirstname() + "!, you have successfully " +
+                            "updated your Trainer review for" +
+                            trainer.getName();
+            simpMessagingTemplate.convertAndSend("/topic/updateTrainerReview", savedTrainerReview);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateTrainerReviewStatus(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside updateTrainerReviewStatus {}", id);
+            String status;
+            if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer())) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            Optional<TrainerReview> optional = trainerReviewRepo.findById(id);
+            if (optional.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer review ID not found");
+            }
+
+            log.info("Inside optional {}", optional);
+            status = optional.get().getStatus();
+            TrainerReview trainerTrainerReview = optional.get();
+            String responseMessage;
+            if (status.equalsIgnoreCase("true")) {
+                status = "false";
+                responseMessage = "Trainer review status updated successfully. Now deactivated";
+            } else {
+                status = "true";
+                responseMessage = "Trainer review status updated successfully. Now activated";
+            }
+
+            trainerTrainerReview.setStatus(status);
+            TrainerReview savedTrainerReview = trainerReviewRepo.save(trainerTrainerReview);
+            simpMessagingTemplate.convertAndSend("/topic/updateTrainerReviewStatus", savedTrainerReview);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> disableTrainerReview(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside disableTrainerReview {}", id);
+            if (!(jwtFilter.isAdmin() || jwtFilter.isClient() || jwtFilter.isTrainer() || jwtFilter.isMemberClient())) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            Optional<TrainerReview> optional = trainerReviewRepo.findById(id);
+            if (optional.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer review ID not found");
+            }
+
+            log.info("Inside optional {}", optional);
+            TrainerReview trainerReview = optional.get();
+            trainerReview.setStatus("false");
+            TrainerReview savedTrainerReview = trainerReviewRepo.save(trainerReview);
+            simpMessagingTemplate.convertAndSend("/topic/disableTrainerReview", savedTrainerReview);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Review for " + trainerReview.getTrainer().getName() +
+                    " has been removed from feed successfully");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> deleteTrainerReview(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside deleteTrainerReview {}", id);
+            if (!(jwtFilter.isAdmin() || jwtFilter.isClient())) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            Optional<TrainerReview> optional = trainerReviewRepo.findById(id);
+            TrainerReview trainerTrainerReview = optional.orElse(null);
+            if (trainerTrainerReview == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer review id not found");
+            }
+
+            if (isAuthorizedToDeleteTrainerReview(trainerTrainerReview)) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!trainerTrainerReview.getTrainer().getStatus().equalsIgnoreCase("false")) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer is inactive, Cannot complete request");
+            }
+
+            trainerReviewRepo.delete(trainerTrainerReview);
+            simpMessagingTemplate.convertAndSend("/topic/deleteTrainerReview", trainerTrainerReview);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer review for" +
+                    trainerTrainerReview.getTrainer().getName() + "  deleted successfully");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<TrainerReview>> getMyTrainerReviews() {
+        try {
+            log.info("Inside getMyTrainerReviews");
+            if (!(jwtFilter.isAdmin() || jwtFilter.isClient() || jwtFilter.isTrainer())) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            Client client = clientRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (client == null) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            List<TrainerReview> trainerTrainerReviews = trainerReviewRepo.findByClient(client);
+            return new ResponseEntity<>(trainerTrainerReviews, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+
+    @Override
+    public ResponseEntity<List<TrainerReview>> getAllTrainerReviews() {
+        try {
+            log.info("Inside getAllTrainerReviews");
+            if (!jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+            List<TrainerReview> trainerTrainerReviews = trainerReviewRepo.findAll();
+            return new ResponseEntity<>(trainerTrainerReviews, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<TrainerReview>> getActiveTrainerReviews(Integer id) {
+        try {
+            log.info("Inside getActiveTrainerReviews");
+            Trainer trainer = trainerRepo.findByTrainerId(id);
+            if (trainer == null) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            List<TrainerReview> trainerTrainerReviews = trainerReviewRepo.getActiveTrainerReviewsByTrainer(trainer);
+            return new ResponseEntity<>(trainerTrainerReviews, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -2086,6 +2312,81 @@ public class TrainerServiceImplement implements TrainerService {
         simpMessagingTemplate.convertAndSend("/topic/getTrainerFeatureVideoFromMap", savedTrainerFeatureVideo);
     }
 
+    /**
+     * Processes a Trainer's review information from a TrainerReviewRequest object and saves it to the database.
+     *
+     * @param trainerReviewRequest The TrainerReviewRequest object containing client review details.
+     * @param trainer      The Trainer object associated with the review.
+     * @param client       The Client object associated with the review.
+     * @throws IOException If an I/O error occurs while handling the client review photos.
+     */
+    private void getTrainerReviewFromMap(TrainerReviewRequest trainerReviewRequest, Trainer trainer, Client client) throws IOException {
+        TrainerReview trainerReview = new TrainerReview();
+        String photoFolderPath = BerlizConstants.TRAINER_CLIENT_REVIEW;
+
+        String frontBeforePhotoName = generateUniqueName(trainer.getName() + "_client_front_before");
+        String frontAfterPhotoName = generateUniqueName(trainer.getName() + "_client_front_after");
+        String sideBeforePhotoName = generateUniqueName(trainer.getName() + "_client_side_before");
+        String sideAfterPhotoName = generateUniqueName(trainer.getName() + "_client_side_after");
+        String backBeforePhotoName = generateUniqueName(trainer.getName() + "_client_back_before");
+        String backAfterPhotoName = generateUniqueName(trainer.getName() + "_client_back_after");
+
+        Path frontBeforePath = Paths.get(photoFolderPath, frontBeforePhotoName);
+        Path frontAfterPath = Paths.get(photoFolderPath, frontAfterPhotoName);
+        Path sideBeforePath = Paths.get(photoFolderPath, sideBeforePhotoName);
+        Path sideAfterPath = Paths.get(photoFolderPath, sideAfterPhotoName);
+        Path backBeforePath = Paths.get(photoFolderPath, backBeforePhotoName);
+        Path backAfterPath = Paths.get(photoFolderPath, backAfterPhotoName);
+
+        Files.write(frontBeforePath, trainerReviewRequest.getFrontBefore().getBytes());
+        Files.write(frontAfterPath, trainerReviewRequest.getFrontAfter().getBytes());
+        Files.write(sideBeforePath, trainerReviewRequest.getSideBefore().getBytes());
+        Files.write(sideAfterPath, trainerReviewRequest.getSideAfter().getBytes());
+        Files.write(backBeforePath, trainerReviewRequest.getBackBefore().getBytes());
+        Files.write(backAfterPath, trainerReviewRequest.getBackAfter().getBytes());
+
+        // Save photo details to the database
+        trainerReview.setTrainer(trainer);
+        trainerReview.setClient(client);
+        trainerReview.setReview(trainerReviewRequest.getReview());
+        trainerReview.setLikes(0);
+        trainerReview.setFrontBefore(frontBeforePhotoName);
+        trainerReview.setFrontAfter(frontAfterPhotoName);
+        trainerReview.setSideBefore(sideBeforePhotoName);
+        trainerReview.setSideAfter(sideAfterPhotoName);
+        trainerReview.setBackBefore(backBeforePhotoName);
+        trainerReview.setBackAfter(backAfterPhotoName);
+        trainerReview.setDate(new Date());
+        trainerReview.setStatus("false");
+        trainerReview.setLastUpdate(new Date());
+        TrainerReview savedTrainerReview = trainerReviewRepo.save(trainerReview);
+        simpMessagingTemplate.convertAndSend("/topic/getTrainerReviewFromMap", savedTrainerReview);
+    }
+
+    /**
+     * Generates a unique name by combining the given prefix with a truncated UUID.
+     *
+     * @param prefix The prefix to be included in the unique name.
+     * @return The generated unique name.
+     */
+    String generateUniqueName(String prefix) {
+        long numericUUID = UUID.randomUUID().getMostSignificantBits();
+        String truncatedUUID = String.valueOf(numericUUID).substring(0, 15);
+        return prefix + "-" + truncatedUUID;
+    }
+
+    /**
+     * Checks if the current user is authorized to delete a TrainerClientReview.
+     *
+     * @param trainerReview The TrainerReview to be checked for authorization.
+     * @return True if the user is authorized, false otherwise.
+     */
+    private boolean isAuthorizedToDeleteTrainerReview(TrainerReview trainerReview) {
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        boolean authorizedUser = user.getEmail().equalsIgnoreCase(trainerReview.getTrainer()
+                .getPartner().getUser().getEmail());
+        return !jwtFilter.isAdmin() && !authorizedUser;
+    }
 
     /**
      * Checks if the current user is authorized to delete a TrainerPhotoAlbum.
@@ -2145,18 +2446,6 @@ public class TrainerServiceImplement implements TrainerService {
         User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(trainerFeatureVideo.getTrainer().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
-    }
-
-    /**
-     * Checks if the current user is authorized to delete a TrainerClientReview.
-     *
-     * @param trainerClientReview The TrainerClientReview to be checked for authorization.
-     * @return True if the user is authorized, false otherwise.
-     */
-    private boolean isAuthorizedToDeleteTrainerClientReview(ClientReview trainerClientReview) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
-        boolean authorizedUser = user.getEmail().equalsIgnoreCase(trainerClientReview.getClient().getUser().getEmail());
-        return !jwtFilter.isAdmin() && !authorizedUser;
     }
 
     /**

@@ -1,6 +1,8 @@
 package com.berliz.services;
 
+import com.berliz.models.CenterReview;
 import com.berliz.models.Member;
+import com.berliz.models.TrainerReview;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 
@@ -21,4 +23,10 @@ public interface MemberService {
     ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException;
 
     ResponseEntity<Member> getMember(Integer id);
+
+    ResponseEntity<List<CenterReview>> getMyCenterReviews();
+
+    ResponseEntity<List<Member>> getMyMembers();
+
+    ResponseEntity<List<Member>> getMyActiveMembers();
 }

@@ -2,16 +2,12 @@ package com.berliz.serviceImplement;
 
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
-import com.berliz.models.Category;
-import com.berliz.models.Member;
-import com.berliz.models.Subscription;
-import com.berliz.models.User;
+import com.berliz.models.*;
 import com.berliz.repositories.*;
 import com.berliz.services.MemberService;
 import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.EmailUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -53,6 +49,9 @@ public class MemberServiceImplement implements MemberService {
     SubscriptionRepo subscriptionRepo;
 
     @Autowired
+    CenterReviewRepo centerReviewRepo;
+
+    @Autowired
     SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
@@ -91,7 +90,6 @@ public class MemberServiceImplement implements MemberService {
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "You have successfully added "
                         + user.getFirstname() + " as a client");
             } else {
-                Integer userId = jwtFilter.getCurrentUserId();
                 User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
                 if (user == null) {
                     return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Invalid user");
@@ -183,23 +181,10 @@ public class MemberServiceImplement implements MemberService {
             LocalDate dobLocalDate = dob.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
             LocalDate currentDate = LocalDate.now();
             Period period = Period.between(dobLocalDate, currentDate);
-            Integer age = period.getYears();
+            int age = period.getYears();
             double BMI = weight / (height * height);
             double bodyFat = 1.2 * BMI + 0.23 * age - 5.4;
             member.setBodyFat(bodyFat);
-
-            String categoryIdsString = requestMap.get("categoryIds");
-            if (!categoryIdsString.isEmpty()) {
-                String[] categoryIdsArray = categoryIdsString.split(",");
-                Set<Category> categories = new HashSet<>();
-                for (String categoryIdString : categoryIdsArray) {
-                    int categoryId = Integer.parseInt(categoryIdString.trim());
-                    Category category = categoryRepo.findById(categoryId)
-                            .orElseThrow(() -> new EntityNotFoundException("Category not found with ID: " + categoryId));
-                    categories.add(category);
-                }
-                member.setCategories(categories);
-            }
 
             List<Subscription> subscriptions = subscriptionRepo.findByUser(user);
             if (!subscriptions.isEmpty()) {
@@ -297,16 +282,70 @@ public class MemberServiceImplement implements MemberService {
         try {
             log.info("Inside getMember {}", id);
             Optional<Member> optional = memberRepo.findById(id);
-            if (optional.isPresent()) {
-                return new ResponseEntity<>(optional.get(), HttpStatus.OK);
-            } else {
-                return new ResponseEntity<>(new Member(), HttpStatus.NOT_FOUND);
-            }
+            return optional.map(member ->
+                    new ResponseEntity<>(member, HttpStatus.OK)).orElseGet(() ->
+                    new ResponseEntity<>(new Member(), HttpStatus.NOT_FOUND));
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return new ResponseEntity<>(new Member(), HttpStatus.OK);
     }
+
+    @Override
+    public ResponseEntity<List<CenterReview>> getMyCenterReviews() {
+        try {
+            log.info("Inside getMyCenterReviews");
+            if (!(jwtFilter.isAdmin() || jwtFilter.isClient() || jwtFilter.isTrainer())) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            Member member = memberRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (member == null) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            List<CenterReview> centerReviews = centerReviewRepo.findByMember(member);
+            return new ResponseEntity<>(centerReviews, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<Member>> getMyMembers() {
+        try {
+            log.info("Inside getMyMembers");
+            Center center = centerRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (center == null) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            List<Member> members = memberRepo.getMyMembersByCenter(center);
+            return new ResponseEntity<>(members, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<Member>> getMyActiveMembers() {
+        try {
+            log.info("Inside getMyActiveMembers");
+            Center center = centerRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (center == null) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            List<Member> members = memberRepo.getMyActiveMembersByCenter(center);
+            return new ResponseEntity<>(members, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
 
     private void getMemberFromMap(Map<String, String> requestMap, User user) throws ParseException {
         Member member = new Member();
@@ -322,23 +361,10 @@ public class MemberServiceImplement implements MemberService {
         LocalDate dobLocalDate = dob.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         LocalDate currentDate = LocalDate.now();
         Period period = Period.between(dobLocalDate, currentDate);
-        Integer age = period.getYears();
+        int age = period.getYears();
         double BMI = weight / (height * height);
         double bodyFat = 1.2 * BMI + 0.23 * age - 5.4;
         member.setBodyFat(bodyFat);
-
-        String categoryIdsString = requestMap.get("categoryIds");
-        if (!categoryIdsString.isEmpty()) {
-            String[] categoryIdsArray = categoryIdsString.split(",");
-            Set<Category> categories = new HashSet<>();
-            for (String categoryIdString : categoryIdsArray) {
-                int categoryId = Integer.parseInt(categoryIdString.trim());
-                Category category = categoryRepo.findById(categoryId)
-                        .orElseThrow(() -> new EntityNotFoundException("Exercise not found with ID: " + categoryId));
-                categories.add(category);
-            }
-            member.setCategories(categories);
-        }
 
         List<Subscription> subscriptions = subscriptionRepo.findByUser(user);
         if (!subscriptions.isEmpty()) {
@@ -365,7 +391,6 @@ public class MemberServiceImplement implements MemberService {
                     && requestMap.containsKey("dietaryPreference")
                     && requestMap.containsKey("dietaryRestrictions")
                     && requestMap.containsKey("calorieIntake")
-                    && requestMap.containsKey("categoryIds")
                     && requestMap.containsKey("mode")
                     && requestMap.containsKey("motivation")
                     && requestMap.containsKey("targetWeight");
@@ -375,7 +400,6 @@ public class MemberServiceImplement implements MemberService {
                     && requestMap.containsKey("medicalConditions")
                     && requestMap.containsKey("dietaryPreference")
                     && requestMap.containsKey("dietaryRestrictions")
-                    && requestMap.containsKey("calorieIntake")
                     && requestMap.containsKey("categoryIds")
                     && requestMap.containsKey("mode")
                     && requestMap.containsKey("motivation")

@@ -17,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -54,6 +56,12 @@ public class SubscriptionServiceImplement implements SubscriptionService {
 
     @Autowired
     CategoryRepo categoryRepo;
+
+    @Autowired
+    TrainerPricingRepo trainerPricingRepo;
+
+    @Autowired
+    CenterPricingRepo centerPricingRepo;
 
     @Autowired
     SimpMessagingTemplate simpMessagingTemplate;
@@ -198,7 +206,7 @@ public class SubscriptionServiceImplement implements SubscriptionService {
 
 
             String startDateString = requestMap.get("startDate");
-            Integer months = Integer.valueOf(requestMap.get("months"));
+            int months = Integer.parseInt(requestMap.get("months"));
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
             Date startDate = dateFormat.parse(startDateString);
             LocalDate startDateLocaleDate = startDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
@@ -207,6 +215,7 @@ public class SubscriptionServiceImplement implements SubscriptionService {
             subscription.setStartDate(startDate);
             subscription.setMonths(months);
             subscription.setEndDate(endDate);
+            subscription.setAmount(calculateSubscriptionAmount(requestMap));
             subscription.setLastUpdate(new Date());
             Subscription savedSubscription = subscriptionRepo.save(subscription);
             String responseMessage;
@@ -295,18 +304,15 @@ public class SubscriptionServiceImplement implements SubscriptionService {
         try {
             log.info("Inside getSubscription {}", id);
             Optional<Subscription> optional = subscriptionRepo.findById(id);
-            if (optional.isPresent()) {
-                return new ResponseEntity<>(optional.get(), HttpStatus.OK);
-            } else {
-                return new ResponseEntity<>(new Subscription(), HttpStatus.NOT_FOUND);
-            }
+            return optional.map(subscription -> new ResponseEntity<>(subscription, HttpStatus.OK))
+                    .orElseGet(() -> new ResponseEntity<>(new Subscription(), HttpStatus.NOT_FOUND));
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return new ResponseEntity<>(new Subscription(), HttpStatus.OK);
     }
 
-    private void getSubscriptionFromMap(Map<String, String> requestMap, User user) throws ParseException {
+    private void getSubscriptionFromMap(Map<String, String> requestMap, User user) {
         Subscription subscription = new Subscription();
         subscription.setUser(user);
 
@@ -333,9 +339,10 @@ public class SubscriptionServiceImplement implements SubscriptionService {
             subscription.setCategories(categories);
         }
 
+        BigDecimal totalAmount = calculateSubscriptionAmount(requestMap);
+        subscription.setAmount(totalAmount);
         subscription.setMode(requestMap.get("mode"));
         subscription.setMonths(Integer.valueOf(requestMap.get("months")));
-        subscription.setAmount(amount);
         subscription.setDate(new Date());
         subscription.setLastUpdate(new Date());
         subscription.setStatus("false");
@@ -360,4 +367,117 @@ public class SubscriptionServiceImplement implements SubscriptionService {
         }
     }
 
+    public BigDecimal calculateSubscriptionAmount(Map<String, String> requestMap) {
+        // Retrieve necessary data from requestMap
+        int trainerId = Integer.parseInt(requestMap.get("trainerId"));
+        int centerId = Integer.parseInt(requestMap.get("centerId"));
+        String mode = requestMap.get("mode");
+        int months = Integer.parseInt(requestMap.get("months"));
+
+        // Fetch Trainer and Center entities from repositories
+        Trainer trainer = trainerRepo.findByTrainerId(trainerId);
+        Center center = centerRepo.findByCenterId(centerId);
+
+        // Initialize pricing information variables
+        TrainerPricing trainerPricing = null;
+        CenterPricing centerPricing = null;
+
+        // Fetch pricing information only if the corresponding entity is not null
+        if (trainer != null) {
+            trainerPricing = trainerPricingRepo.findByTrainer(trainer);
+        }
+
+        if (center != null) {
+            centerPricing = centerPricingRepo.findByCenter(center);
+        }
+
+        // Get the count of selected categories from the form control
+        String categoryIdsString = requestMap.get("categoryIds");
+        int selectedCategoriesCount = 0;
+
+        if (categoryIdsString != null && !categoryIdsString.isEmpty()) {
+            String[] categoryIdsArray = categoryIdsString.split(",");
+            selectedCategoriesCount = categoryIdsArray.length;
+        }
+
+        // Calculate subscription amount based on pricing information
+        BigDecimal trainerAmount = (trainer != null) ? calculateTrainerAmount(trainerPricing, mode, months, selectedCategoriesCount) : new BigDecimal("0");
+        BigDecimal centerAmount = (center != null) ? calculateCenterAmount(centerPricing, months, selectedCategoriesCount) : new BigDecimal("0");
+
+        // Total amount is the sum of trainer and center amounts
+        return trainerAmount.add(centerAmount);
+    }
+
+    private BigDecimal calculateTrainerAmount(TrainerPricing trainerPricing, String mode, int months, int categoryCount) {
+        BigDecimal basePrice = null;
+        switch (mode) {
+            case "online" -> basePrice = trainerPricing.getPriceOnline();
+            case "hybrid" -> basePrice = trainerPricing.getPriceHybrid();
+            case "personal" -> basePrice = trainerPricing.getPricePersonal();
+            default -> {
+            }
+        }
+
+        // Calculate discount based on months
+        BigDecimal discount = new BigDecimal("0");
+        if (months == 3) {
+            discount = trainerPricing.getDiscount3Months();
+        } else if (months == 6) {
+            discount = trainerPricing.getDiscount6Months();
+        } else if (months == 9) {
+            discount = trainerPricing.getDiscount9Months();
+        } else if (months == 12) {
+            discount = trainerPricing.getDiscount12Months();
+        }
+
+        // Calculate the discount
+        BigDecimal discountMultiplier = discount.divide(new BigDecimal("100"), RoundingMode.HALF_UP);
+        assert basePrice != null;
+        BigDecimal discountAmount = basePrice.multiply(discountMultiplier);
+        BigDecimal discountedPrice = basePrice.subtract(discountAmount);
+
+        // Calculate 2 categories discount
+        BigDecimal twoCategoriesDiscount = calculate2CategoriesDiscount(basePrice, trainerPricing.getDiscount2Programs(), categoryCount);
+
+        // Add 2 categories discount to the total amount
+        return discountedPrice.multiply(new BigDecimal(months)).subtract(twoCategoriesDiscount);
+    }
+
+    private BigDecimal calculateCenterAmount(CenterPricing centerPricing, int months, int categoryCount) {
+        BigDecimal basePrice = centerPricing.getPrice();
+
+        // Calculate discount based on months
+        BigDecimal discount = new BigDecimal("0");
+        if (months == 3) {
+            discount = centerPricing.getDiscount3Months();
+        } else if (months == 6) {
+            discount = centerPricing.getDiscount6Months();
+        } else if (months == 9) {
+            discount = centerPricing.getDiscount9Months();
+        } else if (months == 12) {
+            discount = centerPricing.getDiscount12Months();
+        }
+
+        // Calculate the discount
+        BigDecimal discountMultiplier = discount.divide(new BigDecimal("100"), RoundingMode.HALF_UP);
+        assert basePrice != null;
+        BigDecimal discountAmount = basePrice.multiply(discountMultiplier);
+        BigDecimal discountedPrice = basePrice.subtract(discountAmount);
+
+        // Calculate 2 categories discount
+        BigDecimal twoCategoriesDiscount = calculate2CategoriesDiscount(basePrice, centerPricing.getDiscount2Programs(), categoryCount);
+
+        // Add 2 categories discount to the total amount
+        return discountedPrice.multiply(new BigDecimal(months)).subtract(twoCategoriesDiscount);
+    }
+
+    private BigDecimal calculate2CategoriesDiscount(BigDecimal basePrice, BigDecimal discount, int selectedCategoriesCount) {
+        if (selectedCategoriesCount == 2) {
+            BigDecimal discountMultiplier = discount.divide(new BigDecimal("100"), RoundingMode.HALF_UP);
+            return basePrice.multiply(discountMultiplier);
+        } else {
+            return BigDecimal.ZERO;
+        }
+    }
 }
+

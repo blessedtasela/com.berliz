@@ -3,7 +3,7 @@ package com.berliz.restImplement;
 import com.berliz.DTO.*;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.*;
-import com.berliz.models.ClientReview;
+import com.berliz.models.TrainerReview;
 import com.berliz.rest.TrainerRest;
 import com.berliz.services.TrainerService;
 import com.berliz.utils.BerlizUtilities;
@@ -377,29 +377,9 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<String> disableClientReview(Integer id) throws JsonProcessingException {
+    public ResponseEntity<List<TrainerReview>> getAllTrainerReviews() {
         try {
-            return trainerService.disableClientReview(id);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<List<ClientReview>> getMyClientReviews() {
-        try {
-            return trainerService.getMyClientReviews();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    @Override
-    public ResponseEntity<List<ClientReview>> getAllClientReviews() {
-        try {
-            return trainerService.getAllClientReviews();
+            return trainerService.getAllTrainerReviews();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -408,9 +388,29 @@ public class TrainerRestImplement implements TrainerRest {
 
 
     @Override
-    public ResponseEntity<List<ClientReview>> getActiveClientReviews(Integer id) {
+    public ResponseEntity<List<TrainerReview>> getActiveTrainerReviews(Integer id) {
         try {
-            return trainerService.getActiveClientReviews(id);
+            return trainerService.getActiveTrainerReviews(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<Client>> getMyClients() {
+        try {
+            return trainerService.getMyClients();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<Client>> getMyActiveClients() {
+        try {
+            return trainerService.getMyActiveClients();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -468,9 +468,9 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<String> likeClientReview(Integer id) throws JsonProcessingException {
+    public ResponseEntity<String> likeTrainerReview(Integer id) throws JsonProcessingException {
         try {
-            return trainerService.likeClientReview(id);
+            return trainerService.likeTrainerReview(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -478,14 +478,15 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<List<ClientReviewLike>> getClientReviewLikes() throws JsonProcessingException {
+    public ResponseEntity<List<TrainerReviewLike>> getTrainerReviewLikes() {
         try {
-            return trainerService.getClientReviewLikes();
+            return trainerService.getTrainerReviewLikes();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
 
     @Override
     public ResponseEntity<List<CenterTrainer>> getMyCenterTrainers() throws JsonProcessingException {
@@ -497,4 +498,63 @@ public class TrainerRestImplement implements TrainerRest {
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @Override
+    public ResponseEntity<String> addTrainerReview(TrainerReviewRequest trainerReviewRequest) throws JsonProcessingException {
+        try {
+            return trainerService.addTrainerReview(trainerReviewRequest);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateTrainerReview(TrainerReviewRequest trainerReviewRequest) throws JsonProcessingException {
+        try {
+            return trainerService.updateTrainerReview(trainerReviewRequest);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateTrainerReviewStatus(Integer id) throws JsonProcessingException {
+        try {
+            return trainerService.updateTrainerReviewStatus(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> disableTrainerReview(Integer id) throws JsonProcessingException {
+        try {
+            return trainerService.disableTrainerReview(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> deleteTrainerReview(Integer id) throws JsonProcessingException {
+        try {
+            return trainerService.deleteTrainerReview(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<TrainerReview>> getMyTrainerReviews() {
+        try {
+            return trainerService.getMyTrainerReviews();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 }

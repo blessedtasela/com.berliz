@@ -1,9 +1,11 @@
 package com.berliz.serviceImplement;
 
-import com.berliz.DTO.ClientReviewRequest;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
-import com.berliz.models.*;
+import com.berliz.models.Client;
+import com.berliz.models.Subscription;
+import com.berliz.models.TrainerReview;
+import com.berliz.models.User;
 import com.berliz.repositories.*;
 import com.berliz.services.ClientService;
 import com.berliz.utils.BerlizUtilities;
@@ -17,10 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -39,7 +37,7 @@ public class ClientServiceImplement implements ClientService {
     TrainerRepo trainerRepo;
 
     @Autowired
-    ClientReviewRepo clientReviewRepo;
+    TrainerReviewRepo trainerReviewRepo;
 
     @Autowired
     UserRepo userRepo;
@@ -95,7 +93,6 @@ public class ClientServiceImplement implements ClientService {
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "You have successfully added "
                         + user.getFirstname() + " as a client");
             } else {
-                Integer userId = jwtFilter.getCurrentUserId();
                 User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
                 if (user == null) {
                     return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Invalid user");
@@ -191,7 +188,7 @@ public class ClientServiceImplement implements ClientService {
             double heightInM = heightInCM / 100.0;
             double BMI = weight / (heightInM * heightInM);
             String gender = user.getGender().toLowerCase();
-            double genderCoefficient = 0.0;
+            double genderCoefficient;
             if ("male".equalsIgnoreCase(gender)) {
                 genderCoefficient = 0.29288;
             } else if ("female".equalsIgnoreCase(gender)) {
@@ -200,7 +197,7 @@ public class ClientServiceImplement implements ClientService {
                 genderCoefficient = 0.29225;
             }
 
-            Integer caloriesIntake = Integer.valueOf(requestMap.get("caloriesIntake"));
+            int caloriesIntake = Integer.parseInt(requestMap.get("caloriesIntake"));
             double bodyFat = (1.2 * BMI + 0.23 * age - 5.4 - genderCoefficient) * (caloriesIntake / 1000.0);
             client.setBodyFat(bodyFat);
 
@@ -337,234 +334,9 @@ public class ClientServiceImplement implements ClientService {
     }
 
     @Override
-    public ResponseEntity<String> addClientReview(ClientReviewRequest clientReviewRequest) throws JsonProcessingException {
+    public ResponseEntity<List<TrainerReview>> getMyTrainerReviews() {
         try {
-            log.info("Inside addClientReview {}", clientReviewRequest);
-            boolean isValid = clientReviewRequest != null;
-            log.info("Is request valid? {}", isValid);
-
-            if (!(jwtFilter.isAdmin() || jwtFilter.isClient())) {
-                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
-            if (!isValid) {
-                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
-            }
-
-            Trainer trainer = trainerRepo.findByUserId(jwtFilter.getCurrentUserId());
-            if (jwtFilter.isAdmin()) {
-                if (clientReviewRequest.getTrainerId() == null) {
-                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide trainerId");
-                }
-
-                trainer = trainerRepo.findByTrainerId(clientReviewRequest.getTrainerId());
-            }
-
-            if (trainer == null) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer not found in db");
-            }
-
-            Client client = clientRepo.findByUserId(jwtFilter.getCurrentUserId());
-            if (jwtFilter.isAdmin()) {
-                if (clientReviewRequest.getTrainerId() == null) {
-                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide trainerId");
-                }
-
-                client = clientRepo.findByUserId(clientReviewRequest.getClientId());
-            }
-
-            if (client == null) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Client not found in db");
-            }
-
-            getClientReviewFromMap(clientReviewRequest, trainer, client);
-            String responseMessage = jwtFilter.isAdmin() ?
-                    client.getUser().getFirstname() + "!, review for " + trainer.getName() + " have successfully been added to their list" :
-                    "Hello " + client.getUser().getFirstname() + "!, you have successfully added a review for your trainer" + trainer.getName();
-            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-
-    }
-    @Override
-    public ResponseEntity<String> updateClientReview(ClientReviewRequest clientReviewRequest) throws JsonProcessingException {
-        try {
-            log.info("Inside updateClientReview {}", clientReviewRequest);
-            Integer userId = jwtFilter.getCurrentUserId();
-            boolean isValid = clientReviewRequest != null;
-            log.info("Is request valid? {}", isValid);
-
-            if (!jwtFilter.isAdmin() || !jwtFilter.isClient()) {
-                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
-            if (!isValid || clientReviewRequest.getId() == null) {
-                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
-            }
-
-            ClientReview clientReview = clientReviewRepo.findById(clientReviewRequest.getId()).orElse(null);
-            if (clientReview == null) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Client review for trainer not found in db");
-            }
-
-            boolean validUser = jwtFilter.isAdmin() ||
-                    (jwtFilter.isTrainer() && userId.equals(clientReview
-                            .getClient().getUser().getId()));
-            if (!validUser) {
-                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
-            Trainer trainer = clientReview.getTrainer();
-            String photoFolderPath = BerlizConstants.TRAINER_CLIENT_REVIEW;
-
-            String frontBeforePhotoName = generateUniqueName(trainer.getName() + "_client_front_before");
-            String frontAfterPhotoName = generateUniqueName(trainer.getName() + "_client_front_after");
-            String sideBeforePhotoName = generateUniqueName(trainer.getName() + "_client_side_before");
-            String sideAfterPhotoName = generateUniqueName(trainer.getName() + "_client_side_after");
-            String backBeforePhotoName = generateUniqueName(trainer.getName() + "_client_back_before");
-            String backAfterPhotoName = generateUniqueName(trainer.getName() + "_client_back_after");
-
-            Path frontBeforePath = Paths.get(photoFolderPath, frontBeforePhotoName);
-            Path frontAfterPath = Paths.get(photoFolderPath, frontAfterPhotoName);
-            Path sideBeforePath = Paths.get(photoFolderPath, sideBeforePhotoName);
-            Path sideAfterPath = Paths.get(photoFolderPath, sideAfterPhotoName);
-            Path backBeforePath = Paths.get(photoFolderPath, backBeforePhotoName);
-            Path backAfterPath = Paths.get(photoFolderPath, backAfterPhotoName);
-
-            Files.write(frontBeforePath, clientReviewRequest.getFrontBefore().getBytes());
-            Files.write(frontAfterPath, clientReviewRequest.getFrontAfter().getBytes());
-            Files.write(sideBeforePath, clientReviewRequest.getSideBefore().getBytes());
-            Files.write(sideAfterPath, clientReviewRequest.getSideAfter().getBytes());
-            Files.write(backBeforePath, clientReviewRequest.getBackBefore().getBytes());
-            Files.write(backAfterPath, clientReviewRequest.getBackAfter().getBytes());
-
-            // Save photo details to the database
-            clientReview.setReview(clientReviewRequest.getReview());
-            clientReview.setFrontBefore(frontBeforePhotoName);
-            clientReview.setFrontAfter(frontAfterPhotoName);
-            clientReview.setSideBefore(sideBeforePhotoName);
-            clientReview.setSideAfter(sideAfterPhotoName);
-            clientReview.setBackBefore(backBeforePhotoName);
-            clientReview.setBackAfter(backAfterPhotoName);
-            clientReview.setLastUpdate(new Date());
-
-            ClientReview savedClientReview = clientReviewRepo.save(clientReview);
-            String responseMessage = jwtFilter.isAdmin() ?
-                    "Client review for " + trainer.getName() + "!, has successfully been updated in their album" :
-                    "Hello " + clientReview.getClient().getUser().getFirstname() + "!, you have successfully updated your client review for" +
-                            trainer.getName();
-            simpMessagingTemplate.convertAndSend("/topic/updateClientReview", savedClientReview);
-            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<String> updateClientReviewStatus(Integer id) throws JsonProcessingException {
-        try {
-            log.info("Inside updateClientReviewStatus {}", id);
-            String status;
-            if (!jwtFilter.isAdmin()) {
-                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
-            Optional<ClientReview> optional = clientReviewRepo.findById(id);
-            if (optional.isEmpty()) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Client review ID not found");
-            }
-
-            log.info("Inside optional {}", optional);
-            status = optional.get().getStatus();
-            ClientReview trainerClientReview = optional.get();
-            String responseMessage;
-            if (status.equalsIgnoreCase("true")) {
-                status = "false";
-                responseMessage = "Client review status updated successfully. Now deactivated";
-            } else {
-                status = "true";
-                responseMessage = "Client review status updated successfully. Now activated";
-            }
-
-            trainerClientReview.setStatus(status);
-            ClientReview savedClientReview = clientReviewRepo.save(trainerClientReview);
-            simpMessagingTemplate.convertAndSend("/topic/updateClientReviewStatus", savedClientReview);
-            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<String> disableClientReview(Integer id) throws JsonProcessingException {
-        try {
-            log.info("Inside disableClientReview {}", id);
-            if (!(jwtFilter.isAdmin() || jwtFilter.isClient())) {
-                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
-            Optional<ClientReview> optional = clientReviewRepo.findById(id);
-            if (optional.isEmpty()) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Client review ID not found");
-            }
-
-            log.info("Inside optional {}", optional);
-            ClientReview trainerClientReview = optional.get();
-            if (isAuthorizedToDeleteTrainerClientReview(trainerClientReview)) {
-                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
-            trainerClientReview.setStatus("false");
-            ClientReview savedClientReview = clientReviewRepo.save(trainerClientReview);
-            simpMessagingTemplate.convertAndSend("/topic/disableClientReview", savedClientReview);
-            return BerlizUtilities.buildResponse(HttpStatus.OK, "Review for " + trainerClientReview.getTrainer().getName() +
-                    " has been removed from feed successfully");
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<String> deleteClientReview(Integer id) throws JsonProcessingException {
-        try {
-            log.info("Inside deleteClientReview {}", id);
-            if (!(jwtFilter.isAdmin() || jwtFilter.isClient())) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
-            Optional<ClientReview> optional = clientReviewRepo.findById(id);
-            ClientReview trainerClientReview = optional.orElse(null);
-            if (trainerClientReview == null) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer client review id not found");
-            }
-
-            if (isAuthorizedToDeleteTrainerClientReview(trainerClientReview)) {
-                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
-            if (!trainerClientReview.getTrainer().getStatus().equalsIgnoreCase("false")) {
-                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer is inactive, Cannot complete request");
-            }
-
-            clientReviewRepo.delete(trainerClientReview);
-            simpMessagingTemplate.convertAndSend("/topic/deleteClientReview", trainerClientReview);
-            return BerlizUtilities.buildResponse(HttpStatus.OK, "Client review for" +
-                    trainerClientReview.getTrainer().getName() + "  deleted successfully");
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<List<ClientReview>> getMyClientReviews() {
-        try {
-            log.info("Inside getMyClientReviews");
+            log.info("Inside getMyTrainerReviews");
             if (!(jwtFilter.isAdmin() || jwtFilter.isClient() || jwtFilter.isTrainer())) {
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
             }
@@ -574,8 +346,8 @@ public class ClientServiceImplement implements ClientService {
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
             }
 
-            List<ClientReview> trainerClientReviews = clientReviewRepo.findByClient(client);
-            return new ResponseEntity<>(trainerClientReviews, HttpStatus.OK);
+            List<TrainerReview> trainerTrainerReviews = trainerReviewRepo.findByClient(client);
+            return new ResponseEntity<>(trainerTrainerReviews, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -600,7 +372,7 @@ public class ClientServiceImplement implements ClientService {
         double heightInM = heightInCM / 100.0;
         double BMI = weight / (heightInM * heightInM);
         String gender = user.getGender().toLowerCase();
-        double genderCoefficient = 0.0;
+        double genderCoefficient;
         if ("male".equalsIgnoreCase(gender)) {
             genderCoefficient = 0.29288;
         } else if ("female".equalsIgnoreCase(gender)) {
@@ -654,80 +426,5 @@ public class ClientServiceImplement implements ClientService {
                     && requestMap.containsKey("motivation")
                     && requestMap.containsKey("targetWeight");
         }
-    }
-
-    /**
-     * Processes a Trainer's client review information from a ClientReviewRequest object and saves it to the database.
-     *
-     * @param clientReviewRequest The ClientReviewRequest object containing client review details.
-     * @param trainer      The Trainer object associated with the review.
-     * @param client       The Client object associated with the review.
-     * @throws IOException If an I/O error occurs while handling the client review photos.
-     */
-    private void getClientReviewFromMap(ClientReviewRequest clientReviewRequest, Trainer trainer, Client client) throws IOException {
-        ClientReview clientReview = new ClientReview();
-        String photoFolderPath = BerlizConstants.TRAINER_CLIENT_REVIEW;
-
-        String frontBeforePhotoName = generateUniqueName(trainer.getName() + "_client_front_before");
-        String frontAfterPhotoName = generateUniqueName(trainer.getName() + "_client_front_after");
-        String sideBeforePhotoName = generateUniqueName(trainer.getName() + "_client_side_before");
-        String sideAfterPhotoName = generateUniqueName(trainer.getName() + "_client_side_after");
-        String backBeforePhotoName = generateUniqueName(trainer.getName() + "_client_back_before");
-        String backAfterPhotoName = generateUniqueName(trainer.getName() + "_client_back_after");
-
-        Path frontBeforePath = Paths.get(photoFolderPath, frontBeforePhotoName);
-        Path frontAfterPath = Paths.get(photoFolderPath, frontAfterPhotoName);
-        Path sideBeforePath = Paths.get(photoFolderPath, sideBeforePhotoName);
-        Path sideAfterPath = Paths.get(photoFolderPath, sideAfterPhotoName);
-        Path backBeforePath = Paths.get(photoFolderPath, backBeforePhotoName);
-        Path backAfterPath = Paths.get(photoFolderPath, backAfterPhotoName);
-
-        Files.write(frontBeforePath, clientReviewRequest.getFrontBefore().getBytes());
-        Files.write(frontAfterPath, clientReviewRequest.getFrontAfter().getBytes());
-        Files.write(sideBeforePath, clientReviewRequest.getSideBefore().getBytes());
-        Files.write(sideAfterPath, clientReviewRequest.getSideAfter().getBytes());
-        Files.write(backBeforePath, clientReviewRequest.getBackBefore().getBytes());
-        Files.write(backAfterPath, clientReviewRequest.getBackAfter().getBytes());
-
-        // Save photo details to the database
-        clientReview.setTrainer(trainer);
-        clientReview.setClient(client);
-        clientReview.setReview(clientReviewRequest.getReview());
-        clientReview.setLikes(0);
-        clientReview.setFrontBefore(frontBeforePhotoName);
-        clientReview.setFrontAfter(frontAfterPhotoName);
-        clientReview.setSideBefore(sideBeforePhotoName);
-        clientReview.setSideAfter(sideAfterPhotoName);
-        clientReview.setBackBefore(backBeforePhotoName);
-        clientReview.setBackAfter(backAfterPhotoName);
-        clientReview.setDate(new Date());
-        clientReview.setStatus("false");
-        clientReview.setLastUpdate(new Date());
-        ClientReview savedClientReview = clientReviewRepo.save(clientReview);
-        simpMessagingTemplate.convertAndSend("/topic/getClientReviewFromMap", savedClientReview);
-    }
-
-    /**
-     * Generates a unique name by combining the given prefix with a truncated UUID.
-     *
-     * @param prefix The prefix to be included in the unique name.
-     * @return The generated unique name.
-     */
-    String generateUniqueName(String prefix) {
-        long numericUUID = UUID.randomUUID().getMostSignificantBits();
-        String truncatedUUID = String.valueOf(numericUUID).substring(0, 15);
-        return prefix + "-" + truncatedUUID;
-    }
-
-    /**
-     * Checks if the current user is authorized to delete a TrainerClientReview.
-     *
-     * @param trainerClientReview The TrainerClientReview to be checked for authorization.
-     * @return True if the user is authorized, false otherwise.
-     */
-    private boolean isAuthorizedToDeleteTrainerClientReview(ClientReview trainerClientReview) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
-        boolean authorizedUser = user.getEmail().equalsIgnoreCase(trainerClientReview.getClient().getUser().getEmail());
-        return !jwtFilter.isAdmin() && !authorizedUser;
     }
 }

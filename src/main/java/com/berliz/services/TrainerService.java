@@ -2,7 +2,7 @@ package com.berliz.services;
 
 import com.berliz.DTO.*;
 import com.berliz.models.*;
-import com.berliz.models.ClientReview;
+import com.berliz.models.TrainerReview;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -85,13 +85,13 @@ public interface TrainerService {
 
     ResponseEntity<List<TrainerVideoAlbum>> getMyTrainerVideoAlbums();
 
-    ResponseEntity<String> disableClientReview(Integer id) throws JsonProcessingException;
+    ResponseEntity<List<TrainerReview>> getAllTrainerReviews();
 
-    ResponseEntity<List<ClientReview>> getMyClientReviews();
+    ResponseEntity<List<TrainerReview>> getActiveTrainerReviews(Integer id);
 
-    ResponseEntity<List<ClientReview>> getAllClientReviews();
+    ResponseEntity<List<Client>> getMyClients();
 
-    ResponseEntity<List<ClientReview>> getActiveClientReviews(Integer id);
+    ResponseEntity<List<Client>> getMyActiveClients();
 
     ResponseEntity<String> addTrainerFeatureVideo(FeatureVideoRequest featureVideoRequest) throws JsonProcessingException;
 
@@ -103,9 +103,21 @@ public interface TrainerService {
 
     ResponseEntity<List<TrainerFeatureVideo>> getMyTrainerFeatureVideos();
 
-    ResponseEntity<String> likeClientReview(Integer id) throws JsonProcessingException;
+    ResponseEntity<String> likeTrainerReview(Integer id) throws JsonProcessingException;
 
-    ResponseEntity<List<ClientReviewLike>> getClientReviewLikes();
+    ResponseEntity<List<TrainerReviewLike>> getTrainerReviewLikes();
 
     ResponseEntity<List<CenterTrainer>> getMyCenterTrainers();
+
+    ResponseEntity<String> addTrainerReview(TrainerReviewRequest trainerReviewRequest) throws JsonProcessingException;
+
+    ResponseEntity<String> updateTrainerReview(TrainerReviewRequest trainerReviewRequest) throws JsonProcessingException;
+
+    ResponseEntity<String> updateTrainerReviewStatus(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<String> disableTrainerReview(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<String> deleteTrainerReview(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<List<TrainerReview>> getMyTrainerReviews();
 }

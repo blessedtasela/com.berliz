@@ -20,6 +20,14 @@ import java.util.Set;
 @NamedQuery(name = "Client.findByUserId",
         query = "SELECT c FROM Client c WHERE c.user.id = :id")
 
+@NamedQuery(name = "Client.getMyClientsByTrainer",
+        query = "SELECT c FROM Client c JOIN c.subscriptions s WHERE s.trainer = :trainer")
+
+@NamedQuery(name = "Client.getMyActiveClientsByTrainer",
+        query = "SELECT c FROM Client c JOIN c.subscriptions s " +
+                "WHERE s.trainer = :trainer AND s.status = 'active'")
+
+
 @Data
 @Entity
 @DynamicInsert

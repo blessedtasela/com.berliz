@@ -2,7 +2,7 @@ package com.berliz.rest;
 
 import com.berliz.DTO.*;
 import com.berliz.models.*;
-import com.berliz.models.ClientReview;
+import com.berliz.models.TrainerReview;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -121,17 +121,11 @@ public interface TrainerRest {
     @GetMapping(path = "/getMyTrainerVideoAlbums")
     ResponseEntity<List<TrainerVideoAlbum>> getMyTrainerVideoAlbums();
 
-    @PutMapping(path = "/disableClientReview/{id}")
-    ResponseEntity<String> disableClientReview(@PathVariable Integer id) throws JsonProcessingException;
+    @GetMapping(path = "/getMyClients")
+    ResponseEntity<List<Client>> getMyClients();
 
-    @GetMapping(path = "/getMyClientReviews")
-    ResponseEntity<List<ClientReview>> getMyClientReviews();
-
-    @GetMapping(path = "/getAllClientReviews")
-    ResponseEntity<List<ClientReview>> getAllClientReviews();
-
-    @GetMapping(path = "/getActiveClientReviews/{id}")
-    ResponseEntity<List<ClientReview>> getActiveClientReviews(@PathVariable Integer id);
+    @GetMapping(path = "/getMyActiveClients")
+    ResponseEntity<List<Client>> getMyActiveClients();
 
     @PostMapping(path = "/addTrainerFeatureVideo")
     ResponseEntity<String> addTrainerFeatureVideo(@ModelAttribute FeatureVideoRequest featureVideoRequest) throws JsonProcessingException;
@@ -148,12 +142,36 @@ public interface TrainerRest {
     @GetMapping(path = "/getMyTrainerFeatureVideos")
     ResponseEntity<List<TrainerFeatureVideo>> getMyTrainerFeatureVideos();
 
-    @PutMapping(path = "/likeTrainerClientReview/{id}")
-    ResponseEntity<String> likeClientReview(@PathVariable Integer id) throws JsonProcessingException;
+    @DeleteMapping(path = "/likeTrainerReview/{id}")
+    ResponseEntity<String> likeTrainerReview(@PathVariable Integer id) throws JsonProcessingException;
 
-    @GetMapping(path = "/getTrainerClientReviewLikes")
-    ResponseEntity<List<ClientReviewLike>> getClientReviewLikes() throws JsonProcessingException;
+    @GetMapping(path = "/getTrainerReviewLikes")
+    ResponseEntity<List<TrainerReviewLike>> getTrainerReviewLikes();
 
     @GetMapping(path = "/getMyCenterTrainers")
     ResponseEntity<List<CenterTrainer>> getMyCenterTrainers() throws JsonProcessingException;
+
+    @PostMapping(path = "/addTrainerReview")
+    ResponseEntity<String> addTrainerReview(@ModelAttribute TrainerReviewRequest trainerReviewRequest) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateTrainerReview")
+    ResponseEntity<String> updateTrainerReview(@ModelAttribute TrainerReviewRequest trainerReviewRequest) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateTrainerReviewStatus/{id}")
+    ResponseEntity<String> updateTrainerReviewStatus(@PathVariable Integer id) throws JsonProcessingException;
+
+    @PutMapping(path = "/disableTrainerReview/{id}")
+    ResponseEntity<String> disableTrainerReview(@PathVariable Integer id) throws JsonProcessingException;
+
+    @DeleteMapping(path = "/deleteTrainerReview/{id}")
+    ResponseEntity<String> deleteTrainerReview(@PathVariable Integer id) throws JsonProcessingException;
+
+    @GetMapping(path = "/getMyTrainerReviews")
+    ResponseEntity<List<TrainerReview>> getMyTrainerReviews();
+
+    @GetMapping(path = "/getAllTrainerReviews")
+    ResponseEntity<List<TrainerReview>> getAllTrainerReviews();
+
+    @GetMapping(path = "/getActiveTrainerReviews/{id}")
+    ResponseEntity<List<TrainerReview>> getActiveTrainerReviews(@PathVariable Integer id);
 }

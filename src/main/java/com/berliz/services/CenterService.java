@@ -4,6 +4,7 @@ import com.berliz.DTO.*;
 import com.berliz.models.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 import java.util.Map;
@@ -122,4 +123,19 @@ public interface CenterService {
     ResponseEntity<List<CenterVideoAlbum>> getMyCenterVideoAlbums();
 
 
+    ResponseEntity<String> addCenterReview(Map<String, String> requestMap) throws JsonProcessingException;
+
+    ResponseEntity<String> updateCenterReview(Map<String, String> requestMap) throws JsonProcessingException;
+
+    ResponseEntity<String> updateCenterReviewStatus(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<String> disableCenterReview(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<String> deleteCenterReview(Integer id) throws JsonProcessingException;
+
+    ResponseEntity<List<CenterReview>> getMyCenterReviews();
+
+    ResponseEntity<List<CenterReview>> getAllCenterReviews();
+
+    ResponseEntity<List<CenterReview>> getActiveCenterReviews(Integer id);
 }

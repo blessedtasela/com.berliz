@@ -10,11 +10,24 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
+@NamedQuery(name = "Member.findByUserId",
+        query = "SELECT m FROM Member m WHERE m.user.id = :id")
+
+@NamedQuery(name = "Member.findByMemberId",
+        query = "SELECT m FROM Member m WHERE m.id = :id")
+
 @NamedQuery(name = "Member.getActiveMembers", query = "select m from Member m where m.status='true'")
 
 @NamedQuery(name = "Member.countCenterMembersByEmail",
         query = "SELECT COUNT(m) FROM Member m JOIN m.subscriptions s " +
                 "JOIN s.center c JOIN c.partner p JOIN p.user u WHERE u.email = :email")
+
+@NamedQuery(name = "Member.getMyMembersByCenter",
+        query = "SELECT m FROM Member m JOIN m.subscriptions s WHERE s.center = :center")
+
+@NamedQuery(name = "Member.getMyActiveMembersByCenter",
+        query = "SELECT m FROM Member m JOIN m.subscriptions s " +
+                "WHERE s.center = :center AND s.status = 'active'")
 
 @Data
 @Entity

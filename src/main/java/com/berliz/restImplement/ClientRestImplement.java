@@ -1,9 +1,8 @@
 package com.berliz.restImplement;
 
-import com.berliz.DTO.ClientReviewRequest;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Client;
-import com.berliz.models.ClientReview;
+import com.berliz.models.TrainerReview;
 import com.berliz.rest.ClientRest;
 import com.berliz.services.ClientService;
 import com.berliz.utils.BerlizUtilities;
@@ -95,63 +94,12 @@ public class ClientRestImplement implements ClientRest {
     }
 
     @Override
-    public ResponseEntity<String> addClientReview(ClientReviewRequest clientReviewRequest) throws JsonProcessingException {
+    public ResponseEntity<List<TrainerReview>> getMyTrainerReviews() {
         try {
-            return clientService.addClientReview(clientReviewRequest);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<String> updateClientReview(ClientReviewRequest clientReviewRequest) throws JsonProcessingException {
-        try {
-            return clientService.updateClientReview(clientReviewRequest);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<String> updateClientReviewStatus(Integer id) throws JsonProcessingException {
-        try {
-            return clientService.updateClientReviewStatus(id);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<String> disableClientReview(Integer id) throws JsonProcessingException {
-        try {
-            return clientService.disableClientReview(id);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<String> deleteClientReview(Integer id) throws JsonProcessingException {
-        try {
-            return clientService.deleteClientReview(id);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
-    }
-
-    @Override
-    public ResponseEntity<List<ClientReview>> getMyClientReviews() {
-        try {
-            return clientService.getMyClientReviews();
+            return clientService.getMyTrainerReviews();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
 }

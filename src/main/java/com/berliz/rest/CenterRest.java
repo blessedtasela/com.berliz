@@ -176,4 +176,28 @@ public interface CenterRest {
 
     @GetMapping(path = "/getMyCenterVideoAlbums")
     ResponseEntity<List<CenterVideoAlbum>> getMyCenterVideoAlbums();
+
+    @PostMapping(path = "/addCenterReview")
+    ResponseEntity<String> addCenterReview(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateCenterReview")
+    ResponseEntity<String> updateCenterReview(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+    @PutMapping(path = "/updateCenterReviewStatus/{id}")
+    ResponseEntity<String> updateCenterReviewStatus(@PathVariable Integer id) throws JsonProcessingException;
+
+    @PutMapping(path = "/disableCenterReview/{id}")
+    ResponseEntity<String> disableCenterReview(@PathVariable Integer id) throws JsonProcessingException;
+
+    @DeleteMapping(path = "/deleteCenterReview/{id}")
+    ResponseEntity<String> deleteCenterReview(@PathVariable Integer id) throws JsonProcessingException;
+
+    @GetMapping(path = "/getMyCenterReviews")
+    ResponseEntity<List<CenterReview>> getMyCenterReviews();
+
+    @GetMapping(path = "/getAllCenterReviews")
+    ResponseEntity<List<CenterReview>> getAllCenterReviews();
+
+    @GetMapping(path = "/getActiveCenterReviews/{id}")
+    ResponseEntity<List<CenterReview>> getActiveCenterReviews(@PathVariable Integer id);
 }

@@ -6,6 +6,7 @@ import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -65,8 +66,8 @@ public class Subscription implements Serializable {
     @Column(name = "months")
     private Integer months;
 
-    @Column(name = "amount")
-    private double amount;
+    @Column(name = "amount", columnDefinition = "DECIMAL(10, 2)")
+    private BigDecimal amount;
 
     @Column(name = "mode")
     private String mode;

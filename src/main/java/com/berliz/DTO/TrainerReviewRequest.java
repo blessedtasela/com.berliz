@@ -4,7 +4,7 @@ import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
 @Data
-public class ClientReviewRequest {
+public class TrainerReviewRequest {
     Integer id;
     Integer trainerId;
     Integer clientId;

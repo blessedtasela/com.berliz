@@ -1,7 +1,9 @@
 package com.berliz.restImplement;
 
 import com.berliz.constants.BerlizConstants;
+import com.berliz.models.CenterReview;
 import com.berliz.models.Member;
+import com.berliz.models.TrainerReview;
 import com.berliz.rest.MemberRest;
 import com.berliz.services.MemberService;
 import com.berliz.utils.BerlizUtilities;
@@ -87,6 +89,36 @@ public class MemberRestImplement implements MemberRest {
             ex.printStackTrace();
         }
         return new ResponseEntity<>(new Member(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterReview>> getMyCenterReviews() {
+        try {
+            return memberService.getMyCenterReviews();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<Member>> getMyMembers() {
+        try {
+            return memberService.getMyMembers();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<Member>> getMyActiveMembers() {
+        try {
+            return memberService.getMyActiveMembers();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 }

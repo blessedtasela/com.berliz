@@ -125,6 +125,10 @@ public class JWTFilter extends OncePerRequestFilter {
         return "center".equalsIgnoreCase((String) claims.get("role"));
     }
 
+    public boolean isMemberClient() {
+        return "memberClient".equalsIgnoreCase((String) claims.get("role"));
+    }
+
     public boolean isMember() {
         return "member".equalsIgnoreCase((String) claims.get("role"));
     }

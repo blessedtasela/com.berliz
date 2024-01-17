@@ -14,5 +14,9 @@ public interface ClientRepo extends JpaRepository<Client, Integer> {
 
     List<Client> getActiveClients();
 
+    List<Client> getMyClientsByTrainer(Trainer trainer);
+
+    List<Client>getMyActiveClientsByTrainer(Trainer trainer);
+
     Integer countTrainerClientsByEmail(String email);
 }

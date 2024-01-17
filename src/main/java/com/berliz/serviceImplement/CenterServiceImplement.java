@@ -77,6 +77,12 @@ public class CenterServiceImplement implements CenterService {
     CenterLikeRepo centerLikeRepo;
 
     @Autowired
+    MemberRepo memberRepo;
+
+    @Autowired
+    CenterReviewRepo centerReviewRepo;
+
+    @Autowired
     EmailUtilities emailUtilities;
 
     @Autowired
@@ -1920,6 +1926,254 @@ public class CenterServiceImplement implements CenterService {
         return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @Override
+    public ResponseEntity<String> addCenterReview(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside addCenterReview {}", requestMap);
+            boolean isValid = requestMap.containsKey("comment");
+            log.info("Is request valid? {}", isValid);
+
+            if (!(jwtFilter.isAdmin() || jwtFilter.isCenter())) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValid) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            if (requestMap.get("centerId") == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Center id is invalid");
+            }
+
+            Center center = centerRepo.findByCenterId(Integer.valueOf(requestMap.get("centerId")));
+            if (center == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center not found in db");
+            }
+
+            Member member = memberRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (jwtFilter.isAdmin()) {
+                if (requestMap.get("memberId") == null) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide member id");
+                }
+
+                member = memberRepo.findByMemberId(Integer.valueOf(requestMap.get("memberId")));
+            }
+
+            if (member == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Member not found in db");
+            }
+
+            getCenterReviewFromMap(requestMap, center, member);
+            String responseMessage = jwtFilter.isAdmin() ?
+                    member.getUser().getFirstname() + "!, review for " + center.getName() + " have " +
+                            "successfully been added to their list" :
+                    "Hello " + member.getUser().getFirstname() + "!, you have successfully " +
+                            "added a review for your center " + center.getName();
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterReview(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside updateTrainerReview {}", requestMap);
+            Integer userId = jwtFilter.getCurrentUserId();
+            boolean isValid = requestMap.containsKey("comment");
+            log.info("Is request valid? {}", isValid);
+
+            if (!(jwtFilter.isAdmin() || jwtFilter.isMember() || jwtFilter.isMemberClient())) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValid || requestMap.get("id") == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            CenterReview centerReview = centerReviewRepo.findById(Integer.valueOf(requestMap.get("id")))
+                    .orElse(null);
+            if (centerReview == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center review" +
+                        " for center not found in db");
+            }
+
+            boolean validUser = jwtFilter.isAdmin() ||
+                    (jwtFilter.isTrainer() && userId.equals(centerReview
+                            .getMember().getUser().getId()));
+            if (!validUser) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            Center center = centerReview.getCenter();
+            if (jwtFilter.isAdmin()) {
+                centerReview.setLikes(Integer.valueOf(requestMap.get("likes")));
+            }
+            centerReview.setComment(requestMap.get("comment"));
+            centerReview.setLastUpdate(new Date());
+
+            CenterReview savedCenterReview = centerReviewRepo.save(centerReview);
+            String responseMessage = jwtFilter.isAdmin() ?
+                    "Center review for " + center.getName() + "!, has successfully been updated in their profile" :
+                    "Hello " + centerReview.getMember().getUser().getFirstname() + "!, you have successfully " +
+                            "updated your center review for" +
+                            center.getName();
+            simpMessagingTemplate.convertAndSend("/topic/updateTrainerReview", savedCenterReview);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateCenterReviewStatus(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside updateCenterReviewStatus {}", id);
+            String status;
+            if (!(jwtFilter.isAdmin() || jwtFilter.isCenter())) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+
+            Optional<CenterReview> optional = centerReviewRepo.findById(id);
+            if (optional.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center review ID not found");
+            }
+
+            log.info("Inside optional {}", optional);
+            status = optional.get().getStatus();
+            CenterReview centerReview = optional.get();
+            String responseMessage;
+            if (status.equalsIgnoreCase("true")) {
+                status = "false";
+                responseMessage = "Center review status updated successfully. Now deactivated";
+            } else {
+                status = "true";
+                responseMessage = "Center review status updated successfully. Now activated";
+            }
+
+            centerReview.setStatus(status);
+            CenterReview savedCenterReview = centerReviewRepo.save(centerReview);
+            simpMessagingTemplate.convertAndSend("/topic/updateCenterReviewStatus", savedCenterReview);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> disableCenterReview(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside disableCenterReview {}", id);
+            if (!(jwtFilter.isAdmin() || jwtFilter.isMember() || jwtFilter.isCenter() || jwtFilter.isMemberClient())) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            Optional<CenterReview> optional = centerReviewRepo.findById(id);
+            if (optional.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center review ID not found");
+            }
+
+            log.info("Inside optional {}", optional);
+            CenterReview centerReview = optional.get();
+            centerReview.setStatus("false");
+            CenterReview savedCenterReview = centerReviewRepo.save(centerReview);
+            simpMessagingTemplate.convertAndSend("/topic/disableCenterReview", savedCenterReview);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Review for " + centerReview.getCenter().getName() +
+                    " has been removed from feed successfully");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> deleteCenterReview(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside deleteCenterReview {}", id);
+            if (!(jwtFilter.isAdmin() || jwtFilter.isClient())) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            Optional<CenterReview> optional = centerReviewRepo.findById(id);
+            CenterReview centerReview = optional.orElse(null);
+            if (centerReview == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center review id not found");
+            }
+
+            if (isAuthorizedToDeleteCenterReview(centerReview)) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!centerReview.getCenter().getStatus().equalsIgnoreCase("false")) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Center is inactive, Cannot complete request");
+            }
+
+            centerReviewRepo.delete(centerReview);
+            simpMessagingTemplate.convertAndSend("/topic/deleteCenterReview", centerReview);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Center review for" +
+                    centerReview.getCenter().getName() + "  deleted successfully");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterReview>> getMyCenterReviews() {
+        try {
+            log.info("Inside getMyCenterReviews");
+            if (!(jwtFilter.isAdmin() || jwtFilter.isMember() || jwtFilter.isCenter()) || jwtFilter.isMemberClient()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            Member member = memberRepo.findByUserId(jwtFilter.getCurrentUserId());
+            if (member == null) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            List<CenterReview> centerReviews = centerReviewRepo.findByMember(member);
+            return new ResponseEntity<>(centerReviews, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterReview>> getAllCenterReviews() {
+        try {
+            log.info("Inside getAllCenterReviews");
+            if (!jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+            List<CenterReview> centerReviews = centerReviewRepo.findAll();
+            return new ResponseEntity<>(centerReviews, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<CenterReview>> getActiveCenterReviews(Integer id) {
+        try {
+            log.info("Inside getActiveCenterReviews");
+            Center center = centerRepo.findByCenterId(id);
+            if (center == null) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+
+            List<CenterReview> centerReviews = centerReviewRepo.getActiveCenterReviewsByCenter(center);
+            return new ResponseEntity<>(centerReviews, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 
     /**
      * Validates the data in the request map for center creation or update.
@@ -2078,6 +2332,18 @@ public class CenterServiceImplement implements CenterService {
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
+    private void getCenterReviewFromMap(Map<String, String> requestMap, Center center, Member member)  {
+        CenterReview centerReview = new CenterReview();
+        centerReview.setCenter(center);
+        centerReview.setMember(member);
+        centerReview.setComment(requestMap.get("comment"));
+        centerReview.setLikes(0);
+        centerReview.setDate(new Date());
+        centerReview.setLastUpdate(new Date());
+        centerReview.setStatus("false"); // Initializing status
+        CenterReview savedCenterReview = centerReviewRepo.save(centerReview);
+        simpMessagingTemplate.convertAndSend("/topic/getCenterReviewFromMap", savedCenterReview);
+    }
 
     /**
      * Handle use case of adding center by a valid user.
@@ -2493,14 +2759,15 @@ public class CenterServiceImplement implements CenterService {
     }
 
     /**
-     * Checks if the current user is authorized to delete a TrainerClientReview.
+     * Checks if the current user is authorized to delete a CenterReview.
      *
-     * @param trainerClientReview The TrainerClientReview to be checked for authorization.
+     * @param centerReview The CenterReview to be checked for authorization.
      * @return True if the user is authorized, false otherwise.
      */
-    private boolean isAuthorizedToDeleteTrainerClientReview(ClientReview trainerClientReview) {
+    private boolean isAuthorizedToDeleteCenterReview(CenterReview centerReview) {
         User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
-        boolean authorizedUser = user.getEmail().equalsIgnoreCase(trainerClientReview.getClient().getUser().getEmail());
+        boolean authorizedUser = user.getEmail().equalsIgnoreCase(centerReview.getCenter()
+                .getPartner().getUser().getEmail());
         return !jwtFilter.isAdmin() && !authorizedUser;
     }
 

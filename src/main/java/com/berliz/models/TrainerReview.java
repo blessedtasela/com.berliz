@@ -7,15 +7,15 @@ import org.hibernate.annotations.DynamicUpdate;
 
 import java.util.Date;
 
-@NamedQuery(name = "ClientReview.getActiveClientReviews",
-        query = "SELECT cr FROM ClientReview cr WHERE cr.status = 'true' AND cr.trainer = :trainer")
+@NamedQuery(name = "TrainerReview.getActiveTrainerReviewsByTrainer",
+        query = "SELECT tr FROM TrainerReview tr WHERE tr.status = 'true' AND tr.trainer = :trainer")
 
 @Data
 @Entity
 @DynamicInsert
 @DynamicUpdate
-@Table(name = "clientReview")
-public class ClientReview {
+@Table(name = "trainerReview")
+public class TrainerReview {
 
     private static final long SerialVersionUID = 1L;
 

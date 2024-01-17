@@ -1,9 +1,8 @@
 
 package com.berliz.rest;
 
-import com.berliz.DTO.ClientReviewRequest;
 import com.berliz.models.Client;
-import com.berliz.models.ClientReview;
+import com.berliz.models.TrainerReview;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,23 +37,7 @@ public interface ClientRest {
     @GetMapping(path = "/getClient")
     ResponseEntity<Client> getClient(Integer id);
 
-    @PostMapping(path = "/addClientReview")
-    ResponseEntity<String> addClientReview(@ModelAttribute ClientReviewRequest clientReviewRequest) throws JsonProcessingException;
-
-    @PutMapping(path = "/updateClientReview")
-    ResponseEntity<String> updateClientReview(@ModelAttribute ClientReviewRequest clientReviewRequest) throws JsonProcessingException;
-
-    @PutMapping(path = "/updateClientReviewStatus/{id}")
-    ResponseEntity<String> updateClientReviewStatus(@PathVariable Integer id) throws JsonProcessingException;
-
-    @PutMapping(path = "/disableClientReview/{id}")
-    ResponseEntity<String> disableClientReview(@PathVariable Integer id) throws JsonProcessingException;
-
-    @DeleteMapping(path = "/deleteClientReview/{id}")
-    ResponseEntity<String> deleteClientReview(@PathVariable Integer id) throws JsonProcessingException;
-
-    @GetMapping(path = "/getMyClientReviews")
-    ResponseEntity<List<ClientReview>> getMyClientReviews();
-
+    @GetMapping(path = "/getMyTrainerReviews")
+    ResponseEntity<List<TrainerReview>> getMyTrainerReviews();
 
 }

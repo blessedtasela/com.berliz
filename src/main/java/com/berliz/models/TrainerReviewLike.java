@@ -8,15 +8,15 @@ import org.hibernate.annotations.DynamicUpdate;
 import java.io.Serializable;
 import java.util.Date;
 
-@NamedQuery(name = "ClientReviewLike.findByClientReviewId",
-        query = "SELECT crl FROM ClientReviewLike crl WHERE crl.clientReview.id = :id")
+@NamedQuery(name = "TrainerReviewLike.findByTrainerReviewId",
+        query = "SELECT trl FROM TrainerReviewLike trl WHERE trl.trainerReview.id = :id")
 
 @Data
 @Entity
 @DynamicInsert
 @DynamicUpdate
-@Table(name = "trainerClientReviewLike")
-public class ClientReviewLike implements Serializable {
+@Table(name = "trainerReviewLike")
+public class TrainerReviewLike implements Serializable {
 
     private static final long SerialVersionUID = 1L;
 
@@ -30,8 +30,8 @@ public class ClientReviewLike implements Serializable {
     private User user;
 
     @ManyToOne
-    @JoinColumn(name = "clientReview_fk")
-    private ClientReview clientReview;
+    @JoinColumn(name = "trainerReview_fk")
+    private TrainerReview trainerReview;
 
     @Column(name = "date", columnDefinition = "DATE")
     private Date date;
