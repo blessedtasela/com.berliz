@@ -6,6 +6,9 @@ public class BerlizConstants {
 
     public static final String INVALID_DATA = "Invalid data";
 
+    public static final String COMPLETE_ACCOUNT_INFORMATION = "Account information incomplete. " +
+            "Please update account information to continue";
+
     public static final String EMAIL_EXISTS = "Email Already exits";
 
     public static final String SIGNUP_SUCCESS = "Account successfully registered. Please check your email to activate your account";

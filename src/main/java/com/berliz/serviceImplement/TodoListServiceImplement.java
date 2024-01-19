@@ -54,13 +54,17 @@ public class TodoListServiceImplement implements TodoListService {
                 BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
+            if(jwtFilter.isAccountIncomplete(user)){
+                BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.COMPLETE_ACCOUNT_INFORMATION);
+            }
+
             String task = requestMap.get("task");
             Boolean isTodo = todoListRepo.existsByUserAndTask(user, task);
             if (isTodo) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "You have this task registered already");
             }
 
-            getTodoListFromMap(requestMap, false, user);
+            getTodoListFromMap(requestMap, user);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Task successfully created");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -71,7 +75,7 @@ public class TodoListServiceImplement implements TodoListService {
     @Override
     public ResponseEntity<List<TodoList>> getAllTodos() {
         try {
-            log.info("inside getAllTodos {}");
+            log.info("inside getAllTodos");
             if (!jwtFilter.isAdmin()) {
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
             }
@@ -85,7 +89,7 @@ public class TodoListServiceImplement implements TodoListService {
     @Override
     public ResponseEntity<List<TodoList>> getMyTodo() {
         try {
-            log.info("inside getAllTodos {}");
+            log.info("inside getAllTodos");
             User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
             List<TodoList> todoList = todoListRepo.findByUser(user);
             if (todoList.isEmpty()) {
@@ -147,7 +151,7 @@ public class TodoListServiceImplement implements TodoListService {
     @Override
     public ResponseEntity<String> updateStatus(Integer id, String status) throws JsonProcessingException {
         try {
-            log.info("inside updateStatus {}", id, status);
+            log.info("inside updateStatus {} {}", id, status);
             if (!jwtFilter.isBerlizUser()) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -208,12 +212,9 @@ public class TodoListServiceImplement implements TodoListService {
     }
 
 
-    private TodoList getTodoListFromMap(Map<String, String> requestMap, boolean isAdd, User user) {
+    private void getTodoListFromMap(Map<String, String> requestMap, User user) {
         TodoList todoList = new TodoList();
         Date currentDate = new Date();
-        if (isAdd) {
-            todoList.setId(Integer.parseInt(requestMap.get("id")));
-        }
         todoList.setDate(currentDate);
         todoList.setTask(requestMap.get("task"));
         todoList.setUser(user);
@@ -221,7 +222,6 @@ public class TodoListServiceImplement implements TodoListService {
         todoList.setLastUpdate(currentDate);
         TodoList savedTodoList = todoListRepo.save(todoList);
         simpMessagingTemplate.convertAndSend("/topic/getTodoFromMap", savedTodoList);
-        return todoList;
     }
 
     private boolean validateTodoListMap(Map<String, String> requestMap, boolean validId) {

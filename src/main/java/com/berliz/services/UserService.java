@@ -56,4 +56,6 @@ public interface UserService {
     ResponseEntity<List<User>> getActiveUsers();
 
     ResponseEntity<String> quickAdd(Map<String, String> requestMap) throws JsonProcessingException;
+
+    ResponseEntity<String> sendActivationToken(String email) throws JsonProcessingException;
 }

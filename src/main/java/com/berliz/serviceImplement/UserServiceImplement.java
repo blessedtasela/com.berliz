@@ -257,6 +257,10 @@ public class UserServiceImplement implements UserService {
             }
             user = new User();
             user.setEmail(requestMap.get("email"));
+            user.setDate(new Date());
+            user.setLastUpdate(new Date());
+            user.setStatus("false");
+            user.setRole("user");
             user.setPassword(passwordEncoder.encode(requestMap.get("password")));
             userRepo.save(user);
             confirmAccount(requestMap.get("email"));
@@ -266,6 +270,36 @@ public class UserServiceImplement implements UserService {
         }
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
+
+    @Override
+    public ResponseEntity<String> sendActivationToken(String email) throws JsonProcessingException {
+        log.info("Inside sendActivationToken {}", email);
+        try {
+            boolean isValidRequest = email != null;
+            log.info("is request valid? {}", isValidRequest);
+
+            if (!isValidRequest) {
+                return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            User user = userRepo.findByEmail(email);
+            if (Objects.isNull(user)) {
+                return buildResponse(HttpStatus.BAD_REQUEST, "Sorry, email does not exist");
+            }
+
+            if(user.getStatus().equalsIgnoreCase("true")){
+                return buildResponse(HttpStatus.BAD_REQUEST, "Account is already active");
+
+            }
+
+            confirmAccount(email);
+            return buildResponse(HttpStatus.OK, "Activation code sent successfully. Please check your mail");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
 
     /**
      * Deactivate the user's account. This method is used to mark the user's account as inactive.

@@ -82,7 +82,9 @@ public class SecurityConfig {
                                         ("/dashboard/berliz"),
                                         ("/trainer/getActiveTrainers"),
                                         ("/center/getActiveCenters"),
-                                        ("/stomp")
+                                        ("/stomp"),
+                                        ("/user/quickAdd"),
+                                        ("/user/sendActivationToken/**")
                                 ).permitAll()
                                 .anyRequest().authenticated());
 

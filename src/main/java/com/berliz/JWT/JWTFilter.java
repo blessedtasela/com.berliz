@@ -44,7 +44,7 @@ public class JWTFilter extends OncePerRequestFilter {
                 "/user/forgotPassword|/newsletter/add|/newsletter/updateStatus|" +
                 "/user/validatePasswordToken|/user/resetPassword|/user/activateAccount|" +
                 "/category/getActiveCategories|/contactUs/add|/dashboard/berliz|/trainer/getActiveTrainers|" +
-                "/center/getActiveCenters|/user/refreshToken|/ws/.*")) {
+                "/center/getActiveCenters|/user/refreshToken|/ws/.*|/user/quickAdd|/user/sendActivationToken/.*")) {
 
             filterChain.doFilter(httpServletRequest, httpServletResponse);
         } else {

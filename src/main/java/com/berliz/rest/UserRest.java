@@ -19,6 +19,9 @@ public interface UserRest {
     @PostMapping(path = "/quickAdd")
     ResponseEntity<String> quickAdd(@RequestBody() Map<String, String> requestMap);
 
+    @PostMapping(path = "/sendActivationToken/{email}")
+    ResponseEntity<String> sendActivationToken(@PathVariable() String email);
+
     @PostMapping(path = "/login")
     ResponseEntity<String> login(@RequestBody() Map<String, String> requestMap);
 
