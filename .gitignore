@@ -33,4 +33,4 @@ build/
 .vscode/
 
 ### environment file ###
-.env
+#comment for now - .env
