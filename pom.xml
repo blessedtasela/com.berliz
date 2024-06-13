@@ -15,7 +15,7 @@
     <name>com.berliz</name>
     <description>Berliz web application - helping clients achieve their goals</description>
     <properties>
-        <java.version>21</java.version>
+        <java.version>17</java.version>
             <maven.compiler.source>17</maven.compiler.source>
             <maven.compiler.target>17</maven.compiler.target>
     </properties>
@@ -150,8 +150,8 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <sourceDirectory>17</sourceDirectory>
-                    <generatedSources>17</generatedSources>
+                    <sourceDirectory>src/main/java</sourceDirectory>
+                    <generatedSources>target/generated-sources</generatedSources>
                     <excludes>
                         <exclude>
                             <groupId>com.example</groupId>
