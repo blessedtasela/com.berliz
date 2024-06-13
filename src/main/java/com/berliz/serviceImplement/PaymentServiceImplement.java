@@ -93,7 +93,7 @@ public class PaymentServiceImplement implements PaymentService {
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "You have successfully added "
                         + user.getFirstname() + " as a client");
             } else {
-                User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+                User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
                 if (user == null) {
                     return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Invalid user");
                 }
@@ -159,7 +159,7 @@ public class PaymentServiceImplement implements PaymentService {
             }
 
             Payment payment = optional.get();
-            String currentUser = jwtFilter.getCurrentUser();
+            String currentUser = jwtFilter.getCurrentUserEmail();
             if (!(jwtFilter.isAdmin() || payment.getUser().getEmail().equals(currentUser))) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -193,7 +193,12 @@ public class PaymentServiceImplement implements PaymentService {
                         " updated your payment information";
             }
 
-            simpMessagingTemplate.convertAndSend("/topic/updatePayment", savedPayment);
+            String adminNotificationMessage = "Payment with id: " + savedPayment.getId() + ", and info: "
+                    + savedPayment.getPayer().getEmail() + ", information has been updated";
+            String notificationMessage = "Your payment information has been updated : "
+                    + savedPayment.getPayer().getEmail();
+            jwtFilter.sendNotifications("/topic/updatePayment", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedPayment);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -216,7 +221,11 @@ public class PaymentServiceImplement implements PaymentService {
             try {
                 Payment payment = optional.get();
                 paymentRepo.deleteById(id);
-                simpMessagingTemplate.convertAndSend("/topic/deletePayment", payment);
+                String adminNotificationMessage = "Payment with id: " + payment.getId() + ", and info: "
+                        + payment.getPayer().getEmail() + ", has been deleted";
+                String notificationMessage = "You have successfully deleted your payment: " + payment.getPayer().getEmail();
+                jwtFilter.sendNotifications("/topic/deletePayment", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, payment);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Payment deleted successfully");
             } catch (DataIntegrityViolationException ex) {
                 // Handle foreign key constraint violation when deleting
@@ -255,7 +264,11 @@ public class PaymentServiceImplement implements PaymentService {
 
             payment.setStatus(status);
             paymentRepo.save(payment);
-            simpMessagingTemplate.convertAndSend("/topic/updatePaymentStatus", payment);
+            String adminNotificationMessage = "Payment with id: " + payment.getId() +
+                    ", status has been set to " + status;
+            String notificationMessage = "You have successfully set your payment status to: " + status;
+            jwtFilter.sendNotifications("/topic/updatePaymentStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, payment);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (
                 Exception ex) {
@@ -281,7 +294,7 @@ public class PaymentServiceImplement implements PaymentService {
     }
 
     private void getPaymentFromMap(Map<String, String> requestMap) throws ParseException {
-        User payer = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User payer = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         User user = userRepo.findByEmail(requestMap.get("email"));
         Payment payment = new Payment();
 
@@ -309,7 +322,12 @@ public class PaymentServiceImplement implements PaymentService {
         payment.setLastUpdate(new Date());
         payment.setStatus("false");
         Payment savedPayment = paymentRepo.save(payment);
-        simpMessagingTemplate.convertAndSend("/topic/getSubscriptionFromMap", savedPayment);
+        String adminNotificationMessage = "A new payment with id: " + savedPayment.getId()
+                + " and info" + savedPayment.getPayer().getEmail() + ", has been added";
+        String notificationMessage = "You have successfully added a new payment: "
+                + savedPayment.getPayer().getEmail();
+        jwtFilter.sendNotifications("/topic/getPaymentFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedPayment);
     }
 
     private boolean validateRequestFromMap(Map<String, String> requestMap, boolean validId) {

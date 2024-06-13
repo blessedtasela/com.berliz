@@ -1,12 +1,16 @@
 package com.berliz.JWT;
 
+import com.berliz.models.Notification;
 import com.berliz.models.User;
+import com.berliz.repositories.NotificationRepo;
+import com.berliz.repositories.UserRepo;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,9 +19,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 public class JWTFilter extends OncePerRequestFilter {
+
+    @Autowired
+    UserRepo userRepo;
+
+    @Autowired
+    SimpMessagingTemplate simpMessagingTemplate;
+
+    @Autowired
+    NotificationRepo notificationRepo;
 
     @Autowired
     private JWTUtility jwtUtility;
@@ -36,7 +50,7 @@ public class JWTFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         // Match public paths that don't require authentication
 
-        if (isWebSocketRequest(httpServletRequest)){
+        if (isWebSocketRequest(httpServletRequest)) {
             filterChain.doFilter(httpServletRequest, httpServletResponse);
         }
 
@@ -58,6 +72,7 @@ public class JWTFilter extends OncePerRequestFilter {
                 userId = jwtUtility.extractUserId(token);
                 claims = jwtUtility.extractAllClaims(token);
             }
+
             if ("OPTIONS".equalsIgnoreCase(httpServletRequest.getMethod())) {
                 httpServletResponse.setStatus(HttpServletResponse.SC_OK);
             } else {
@@ -85,9 +100,17 @@ public class JWTFilter extends OncePerRequestFilter {
         return "websocket".equalsIgnoreCase(upgradeHeader);
     }
 
-    public String getCurrentUser() {
+    public String getCurrentUserEmail() {
         if (username != null) {
             return username;
+        } else {
+            return null;
+        }
+    }
+
+    public User getCurrentUser() {
+        if (username != null) {
+            return userRepo.findByEmail(getCurrentUserEmail());
         } else {
             return null;
         }
@@ -144,7 +167,8 @@ public class JWTFilter extends OncePerRequestFilter {
     public boolean isBerlizUser() {
         String role = (String) claims.get("role");
         if (role != null) {
-            String[] validRoles = {"admin", "user", "client", "trainer", "center", "store", "driver", "member"};
+            String[] validRoles = {"admin", "user", "client", "trainer", "center", "store",
+                    "driver", "member", "memberClient"};
             for (String validRole : validRoles) {
                 if (validRole.equalsIgnoreCase(role)) {
                     return true;
@@ -167,4 +191,36 @@ public class JWTFilter extends OncePerRequestFilter {
                 user.getProfilePhoto() == null;
     }
 
+    public void sendNotifications(String entityEndpoint, String adminNotificationMessage, User user,
+                                  String notificationMessage, Object entityOrList) {
+        Notification notification = new Notification();
+        if (isAdmin()) {
+            notification.setNotification(adminNotificationMessage + " by admin: " + getCurrentUserEmail());
+        } else {
+            notification.setNotification(notificationMessage);
+        }
+
+        notification.setUser(user);
+        notificationRepo.save(notification);
+        if (!isAdmin(user)) {
+            List<User> admins = userRepo.findAllAdmins();
+            for (User admin : admins) {
+                Notification adminNotification = new Notification();
+                if (isAdmin()) {
+                    adminNotification.setNotification(adminNotificationMessage + " by admin: " + getCurrentUserEmail());
+                } else {
+                    adminNotification.setNotification(adminNotificationMessage + " by user: " + getCurrentUserEmail());
+                }
+                adminNotification.setUser(admin);
+                notificationRepo.save(adminNotification);
+            }
+        }
+
+        simpMessagingTemplate.convertAndSend("/topic/notification", notification.getNotification());
+        simpMessagingTemplate.convertAndSend(entityEndpoint, entityOrList);
+    }
+
+    public boolean isAdmin(User user) {
+        return "admin".equalsIgnoreCase((user.getRole()));
+    }
 }

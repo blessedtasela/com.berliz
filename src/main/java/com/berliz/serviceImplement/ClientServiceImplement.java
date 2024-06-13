@@ -93,7 +93,7 @@ public class ClientServiceImplement implements ClientService {
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "You have successfully added "
                         + user.getFirstname() + " as a client");
             } else {
-                User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+                User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
                 if (user == null) {
                     return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Invalid user");
                 }
@@ -158,7 +158,7 @@ public class ClientServiceImplement implements ClientService {
             }
 
             Client client = optional.get();
-            String currentUser = jwtFilter.getCurrentUser();
+            String currentUser = jwtFilter.getCurrentUserEmail();
             if (!(jwtFilter.isAdmin() || client.getUser().getEmail().equals(currentUser))) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -225,7 +225,12 @@ public class ClientServiceImplement implements ClientService {
                         " updated your client information";
             }
 
-            simpMessagingTemplate.convertAndSend("/topic/updateClient", savedClient);
+            String adminNotificationMessage = "Client with id: " + savedClient.getId() + ", and email: "
+                    + savedClient.getUser().getEmail() + ", account information has been updated";
+            String notificationMessage = "Your client account information has been updated : "
+                    + savedClient.getUser().getEmail();
+            jwtFilter.sendNotifications("/topic/updateClient", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedClient);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -248,7 +253,13 @@ public class ClientServiceImplement implements ClientService {
             try {
                 Client client = optional.get();
                 clientRepo.deleteById(id);
-                simpMessagingTemplate.convertAndSend("/topic/deleteClient", client);
+                String adminNotificationMessage = "Center with id: " + client.getId() + ", and email: "
+                        + client.getUser().getEmail() +
+                        ", account has been deleted";
+                String notificationMessage = "You have successfully deleted your client your account : "
+                        + client.getUser().getEmail();
+                jwtFilter.sendNotifications("/topic/deleteClient", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, client);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Client deleted successfully");
             } catch (DataIntegrityViolationException ex) {
                 // Handle foreign key constraint violation when deleting
@@ -311,7 +322,12 @@ public class ClientServiceImplement implements ClientService {
 
             client.setStatus(status);
             clientRepo.save(client);
-            simpMessagingTemplate.convertAndSend("/topic/updateClientStatus", client);
+            String adminNotificationMessage = "Client with id: " + client.getId() +
+                    ", status has been set to " + status;
+            String notificationMessage = "You have successfully set your center status to : " +
+                    status;
+            jwtFilter.sendNotifications("/topic/updateClientStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, client);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -402,7 +418,12 @@ public class ClientServiceImplement implements ClientService {
         client.setLastUpdate(new Date());
         client.setStatus("false");
         Client savedClient = clientRepo.save(client);
-        simpMessagingTemplate.convertAndSend("/topic/getClientFromMap", savedClient);
+        String adminNotificationMessage = "A new client with id: " + savedClient.getId()
+                + " and info" + savedClient.getMode()
+                + ", has been added for user: " + client.getUser().getEmail();
+        String notificationMessage = "You have successfully added a client account: " + savedClient.getUser().getEmail();
+        jwtFilter.sendNotifications("/topic/getClientFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedClient);
     }
 
     private boolean validateRequestFromMap(Map<String, String> requestMap, boolean validId) {

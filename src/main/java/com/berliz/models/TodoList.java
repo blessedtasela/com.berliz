@@ -11,6 +11,12 @@ import java.util.Date;
 @NamedQuery(name = "TodoList.countMyTodosByEmail",
         query = "SELECT COUNT(tl) FROM TodoList tl WHERE tl.user.email =: email")
 
+@NamedQuery(name = "TodoList.bulkUpdateStatusByIds",
+        query = "UPDATE TodoList SET status = :status WHERE id IN :ids")
+
+@NamedQuery(name = "TodoList.bulkDeleteByIds",
+        query = "DELETE FROM TodoList WHERE id IN :ids")
+
 @Data
 @Entity
 @DynamicInsert
@@ -32,10 +38,10 @@ public class TodoList implements Serializable {
     @JoinColumn(name = "user_fk", nullable = false)
     private User user;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "lastUpdate", columnDefinition = "DATE")
+    @Column(name = "lastUpdate", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 
     @Column(name = "status")

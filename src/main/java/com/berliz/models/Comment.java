@@ -38,10 +38,10 @@ public class Comment implements Serializable {
     @Column(name = "ratings", columnDefinition = "FLOAT")
     private double ratings;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private String date;
 
-    @Column(name = "lastUpdate", columnDefinition = "DATE")
+    @Column(name = "lastUpdate", columnDefinition = "TIMESTAMP")
     private String lastUpdate;
 
 }

@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -108,7 +107,7 @@ public class SubscriptionServiceImplement implements SubscriptionService {
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "You have successfully added "
                         + user.getFirstname() + " subscription");
             } else {
-                User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+                User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
                 if (user == null) {
                     return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Invalid user");
                 }
@@ -179,7 +178,7 @@ public class SubscriptionServiceImplement implements SubscriptionService {
             }
 
             Subscription subscription = optional.get();
-            String currentUser = jwtFilter.getCurrentUser();
+            String currentUser = jwtFilter.getCurrentUserEmail();
             if (!(jwtFilter.isAdmin() || subscription.getUser().getEmail().equals(currentUser))) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -227,14 +226,18 @@ public class SubscriptionServiceImplement implements SubscriptionService {
                         " updated your subscription information";
             }
 
-            simpMessagingTemplate.convertAndSend("/topic/updateClient", savedSubscription);
+            String adminNotificationMessage = "SSubscription with id: " + savedSubscription.getId() + ", and info: "
+                    + savedSubscription.getEndDate() + ", information has been updated";
+            String notificationMessage = "Your subscription information has been updated : "
+                    + savedSubscription.getEndDate();
+            jwtFilter.sendNotifications("/topic/updateSubscription", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedSubscription);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
             return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
         }
     }
-
 
     @Override
     public ResponseEntity<String> deleteSubscription(Integer id) throws JsonProcessingException {
@@ -251,7 +254,12 @@ public class SubscriptionServiceImplement implements SubscriptionService {
             try {
                 Subscription subscription = optional.get();
                 subscriptionRepo.deleteById(id);
-                simpMessagingTemplate.convertAndSend("/topic/deleteSubscription", subscription);
+                String adminNotificationMessage = "Subscription with id: " + subscription.getId() + ", and info: "
+                        + subscription.getEndDate() + ", has been deleted";
+                String notificationMessage = "You have successfully deleted your subscription: "
+                        + subscription.getEndDate();
+                jwtFilter.sendNotifications("/topic/deleteSubscription", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, subscription);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Subscription deleted successfully");
             } catch (DataIntegrityViolationException ex) {
                 // Handle foreign key constraint violation when deleting
@@ -290,7 +298,11 @@ public class SubscriptionServiceImplement implements SubscriptionService {
 
             subscription.setStatus(status);
             subscriptionRepo.save(subscription);
-            simpMessagingTemplate.convertAndSend("/topic/updateSubscriptionStatus", subscription);
+            String adminNotificationMessage = "Subscription with id: " + subscription.getId() +
+                    ", status has been set to " + status;
+            String notificationMessage = "You have successfully set your subscription status to: " + status;
+            jwtFilter.sendNotifications("/topic/updateSubscriptionStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, subscription);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (
                 Exception ex) {
@@ -310,6 +322,129 @@ public class SubscriptionServiceImplement implements SubscriptionService {
             ex.printStackTrace();
         }
         return new ResponseEntity<>(new Subscription(), HttpStatus.OK);
+    }
+
+    @Override
+    public ResponseEntity<List<Subscription>> getMySubscriptions() {
+        try {
+            log.info("Inside getMySubscriptions");
+            if (jwtFilter.getCurrentUser() == null) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.NOT_FOUND);
+            }
+
+            List<Subscription> subscriptions = subscriptionRepo.findByUser(jwtFilter.getCurrentUser());
+            if (subscriptions.isEmpty()) {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.NOT_FOUND);
+            }
+
+            return new ResponseEntity<>(subscriptions, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.OK);
+    }
+
+    @Override
+    public ResponseEntity<String> bulkAction(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("inside bulkAction {}", requestMap);
+            if (!jwtFilter.isBerlizUser()) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            boolean isValid = !requestMap.isEmpty();
+            log.info("Is request valid? {}", isValid);
+
+            if (!isValid) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            String idString = requestMap.get("ids");
+            String[] idArray = idString.split(",");
+            if (idString.isEmpty()) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "No subscription selected");
+            }
+
+            List<Integer> idList = Arrays.stream(idArray)
+                    .map(Integer::valueOf)
+                    .toList();
+            List<Subscription> subscriptions = subscriptionRepo.findAllById(idList);
+            if (subscriptions.isEmpty() || subscriptions.size() != idList.size()) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Subscription id not found");
+            }
+
+            log.info("inside optional {}", requestMap);
+            boolean isDelete = requestMap.get("action").equalsIgnoreCase("delete");
+            boolean isTrue = requestMap.get("action").equalsIgnoreCase("true");
+            boolean isFalse = requestMap.get("action").equalsIgnoreCase("false");
+            User user = null;
+            for (Subscription subscription : subscriptions) {
+                user = subscription.getUser();
+                break;
+            }
+
+            List<Subscription> subscriptionArrayList = new ArrayList<>();
+            boolean isSubscription = false;
+            if (jwtFilter.isAdmin()) {
+                isSubscription = true;
+            } else {
+                for (Integer subscriptionId : idList) {
+                    Optional<Subscription> subscriptionOptional = subscriptionRepo.findById(subscriptionId);
+                    if (subscriptionOptional.isEmpty()) {
+                        isSubscription = false;
+                        break;
+                    }
+
+                    Subscription subscription = subscriptionOptional.get();
+                    isSubscription = subscriptionRepo.existsByUser(subscription.getUser());
+                }
+            }
+
+            if (!isSubscription) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            String successMessage = "";
+            if (!(isDelete ^ isFalse ^ isTrue)) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Action not recognized");
+            }
+
+            if (isDelete) {
+                int updatedCount = subscriptionRepo.bulkDeleteByIds(idList);
+                if (updatedCount < 0) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.SOMETHING_WENT_WRONG);
+                }
+                successMessage = "All subscriptions deleted successfully";
+            }
+
+            if (isFalse) {
+                int updatedCount = subscriptionRepo.bulkUpdateStatusByIds(idList, "false");
+                if (updatedCount < 0) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.SOMETHING_WENT_WRONG);
+                }
+                successMessage = "All subscriptions are now inactive";
+            }
+
+            if (isTrue) {
+                int updatedCount = subscriptionRepo.bulkUpdateStatusByIds(idList, "true");
+                if (updatedCount < 0) {
+                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.SOMETHING_WENT_WRONG);
+                }
+                successMessage = "All subscriptions are now active";
+            }
+
+            assert user != null;
+            String adminNotificationMessage = successMessage + " with ids: " + idList
+                    + ", for " + user.getEmail() + " and bulk action done";
+            String notificationMessage = "You have perform a bulk action and " + successMessage;
+            jwtFilter.sendNotifications("/topic/subscriptionBulkAction", adminNotificationMessage,
+                    user, notificationMessage, subscriptions);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, successMessage);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     private void getSubscriptionFromMap(Map<String, String> requestMap, User user) {
@@ -347,7 +482,12 @@ public class SubscriptionServiceImplement implements SubscriptionService {
         subscription.setLastUpdate(new Date());
         subscription.setStatus("false");
         Subscription savedSubscription = subscriptionRepo.save(subscription);
-        simpMessagingTemplate.convertAndSend("/topic/getSubscriptionFromMap", savedSubscription);
+        String adminNotificationMessage = "A new subscription with id: " + savedSubscription.getId()
+                + " and info" + savedSubscription.getEndDate() + ", has been added";
+        String notificationMessage = "You have successfully added a new exercise: "
+                + savedSubscription.getEndDate();
+        jwtFilter.sendNotifications("/topic/getSubscriptionFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedSubscription);
     }
 
     private boolean validateRequestFromMap(Map<String, String> requestMap, boolean validId) {

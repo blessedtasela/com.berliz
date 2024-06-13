@@ -38,5 +38,8 @@ public interface DashboardRest {
     @GetMapping(path = "/getPartnerDetails")
     ResponseEntity<String> getPartnerDetails() throws JsonProcessingException;
 
+    @GetMapping(path = "/getProfileData")
+    ResponseEntity<Map<String, Object>> getProfileData() throws JsonProcessingException;
+
 
 }

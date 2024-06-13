@@ -158,7 +158,8 @@ public class CenterServiceImplement implements CenterService {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            centerRepo.save(updateCenterFromMap(requestMap, validCenter));
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
+            centerRepo.save(updateCenterFromMap(requestMap, validCenter, user));
             if (jwtFilter.isAdmin()) {
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Center information updated successfully");
             } else {
@@ -208,7 +209,7 @@ public class CenterServiceImplement implements CenterService {
     public ResponseEntity<String> deleteCenter(Integer id) throws JsonProcessingException {
         try {
             log.info("Inside deleteCenter {}", id);
-            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             boolean authorizedUser = user.getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN);
             if (!(jwtFilter.isAdmin() && authorizedUser)) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
@@ -219,7 +220,11 @@ public class CenterServiceImplement implements CenterService {
             }
 
             centerRepo.delete(center);
-            simpMessagingTemplate.convertAndSend("/topic/deleteCenter", center);
+            String adminNotificationMessage = "Center with id: " + center.getId() + ", and name " + center.getName() +
+                    ", account has been deleted";
+            String notificationMessage = "You have successfully deleted your center your account : " + center.getName();
+            jwtFilter.sendNotifications("/topic/deleteCenter", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, center);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Center deleted successfully");
         } catch (Exception ex) {
             log.error("Something went wrong while performing operation", ex);
@@ -258,12 +263,10 @@ public class CenterServiceImplement implements CenterService {
 
             status = status.equalsIgnoreCase("true") ? "false" : "true";
             center.setStatus(status);
-            centerRepo.save(center);
-
+            Center savedCenter = centerRepo.save(center);
             emailUtilities.sendStatusMailToAdmins(status, userEmail,
                     userRepo.getAllAdminsMail(), "Center");
             emailUtilities.sendStatusMailToUser(status, "Center", userEmail);
-
             String responseMessage;
             if (jwtFilter.isAdmin()) {
                 responseMessage = status.equalsIgnoreCase("true") ?
@@ -274,7 +277,13 @@ public class CenterServiceImplement implements CenterService {
                         "Hello " + userEmail + ", your Center account has successfully been activated" :
                         "Hello " + userEmail + ", your Center account has been deactivated";
             }
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterStatus", center);
+
+            String adminNotificationMessage = "Center with id: " + savedCenter.getId() +
+                    ", status has been set to " + savedCenter.getStatus();
+            String notificationMessage = "You have successfully set your center status to : " +
+                    savedCenter.getStatus();
+            jwtFilter.sendNotifications("/topic/updateCenterStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedCenter);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -358,7 +367,7 @@ public class CenterServiceImplement implements CenterService {
         try {
             log.info("Inside likeCenter {}", id);
             Center center = centerRepo.findByCenterId(id);
-            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             boolean validUser = jwtFilter.isBerlizUser();
 
             if (!validUser) {
@@ -376,6 +385,11 @@ public class CenterServiceImplement implements CenterService {
                 centerLikeRepo.deleteByUserAndCenter(user, center);
                 center.setLikes(center.getLikes() - 1);
                 responseMessage = "Hello, " + user.getFirstname() + " you have disliked " + center.getName();
+                String adminNotificationMessage = "Center with id: " + center.getId() +
+                        ", and name: " + center.getName() + " has just been disliked by: " + user.getEmail();
+                String notificationMessage = "You have successfully disliked center : " + center.getName();
+                jwtFilter.sendNotifications("/topic/likeCenter", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, center);
             } else {
                 // like center
                 CenterLike centerLike = new CenterLike();
@@ -383,13 +397,16 @@ public class CenterServiceImplement implements CenterService {
                 centerLike.setCenter(center);
                 centerLike.setDate(new Date());
                 centerLikeRepo.save(centerLike);
-
                 center.setLikes(center.getLikes() + 1);
                 responseMessage = "Hello, " + user.getFirstname() + " you just liked " + center.getName();
+                String adminNotificationMessage = "Center with id: " + center.getId() +
+                        ", and name: " + center.getName() + " has just been liked by: " + user.getEmail();
+                String notificationMessage = "You have successfully liked center : " + center.getName();
+                jwtFilter.sendNotifications("/topic/likeCenter", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, center);
             }
 
             centerRepo.save(center);
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterStatus", center);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
 
         } catch (Exception ex) {
@@ -445,6 +462,7 @@ public class CenterServiceImplement implements CenterService {
             if (!fileUtilities.isValidImageSize(file)) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Invalid file type");
             }
+
             String responseMessage;
             center.setPhoto(file.getBytes());
             centerRepo.save(center);
@@ -453,9 +471,13 @@ public class CenterServiceImplement implements CenterService {
             } else {
                 responseMessage = "Hello " + center.getName() + ", your center photo has been updated successfully";
             }
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterPhoto", center);
-            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
 
+            String adminNotificationMessage = "Center with id: " + center.getId() + ", and name: "
+                    + center.getName() + ", cover photo has been changed";
+            String notificationMessage = "You have changed your center cover photo : " + center.getName();
+            jwtFilter.sendNotifications("/topic/updateCenterPhoto", adminNotificationMessage,
+                    user, notificationMessage, center);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -526,7 +548,6 @@ public class CenterServiceImplement implements CenterService {
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
-
     @Override
     public ResponseEntity<String> updateCenterAnnouncement(AnnouncementRequest announcementRequest) throws JsonProcessingException {
         try {
@@ -555,6 +576,7 @@ public class CenterServiceImplement implements CenterService {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             Center center = centerAnnouncement.getCenter();
             centerAnnouncement.setAnnouncement(announcementRequest.getAnnouncement());
             byte[] icon = announcementRequest.getIcon().getBytes();
@@ -564,7 +586,11 @@ public class CenterServiceImplement implements CenterService {
             String responseMessage = jwtFilter.isAdmin() ?
                     center.getName() + "!, announcement have successfully been updated in their album" :
                     "Hello " + center.getName() + "!, you have successfully updated your center's announcement";
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterAnnouncement", savedCenterAnnouncement);
+            String adminNotificationMessage = "Center announcement with id: " + centerAnnouncement.getId() + ", and info: "
+                    + centerAnnouncement.getAnnouncement() + "/ has been updated";
+            String notificationMessage = "You have update your center announcement for : " + centerAnnouncement.getAnnouncement();
+            jwtFilter.sendNotifications("/topic/updateCenterAnnouncement", adminNotificationMessage,
+                    user, notificationMessage, savedCenterAnnouncement);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -592,7 +618,12 @@ public class CenterServiceImplement implements CenterService {
             }
 
             centerAnnouncementRepo.delete(centerAnnouncement);
-            simpMessagingTemplate.convertAndSend("/topic/deleteCenterAnnouncement", centerAnnouncement);
+            String adminNotificationMessage = "Center announcement with id: " + centerAnnouncement.getId()
+                    + ", and info " + centerAnnouncement.getAnnouncement() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your center announcement : "
+                    + centerAnnouncement.getAnnouncement();
+            jwtFilter.sendNotifications("/topic/deleteCenterAnnouncement", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, centerAnnouncement);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Center announcement deleted from profile successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -628,7 +659,12 @@ public class CenterServiceImplement implements CenterService {
 
             centerAnnouncement.setStatus(status);
             CenterAnnouncement savedCenterAnnouncement = centerAnnouncementRepo.save(centerAnnouncement);
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterAnnouncementStatus", savedCenterAnnouncement);
+            String adminNotificationMessage = "Center announcement with id: " + savedCenterAnnouncement.getId() +
+                    ", status has been set to " + savedCenterAnnouncement.getStatus();
+            String notificationMessage = "You have successfully set your center announcement status to : " +
+                    savedCenterAnnouncement.getStatus();
+            jwtFilter.sendNotifications("/topic/updateCenterAnnouncementStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedCenterAnnouncement);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -774,12 +810,18 @@ public class CenterServiceImplement implements CenterService {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             Center center = centerEquipment.getCenter();
             CenterEquipment savedCenterEquipment = centerEquipmentRepo.save(updateCenterEquipmentFromMap(centerEquipment, equipmentRequest));
             String responseMessage = jwtFilter.isAdmin() ?
                     center.getName() + "!, equipment have successfully been updated in their profile" :
                     "Hello " + center.getName() + "!, you have successfully updated your center's equipment";
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterEquipment", savedCenterEquipment);
+            String adminNotificationMessage = "Center equipment with id: " + savedCenterEquipment.getId()
+                    + ", and equipment name: " + savedCenterEquipment.getName() + " has been updated";
+            String notificationMessage = "You have updated your center equipment for : "
+                    + savedCenterEquipment.getName();
+            jwtFilter.sendNotifications("/topic/updateCenterEquipment", adminNotificationMessage,
+                    user, notificationMessage, savedCenterEquipment);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -807,7 +849,12 @@ public class CenterServiceImplement implements CenterService {
             }
 
             centerEquipmentRepo.delete(centerEquipment);
-            simpMessagingTemplate.convertAndSend("/topic/deleteCenterEquipment", centerEquipment);
+            String adminNotificationMessage = "Center equipment with id: " + centerEquipment.getId()
+                    + ", and info " + centerEquipment.getName() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your center equipment : "
+                    + centerEquipment.getName();
+            jwtFilter.sendNotifications("/topic/deleteCenterEquipment", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, centerEquipment);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Center equipment deleted from profile successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -937,6 +984,7 @@ public class CenterServiceImplement implements CenterService {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             Center center = centerIntroduction.getCenter();
             centerIntroduction.setIntroduction(introductionRequest.getIntroduction());
             byte[] icon = introductionRequest.getCoverPhoto().getBytes();
@@ -946,7 +994,12 @@ public class CenterServiceImplement implements CenterService {
             String responseMessage = jwtFilter.isAdmin() ?
                     center.getName() + "!, introduction have successfully been updated in their profile" :
                     "Hello " + center.getName() + "!, you have successfully updated your center's introduction";
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterIntroduction", savedCenterIntroduction);
+            String adminNotificationMessage = "Center introduction with id: " + savedCenterIntroduction.getId()
+                    + ", and info: " + savedCenterIntroduction.getIntroduction() + "/ has been updated";
+            String notificationMessage = "You have update your center introduction: " +
+                    savedCenterIntroduction.getIntroduction();
+            jwtFilter.sendNotifications("/topic/updateCenterIntroduction", adminNotificationMessage,
+                    user, notificationMessage, savedCenterIntroduction);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -976,7 +1029,12 @@ public class CenterServiceImplement implements CenterService {
             centerIntroductionRepo.delete(centerIntroduction);
             centerIntroduction.getCenter().setStatus("false");
             centerRepo.save(centerIntroduction.getCenter());
-            simpMessagingTemplate.convertAndSend("/topic/deleteCenterIntroduction", centerIntroduction);
+            String adminNotificationMessage = "Center introduction with id: " + centerIntroduction.getId()
+                    + ", and info " + centerIntroduction.getIntroduction() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your center introduction : "
+                    + centerIntroduction.getIntroduction();
+            jwtFilter.sendNotifications("/topic/deleteCenterIntroduction", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, centerIntroduction);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Center introduction deleted from profile successfully" +
                     " and center is now inactive");
         } catch (Exception ex) {
@@ -1106,9 +1164,11 @@ public class CenterServiceImplement implements CenterService {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             Center center = centerLocation.getCenter();
             String filesFolderPath = BerlizConstants.CENTER_SUB_LOCATION;
-            String fileName = generateFileName(center.getName(), locationRequest.getSubName(), "location");
+            String fileName = generateFileName(center.getName(), locationRequest.getSubName(),
+                    "location");
             writeToFile(filesFolderPath, fileName, locationRequest.getCoverPhoto());
 
             // Save location details to the database
@@ -1121,7 +1181,12 @@ public class CenterServiceImplement implements CenterService {
             String responseMessage = jwtFilter.isAdmin() ?
                     center.getName() + "!, location have successfully been updated in their profile" :
                     "Hello " + center.getName() + "!, you have successfully updated your center's location";
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterLocation", savedCenterLocation);
+            String adminNotificationMessage = "Center location with id: " + savedCenterLocation.getId()
+                    + ", and info: " + savedCenterLocation.getSubName() + "/ has been updated";
+            String notificationMessage = "You have update your center location: " +
+                    savedCenterLocation.getSubName();
+            jwtFilter.sendNotifications("/topic/updateCenterLocation", adminNotificationMessage,
+                    user, notificationMessage, savedCenterLocation);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1149,7 +1214,12 @@ public class CenterServiceImplement implements CenterService {
             }
 
             centerLocationRepo.delete(centerLocation);
-            simpMessagingTemplate.convertAndSend("/topic/deleteCenterLocation", centerLocation);
+            String adminNotificationMessage = "Center location with id: " + centerLocation.getId()
+                    + ", and info " + centerLocation.getSubName() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted a location from your center : "
+                    + centerLocation.getSubName();
+            jwtFilter.sendNotifications("/topic/deleteCenterLocation", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, centerLocation);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Center location deleted from profile successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1273,6 +1343,7 @@ public class CenterServiceImplement implements CenterService {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             Center center = centerPhotoAlbum.getCenter();
             String filesFolderPath = BerlizConstants.CENTER_PHOTO_ALBUM_LOCATION;
             long numericUUID = UUID.randomUUID().getMostSignificantBits();
@@ -1288,7 +1359,12 @@ public class CenterServiceImplement implements CenterService {
             String responseMessage = jwtFilter.isAdmin() ?
                     center.getName() + "!, photo have successfully been updated in their profile" :
                     "Hello " + center.getName() + "!, you have successfully updated your center's photo";
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterPhotoAlbum", savedCenterPhotoAlbum);
+            String adminNotificationMessage = "Center photo with id: " + savedCenterPhotoAlbum.getId()
+                    + ", and info: " + savedCenterPhotoAlbum.getUuid() + "/ has been updated";
+            String notificationMessage = "You have update your center photo: " +
+                    savedCenterPhotoAlbum.getUuid();
+            jwtFilter.sendNotifications("/topic/updateCenterPhotoAlbum", adminNotificationMessage,
+                    user, notificationMessage, savedCenterPhotoAlbum);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1316,7 +1392,12 @@ public class CenterServiceImplement implements CenterService {
             }
 
             centerPhotoAlbumRepo.delete(centerPhotoAlbum);
-            simpMessagingTemplate.convertAndSend("/topic/deleteCenterPhotoAlbum", centerPhotoAlbum);
+            String adminNotificationMessage = "Center photo with id: " + centerPhotoAlbum.getId()
+                    + ", and info " + centerPhotoAlbum.getUuid() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted a photo from your center : "
+                    + centerPhotoAlbum.getUuid();
+            jwtFilter.sendNotifications("/topic/deleteCenterPhotoAlbum", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, centerPhotoAlbum);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Center photo deleted from album successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1398,7 +1479,6 @@ public class CenterServiceImplement implements CenterService {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, centerPricingExitsResponse);
             }
 
-
             getCenterPricingFromMap(requestMap, center);
             String responseMessage = jwtFilter.isAdmin() ?
                     center.getName() + ", pricing have successfully been added to their profile " :
@@ -1446,7 +1526,7 @@ public class CenterServiceImplement implements CenterService {
             }
 
             CenterPricing centerPricing = optional.get();
-            String currentUser = jwtFilter.getCurrentUser();
+            String currentUser = jwtFilter.getCurrentUserEmail();
             if (!(jwtFilter.isAdmin()
                     || centerPricing.getCenter().getPartner().getUser().getEmail().equals(currentUser))) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
@@ -1475,7 +1555,12 @@ public class CenterServiceImplement implements CenterService {
                         " updated your pricing information";
             }
 
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterPricing", savedcenterPricing);
+            String adminNotificationMessage = "Center pricing with id: " + savedcenterPricing.getId()
+                    + ", and info: " + savedcenterPricing.getCenter().getName() + "/ has been updated";
+            String notificationMessage = "You have update your center pricing: " +
+                    savedcenterPricing.getCenter().getName();
+            jwtFilter.sendNotifications("/topic/updateCenterPricing", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedcenterPricing);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1487,7 +1572,7 @@ public class CenterServiceImplement implements CenterService {
     public ResponseEntity<String> deleteCenterPricing(Integer id) throws JsonProcessingException {
         try {
             log.info("Inside deleteCenterPricing {}", id);
-            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             boolean authorizedUser = user.getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN);
             if (!(jwtFilter.isAdmin() && authorizedUser)) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
@@ -1500,7 +1585,12 @@ public class CenterServiceImplement implements CenterService {
 
             CenterPricing centerPricing = optional.get();
             centerPricingRepo.delete(centerPricing);
-            simpMessagingTemplate.convertAndSend("/topic/deleteCenterPricing", centerPricing);
+            String adminNotificationMessage = "Center pricing with id: " + centerPricing.getId()
+                    + ", and info " + centerPricing.getPrice() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your center pricing: "
+                    + centerPricing.getPrice();
+            jwtFilter.sendNotifications("/topic/deleteCenterPricing", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, centerPricing);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "CenterPricing deleted successfully");
 
         } catch (Exception ex) {
@@ -1645,7 +1735,6 @@ public class CenterServiceImplement implements CenterService {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
-
             Center center;
             if (jwtFilter.isCenter()) {
                 center = centerRepo.findByUserId(jwtFilter.getCurrentUserId());
@@ -1689,7 +1778,12 @@ public class CenterServiceImplement implements CenterService {
             }
 
             CenterTrainer savedCenterTrainer = centerTrainerRepo.save(centerTrainer);
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterTrainerStatus", savedCenterTrainer);
+            String adminNotificationMessage = "Center trainer with id: " + savedCenterTrainer.getId() +
+                    ", status has been set to " + savedCenterTrainer.getStatus();
+            String notificationMessage = "You have successfully set your center trainer status to : " +
+                    savedCenterTrainer.getStatus();
+            jwtFilter.sendNotifications("/topic/updateCenterTrainerStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedCenterTrainer);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1701,7 +1795,7 @@ public class CenterServiceImplement implements CenterService {
     public ResponseEntity<String> deleteCenterTrainer(Integer id) throws JsonProcessingException {
         try {
             log.info("Inside deleteCenterTrainer {}", id);
-            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             boolean authorizedUser = user.getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN);
             if (!(jwtFilter.isAdmin() && authorizedUser)) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
@@ -1711,9 +1805,14 @@ public class CenterServiceImplement implements CenterService {
             if (optional.isEmpty()) {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center trainer id not found");
             }
-
-            centerTrainerRepo.delete(optional.get());
-            simpMessagingTemplate.convertAndSend("/topic/deleteCenterTrainer", centerTrainerRepo);
+            CenterTrainer centerTrainer = optional.get();
+            centerTrainerRepo.delete(centerTrainer);
+            String adminNotificationMessage = "Center trainer with id: " + centerTrainer.getId()
+                    + ", and info " + centerTrainer.getTrainer().getName() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted a trainer from your center: "
+                    + centerTrainer.getTrainer();
+            jwtFilter.sendNotifications("/topic/deleteCenterTrainer", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, centerTrainer);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Center trainer deleted successfully");
         } catch (Exception ex) {
             log.error("Something went wrong while performing operation", ex);
@@ -1853,14 +1952,18 @@ public class CenterServiceImplement implements CenterService {
             String responseMessage = jwtFilter.isAdmin() ?
                     center.getName() + "!, photo have successfully been updated in their profile" :
                     "Hello " + center.getName() + "!, you have successfully updated your center's photo";
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterVideoAlbum", savedCenterVideoAlbum);
+            String adminNotificationMessage = "Center video with id: " + savedCenterVideoAlbum.getId()
+                    + ", and info: " + savedCenterVideoAlbum.getUuid() + "/ has been updated";
+            String notificationMessage = "You have update your center video: " +
+                    savedCenterVideoAlbum.getUuid();
+            jwtFilter.sendNotifications("/topic/updateCenterVideoAlbum", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedCenterVideoAlbum);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
-
 
     @Override
     public ResponseEntity<String> deleteCenterVideoAlbum(Integer id) throws JsonProcessingException {
@@ -1882,7 +1985,12 @@ public class CenterServiceImplement implements CenterService {
             }
 
             centerVideoAlbumRepo.delete(centerVideoAlbum);
-            simpMessagingTemplate.convertAndSend("/topic/deleteCenterVideoAlbum", centerVideoAlbum);
+            String adminNotificationMessage = "Center video with id: " + centerVideoAlbum.getId()
+                    + ", and info " + centerVideoAlbum.getUuid() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted a video from your center album: "
+                    + centerVideoAlbum.getUuid();
+            jwtFilter.sendNotifications("/topic/deleteCenterVideoAlbum", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, centerVideoAlbum);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Center video deleted from album successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -2017,9 +2125,13 @@ public class CenterServiceImplement implements CenterService {
             String responseMessage = jwtFilter.isAdmin() ?
                     "Center review for " + center.getName() + "!, has successfully been updated in their profile" :
                     "Hello " + centerReview.getMember().getUser().getFirstname() + "!, you have successfully " +
-                            "updated your center review for" +
-                            center.getName();
-            simpMessagingTemplate.convertAndSend("/topic/updateTrainerReview", savedCenterReview);
+                            "updated your center review for" + center.getName();
+            String adminNotificationMessage = "Center review with id: " + savedCenterReview.getId()
+                    + ", and info: " + savedCenterReview.getComment() + "/ has been updated";
+            String notificationMessage = "You have update your center review: " +
+                    savedCenterReview.getComment();
+            jwtFilter.sendNotifications("/topic/updateTrainerReview", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedCenterReview);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -2035,7 +2147,6 @@ public class CenterServiceImplement implements CenterService {
             if (!(jwtFilter.isAdmin() || jwtFilter.isCenter())) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
-
 
             Optional<CenterReview> optional = centerReviewRepo.findById(id);
             if (optional.isEmpty()) {
@@ -2056,7 +2167,12 @@ public class CenterServiceImplement implements CenterService {
 
             centerReview.setStatus(status);
             CenterReview savedCenterReview = centerReviewRepo.save(centerReview);
-            simpMessagingTemplate.convertAndSend("/topic/updateCenterReviewStatus", savedCenterReview);
+            String adminNotificationMessage = "Center review with id: " + savedCenterReview.getId() +
+                    ", status has been set to " + savedCenterReview.getStatus();
+            String notificationMessage = "You have successfully set your center review status to : " +
+                    savedCenterReview.getStatus();
+            jwtFilter.sendNotifications("/topic/updateCenterReviewStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedCenterReview);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -2081,6 +2197,12 @@ public class CenterServiceImplement implements CenterService {
             CenterReview centerReview = optional.get();
             centerReview.setStatus("false");
             CenterReview savedCenterReview = centerReviewRepo.save(centerReview);
+            String adminNotificationMessage = "Center review with id: " + savedCenterReview.getId() +
+                    ", has been disabled: " + savedCenterReview.getComment();
+            String notificationMessage = "You have successfully disabled a review in your center : " +
+                    savedCenterReview.getComment();
+            jwtFilter.sendNotifications("/topic/updateCenterReviewStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedCenterReview);
             simpMessagingTemplate.convertAndSend("/topic/disableCenterReview", savedCenterReview);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Review for " + centerReview.getCenter().getName() +
                     " has been removed from feed successfully");
@@ -2113,7 +2235,12 @@ public class CenterServiceImplement implements CenterService {
             }
 
             centerReviewRepo.delete(centerReview);
-            simpMessagingTemplate.convertAndSend("/topic/deleteCenterReview", centerReview);
+            String adminNotificationMessage = "Center review with id: " + centerReview.getId()
+                    + ", and info " + centerReview.getComment() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted a review from your center: "
+                    + centerReview.getComment();
+            jwtFilter.sendNotifications("/topic/deleteCenterReview", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, centerReview);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Center review for" +
                     centerReview.getCenter().getName() + "  deleted successfully");
         } catch (Exception ex) {
@@ -2215,7 +2342,7 @@ public class CenterServiceImplement implements CenterService {
             String userEmail = partner.getUser().getEmail();
             user = userRepo.findByEmail(userEmail);
         } else {
-            user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         }
         user.setRole("center");
         userRepo.save(user);
@@ -2248,7 +2375,11 @@ public class CenterServiceImplement implements CenterService {
         center.setLastUpdate(new Date());
         center.setStatus("false"); // Initializing status
         Center savedCenter = centerRepo.save(center);
-        simpMessagingTemplate.convertAndSend("/topic/getCenterFromMap", savedCenter);
+        String adminNotificationMessage = "A new center with id: " + savedCenter.getId() + " and name"
+                + savedCenter.getName() + ", has been added for " + user.getEmail();
+        String notificationMessage = "You have successfully created your center account: " + savedCenter.getName();
+        jwtFilter.sendNotifications("/topic/getCenterFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedCenter);
     }
 
     /**
@@ -2257,11 +2388,9 @@ public class CenterServiceImplement implements CenterService {
      * @param requestMap The map containing the request data
      * @return The constructed and saved Center object
      */
-    private Center updateCenterFromMap(Map<String, String> requestMap, Center existingCenter) {
-        // Parse categoryIds as a comma-separated string
+    private Center updateCenterFromMap(Map<String, String> requestMap, Center existingCenter, User user) {
         String categoryIdsString = requestMap.get("categoryIds");
         String[] categoryIdsArray = categoryIdsString.split(",");
-
         Set<Category> categorySet = new HashSet<>();
         for (String categoryIdString : categoryIdsArray) {
             int categoryId = Integer.parseInt(categoryIdString.trim());
@@ -2281,8 +2410,13 @@ public class CenterServiceImplement implements CenterService {
         if (jwtFilter.isAdmin()) {
             existingCenter.setLikes(Integer.parseInt(requestMap.get("likes")));
         }
+
         existingCenter.setLastUpdate(new Date());
-        simpMessagingTemplate.convertAndSend("/topic/updateCenter", existingCenter);
+        String adminNotificationMessage = "Center with id: " + existingCenter.getId() + ", and name: "
+                + existingCenter.getName() + ", account information has been updated";
+        String notificationMessage = "Your center account information has been updated : " + existingCenter.getName();
+        jwtFilter.sendNotifications("/topic/updateCenter", adminNotificationMessage,
+                user, notificationMessage, existingCenter);
         return existingCenter;
     }
 
@@ -2332,7 +2466,7 @@ public class CenterServiceImplement implements CenterService {
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
-    private void getCenterReviewFromMap(Map<String, String> requestMap, Center center, Member member)  {
+    private void getCenterReviewFromMap(Map<String, String> requestMap, Center center, Member member) {
         CenterReview centerReview = new CenterReview();
         centerReview.setCenter(center);
         centerReview.setMember(member);
@@ -2342,7 +2476,11 @@ public class CenterServiceImplement implements CenterService {
         centerReview.setLastUpdate(new Date());
         centerReview.setStatus("false"); // Initializing status
         CenterReview savedCenterReview = centerReviewRepo.save(centerReview);
-        simpMessagingTemplate.convertAndSend("/topic/getCenterReviewFromMap", savedCenterReview);
+        String adminNotificationMessage = "A new review with id: " + savedCenterReview.getId() + " and info"
+                + savedCenterReview.getComment() + ", has been added for center: " + center.getName();
+        String notificationMessage = "You have successfully added a review for center: " + center.getName();
+        jwtFilter.sendNotifications("/topic/getCenterReviewFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedCenterReview);
     }
 
     /**
@@ -2396,7 +2534,12 @@ public class CenterServiceImplement implements CenterService {
         centerAnnouncement.setLastUpdate(new Date());
         centerAnnouncement.setStatus(announcementRequest.getStatus());
         CenterAnnouncement savedCenterAnnouncement = centerAnnouncementRepo.save(centerAnnouncement);
-        simpMessagingTemplate.convertAndSend("/topic/getCenterAnnouncementFromMap", savedCenterAnnouncement);
+        String adminNotificationMessage = "A new announcement with id: " + savedCenterAnnouncement.getId()
+                + " and info" + savedCenterAnnouncement.getAnnouncement()
+                + ", has been added for center: " + center.getName();
+        String notificationMessage = "You have successfully added an announcement for center: " + center.getName();
+        jwtFilter.sendNotifications("/topic/getCenterAnnouncementFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedCenterAnnouncement);
     }
 
     private void getCenterEquipmentFromMap(EquipmentRequest equipmentRequest, Center center) throws IOException {
@@ -2440,9 +2583,13 @@ public class CenterServiceImplement implements CenterService {
         centerEquipment.setDescription(equipmentRequest.getDescription());
         centerEquipment.setDate(new Date());
         centerEquipment.setLastUpdate(new Date());
-
         CenterEquipment savedCenterEquipment = centerEquipmentRepo.save(centerEquipment);
-        simpMessagingTemplate.convertAndSend("/topic/getCenterEquipmentFromMap", savedCenterEquipment);
+        String adminNotificationMessage = "A new equipment with id: " + savedCenterEquipment.getId()
+                + " and info" + savedCenterEquipment.getName()
+                + ", has been added for center: " + center.getName();
+        String notificationMessage = "You have successfully added an equipment for your center: " + centerEquipment.getName();
+        jwtFilter.sendNotifications("/topic/getCenterEquipmentFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedCenterEquipment);
     }
 
     private CenterEquipment updateCenterEquipmentFromMap(CenterEquipment centerEquipment, EquipmentRequest equipmentRequest) throws IOException {
@@ -2495,7 +2642,12 @@ public class CenterServiceImplement implements CenterService {
         centerIntroduction.setDate(new Date());
         centerIntroduction.setLastUpdate(new Date());
         CenterIntroduction savedCenterIntroduction = centerIntroductionRepo.save(centerIntroduction);
-        simpMessagingTemplate.convertAndSend("/topic/getCenterIntroductionFromMap", savedCenterIntroduction);
+        String adminNotificationMessage = "A new introduction with id: " + savedCenterIntroduction.getId()
+                + " and info" + savedCenterIntroduction.getIntroduction()
+                + ", has been added for center: " + center.getName();
+        String notificationMessage = "You have successfully added an introduction for your center: " + centerIntroduction.getIntroduction();
+        jwtFilter.sendNotifications("/topic/getCenterIntroductionFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedCenterIntroduction);
     }
 
     private void getCenterLocationFromMap(LocationRequest locationRequest, Center center) throws IOException {
@@ -2517,7 +2669,13 @@ public class CenterServiceImplement implements CenterService {
         centerLocation.setLastUpdate(new Date());
 
         CenterLocation savedCenterLocation = centerLocationRepo.save(centerLocation);
-        simpMessagingTemplate.convertAndSend("/topic/getCenterLocationFromMap", savedCenterLocation);
+        String adminNotificationMessage = "A new location with id: " + savedCenterLocation.getId()
+                + " and info" + savedCenterLocation.getSubName()
+                + ", has been added for center: " + center.getName();
+        String notificationMessage = "You have successfully added a location for your center: "
+                + savedCenterLocation.getSubName();
+        jwtFilter.sendNotifications("/topic/getCenterLocationFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedCenterLocation);
     }
 
     private void getCenterPhotoAlbumFromMap(PhotoAlbumRequest photoAlbumRequest, Center center) throws IOException {
@@ -2534,9 +2692,14 @@ public class CenterServiceImplement implements CenterService {
         centerPhotoAlbum.setPhoto(fileName);
         centerPhotoAlbum.setDate(new Date());
         centerPhotoAlbum.setLastUpdate(new Date());
-
         CenterPhotoAlbum savedCenterPhotoAlbum = centerPhotoAlbumRepo.save(centerPhotoAlbum);
-        simpMessagingTemplate.convertAndSend("/topic/getCenterPhotoAlbumFromMap", savedCenterPhotoAlbum);
+        String adminNotificationMessage = "A new photo with id: " + savedCenterPhotoAlbum.getId()
+                + " and info" + savedCenterPhotoAlbum.getUuid()
+                + ", has been added for center: " + center.getName();
+        String notificationMessage = "You have successfully added a photo for your center: "
+                + savedCenterPhotoAlbum.getUuid();
+        jwtFilter.sendNotifications("/topic/getCenterPhotoAlbumFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedCenterPhotoAlbum);
     }
 
     private void getCenterVideoAlbumFromMap(VideoAlbumRequest videoAlbumRequest, Center center) throws IOException {
@@ -2553,9 +2716,14 @@ public class CenterServiceImplement implements CenterService {
         centerVideoAlbum.setVideo(fileName);
         centerVideoAlbum.setDate(new Date());
         centerVideoAlbum.setLastUpdate(new Date());
-
         CenterVideoAlbum savedCenterVideoAlbum = centerVideoAlbumRepo.save(centerVideoAlbum);
-        simpMessagingTemplate.convertAndSend("/topic/getCenterVideoAlbumFromMap", savedCenterVideoAlbum);
+        String adminNotificationMessage = "A new video with id: " + savedCenterVideoAlbum.getId()
+                + " and info" + savedCenterVideoAlbum.getUuid()
+                + ", has been added for center: " + center.getName();
+        String notificationMessage = "You have successfully added a video for your center: "
+                + savedCenterVideoAlbum.getUuid();
+        jwtFilter.sendNotifications("/topic/getCenterVideoAlbumFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedCenterVideoAlbum);
     }
 
     private void getCenterPricingFromMap(Map<String, String> requestMap, Center center) {
@@ -2584,7 +2752,13 @@ public class CenterServiceImplement implements CenterService {
 
         // Save centerPricing entity and broadcast the updated information
         CenterPricing savedCenterPricing = centerPricingRepo.save(centerPricing);
-        simpMessagingTemplate.convertAndSend("/topic/getCenterPricingFromMap", savedCenterPricing);
+        String adminNotificationMessage = "A new pricing with id: " + savedCenterPricing.getId()
+                + " and info" + savedCenterPricing.getPrice()
+                + ", has been added for center: " + center.getName();
+        String notificationMessage = "You have successfully added pricing for your center: "
+                + savedCenterPricing.getPrice();
+        jwtFilter.sendNotifications("/topic/getCenterPricingFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedCenterPricing);
     }
 
 
@@ -2693,7 +2867,7 @@ public class CenterServiceImplement implements CenterService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteCenterLocation(CenterLocation centerLocation) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(centerLocation.getCenter().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
     }
@@ -2705,7 +2879,7 @@ public class CenterServiceImplement implements CenterService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteCenterPhotoAlbum(CenterPhotoAlbum centerPhotoAlbum) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(centerPhotoAlbum.getCenter().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
     }
@@ -2717,7 +2891,7 @@ public class CenterServiceImplement implements CenterService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteCenterEquipment(CenterEquipment centerEquipment) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(centerEquipment.getCenter().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
     }
@@ -2729,7 +2903,7 @@ public class CenterServiceImplement implements CenterService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteCenterAnnouncement(CenterAnnouncement centerAnnouncement) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(centerAnnouncement.getCenter().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
     }
@@ -2741,7 +2915,7 @@ public class CenterServiceImplement implements CenterService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteCenterVideoAlbum(CenterVideoAlbum centerVideoAlbum) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(centerVideoAlbum.getCenter().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
     }
@@ -2753,7 +2927,7 @@ public class CenterServiceImplement implements CenterService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteCenterIntroduction(CenterIntroduction centerIntroduction) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(centerIntroduction.getCenter().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
     }
@@ -2765,7 +2939,7 @@ public class CenterServiceImplement implements CenterService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteCenterReview(CenterReview centerReview) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(centerReview.getCenter()
                 .getPartner().getUser().getEmail());
         return !jwtFilter.isAdmin() && !authorizedUser;

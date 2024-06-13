@@ -1,0 +1,33 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: berliz-server-deployment
+  replicas: 1
+  selector:
+    matchLabels:
+      app: berliz-server
+  template:
+    metadata:
+      name: berliz-server
+      labels:
+        app: berliz-server
+    spec:
+      containers:
+        - name: berliz-server-container
+          image: com.berliz
+          ports:
+            - containerPort: 8001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: berliz-server
+spec:
+  type: LoadBalancer
+  selector:
+    app: berliz-server
+  ports:
+    - port: 80
+      targetPort: 8001
+...

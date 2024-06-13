@@ -129,7 +129,7 @@ public class TaskServiceImplement implements TaskService {
 
             Task task = optional.get();
             String userEmail = task.getTrainer().getPartner().getUser().getEmail();
-            if (!(jwtFilter.isAdmin() || jwtFilter.getCurrentUser().equalsIgnoreCase(userEmail))) {
+            if (!(jwtFilter.isAdmin() || jwtFilter.getCurrentUserEmail().equalsIgnoreCase(userEmail))) {
 
             }
 
@@ -260,7 +260,7 @@ public class TaskServiceImplement implements TaskService {
             }
 
             Task task = optional.get();
-            String currentUser = jwtFilter.getCurrentUser();
+            String currentUser = jwtFilter.getCurrentUserEmail();
             if (!(jwtFilter.isAdmin() || task.getTrainer().getPartner().getUser().getEmail().equals(currentUser))) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -296,9 +296,7 @@ public class TaskServiceImplement implements TaskService {
                     subTask.setDate(new Date());
                     subTask.setName(subTaskJson.getString("name"));
                     Optional<Exercise> exerciseOptional = exerciseRepo.findById(Integer.valueOf(subTaskJson.getString("exerciseId")));
-                    if (optional.isPresent()) {
-                        subTask.setExercise(exerciseOptional.get());
-                    }
+                    subTask.setExercise(exerciseOptional.get());
                     subTasks.add(subTask);
                 }
                 subTasks = subTaskRepo.saveAll(subTasks);
@@ -306,7 +304,12 @@ public class TaskServiceImplement implements TaskService {
 
             task.setSubTasks(subTasks);
             Task savedTask = taskRepo.save(task);
-            simpMessagingTemplate.convertAndSend("/topic/getTaskFromMap", savedTask);
+            String adminNotificationMessage = "Task with id: " + savedTask.getId() + ", and info: "
+                    + savedTask.getDescription() + ", information has been updated";
+            String notificationMessage = "Your task information has been updated : "
+                    + savedTask.getDescription();
+            jwtFilter.sendNotifications("/topic/updateTask", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedTask);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Task updated successfully for " + task.getUser().getFirstname());
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -341,7 +344,12 @@ public class TaskServiceImplement implements TaskService {
             }
             subTask.setName(requestMap.get("name"));
             SubTask savedSubTask = subTaskRepo.save(subTask);
-            simpMessagingTemplate.convertAndSend("/topic/updateSubTask", savedSubTask);
+            String adminNotificationMessage = "Sub task with id: " + savedSubTask.getId() + ", and info: "
+                    + savedSubTask.getName() + ", information has been updated";
+            String notificationMessage = "Your sub task information has been updated : "
+                    + savedSubTask.getName();
+            jwtFilter.sendNotifications("/topic/updateSubTask", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedSubTask);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "subTask updated successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -375,7 +383,11 @@ public class TaskServiceImplement implements TaskService {
 
             task.setStatus(status);
             taskRepo.save(task);
-            simpMessagingTemplate.convertAndSend("/topic/updateTaskStatus", task);
+            String adminNotificationMessage = "Task with id: " + task.getId() +
+                    ", status has been set to " + status;
+            String notificationMessage = "You have successfully set your task status to: " + status;
+            jwtFilter.sendNotifications("/topic/updateTaskStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, task);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (
                 Exception ex) {
@@ -399,7 +411,11 @@ public class TaskServiceImplement implements TaskService {
             try {
                 Task task = optional.get();
                 taskRepo.deleteById(id);
-                simpMessagingTemplate.convertAndSend("/topic/deleteTask", task);
+                String adminNotificationMessage = "Task with id: " + task.getId() + ", and info: "
+                        + task.getDescription() + ", has been deleted";
+                String notificationMessage = "You have successfully deleted your task: " + task.getDescription();
+                jwtFilter.sendNotifications("/topic/deleteTask", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, task);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Task deleted successfully");
             } catch (DataIntegrityViolationException ex) {
                 // Handle foreign key constraint violation when deleting
@@ -427,7 +443,11 @@ public class TaskServiceImplement implements TaskService {
             try {
                 SubTask subTask = optional.get();
                 subTaskRepo.deleteById(id);
-                simpMessagingTemplate.convertAndSend("/topic/deleteSubTask", subTask);
+                String adminNotificationMessage = "Sub task with id: " + subTask.getId() + ", and info: "
+                        + subTask.getName() + ", has been deleted";
+                String notificationMessage = "You have successfully deleted your sub task: " + subTask.getName();
+                jwtFilter.sendNotifications("/topic/deleteSubTask", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, subTask);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "subTask deleted successfully");
             } catch (DataIntegrityViolationException ex) {
                 // Handle foreign key constraint violation when deleting
@@ -470,9 +490,7 @@ public class TaskServiceImplement implements TaskService {
                 subTask.setDate(new Date());
                 subTask.setName(subTaskJson.getString("name"));
                 Optional<Exercise> optional = exerciseRepo.findById(Integer.valueOf(subTaskJson.getString("exerciseId")));
-                if (optional.isPresent()) {
-                    subTask.setExercise(optional.get());
-                }
+                optional.ifPresent(subTask::setExercise);
                 subTasks.add(subTask);
             }
             subTasks = subTaskRepo.saveAll(subTasks);
@@ -480,7 +498,12 @@ public class TaskServiceImplement implements TaskService {
 
         task.setSubTasks(subTasks);
         Task savedTask = taskRepo.save(task);
-        simpMessagingTemplate.convertAndSend("/topic/getTaskFromMap", savedTask);
+        String adminNotificationMessage = "A new task with id: " + savedTask.getId()
+                + " and info" + savedTask.getDescription() + ", has been added";
+        String notificationMessage = "You have successfully added a new task: "
+                + savedTask.getDescription();
+        jwtFilter.sendNotifications("/topic/getTaskFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedTask);
     }
 
     private boolean validateRequestFromMap(Map<String, String> requestMap, boolean validId) {

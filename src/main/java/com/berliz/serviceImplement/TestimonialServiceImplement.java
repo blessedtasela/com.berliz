@@ -80,7 +80,7 @@ public class TestimonialServiceImplement implements TestimonialService {
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "You have successfully added "
                         + user.getFirstname() + " testimonial");
             } else {
-                User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+                User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
                 if (user == null) {
                     return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Invalid user");
                 }
@@ -146,7 +146,7 @@ public class TestimonialServiceImplement implements TestimonialService {
             }
 
             Testimonial testimonial = optional.get();
-            String currentUser = jwtFilter.getCurrentUser();
+            String currentUser = jwtFilter.getCurrentUserEmail();
             if (!(jwtFilter.isAdmin() || testimonial.getUser().getEmail().equals(currentUser))) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -177,7 +177,12 @@ public class TestimonialServiceImplement implements TestimonialService {
                         " updated your testimonial information";
             }
 
-            simpMessagingTemplate.convertAndSend("/topic/updateTestimonial", savedTestimonial);
+            String adminNotificationMessage = "Testimonial with id: " + savedTestimonial.getId() + ", and info: "
+                    + savedTestimonial.getTestimonial() + ", information has been updated";
+            String notificationMessage = "Your testimonial information has been updated : "
+                    + savedTestimonial.getTestimonial();
+            jwtFilter.sendNotifications("/topic/updateTestimonial", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedTestimonial);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -200,7 +205,12 @@ public class TestimonialServiceImplement implements TestimonialService {
             try {
                 Testimonial testimonial = optional.get();
                 testimonialRepo.deleteById(id);
-                simpMessagingTemplate.convertAndSend("/topic/deleteTestimonial", testimonial);
+                String adminNotificationMessage = "Testimonial with id: " + testimonial.getId() + ", and info: "
+                        + testimonial.getTestimonial() + ", has been deleted";
+                String notificationMessage = "You have successfully deleted your testimonial: "
+                        + testimonial.getTestimonial();
+                jwtFilter.sendNotifications("/topic/deleteTestimonial", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, testimonial);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Testimonial deleted successfully");
             } catch (DataIntegrityViolationException ex) {
                 // Handle foreign key constraint violation when deleting
@@ -239,7 +249,11 @@ public class TestimonialServiceImplement implements TestimonialService {
 
             testimonial.setStatus(status);
             testimonialRepo.save(testimonial);
-            simpMessagingTemplate.convertAndSend("/topic/updateTestimonialStatus", testimonial);
+            String adminNotificationMessage = "Testimonial with id: " + testimonial.getId() +
+                    ", status has been set to " + status;
+            String notificationMessage = "You have successfully set your testimonial status to: " + status;
+            jwtFilter.sendNotifications("/topic/updateTestimonialStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, testimonial);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (
                 Exception ex) {
@@ -275,7 +289,12 @@ public class TestimonialServiceImplement implements TestimonialService {
         testimonial.setLastUpdate(new Date());
         testimonial.setStatus("false");
         Testimonial savedTestimonial = testimonialRepo.save(testimonial);
-        simpMessagingTemplate.convertAndSend("/topic/getTestimonialFromMap", savedTestimonial);
+        String adminNotificationMessage = "A new testimonial with id: " + savedTestimonial.getId()
+                + " and info" + savedTestimonial.getTestimonial() + ", has been added";
+        String notificationMessage = "You have successfully added a new testimonial: "
+                + savedTestimonial.getTestimonial();
+        jwtFilter.sendNotifications("/topic/getTestimonialFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedTestimonial);
     }
 
     private boolean validateRequestFromMap(Map<String, String> requestMap, boolean validId) {

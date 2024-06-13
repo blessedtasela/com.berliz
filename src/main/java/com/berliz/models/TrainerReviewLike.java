@@ -33,7 +33,7 @@ public class TrainerReviewLike implements Serializable {
     @JoinColumn(name = "trainerReview_fk")
     private TrainerReview trainerReview;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
 }

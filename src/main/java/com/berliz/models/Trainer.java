@@ -77,10 +77,10 @@ public class Trainer implements Serializable {
     )
     private Set<Category> categorySet = new HashSet<>();
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "lastUpdate", columnDefinition = "DATE")
+    @Column(name = "lastUpdate", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 
     @Column(name = "status")

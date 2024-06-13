@@ -25,6 +25,9 @@ public interface TodoListRest {
     @PutMapping(path = "/update")
     ResponseEntity<String> updateTodo(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
 
+    @PutMapping(path = "/bulkAction")
+    ResponseEntity<String> bulkAction(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
     @PutMapping(path = "/updateStatus/{id}/{status}")
     ResponseEntity<String> updateStatus(@PathVariable Integer id, @PathVariable String status) throws JsonProcessingException;
 

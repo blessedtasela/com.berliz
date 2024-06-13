@@ -66,13 +66,13 @@ public class MemberServiceImplement implements MemberService {
             }
 
             if (jwtFilter.isAdmin()) {
-                if (requestMap.get("id").isEmpty()) {
+                if (requestMap.get("userId").isEmpty()) {
                     return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide userId");
                 }
 
-                User user = userRepo.findByEmail(requestMap.get("email"));
+                User user = userRepo.findByUserId(Integer.valueOf(requestMap.get("userId")));
                 if (user == null) {
-                    return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "User email not found in db");
+                    return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "User not found in db");
                 }
 
                 String userRole = user.getRole();
@@ -90,7 +90,7 @@ public class MemberServiceImplement implements MemberService {
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "You have successfully added "
                         + user.getFirstname() + " as a client");
             } else {
-                User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+                User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
                 if (user == null) {
                     return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, "Invalid user");
                 }
@@ -155,7 +155,7 @@ public class MemberServiceImplement implements MemberService {
             }
 
             Member member = optional.get();
-            String currentUser = jwtFilter.getCurrentUser();
+            String currentUser = jwtFilter.getCurrentUserEmail();
             if (!(jwtFilter.isAdmin() || member.getUser().getEmail().equals(currentUser))) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -206,7 +206,12 @@ public class MemberServiceImplement implements MemberService {
                         " updated your client information";
             }
 
-            simpMessagingTemplate.convertAndSend("/topic/updateClient", savedMember);
+            String adminNotificationMessage = "Member with id: " + savedMember.getId() + ", and info: "
+                    + savedMember.getUser().getEmail() + ", information has been updated";
+            String notificationMessage = "Your membership information has been updated : "
+                    + savedMember.getUser().getEmail();
+            jwtFilter.sendNotifications("/topic/updateMember", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedMember);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -229,7 +234,12 @@ public class MemberServiceImplement implements MemberService {
             try {
                 Member member = optional.get();
                 memberRepo.deleteById(id);
-                simpMessagingTemplate.convertAndSend("/topic/deleteMember", member);
+                String adminNotificationMessage = "Member with id: " + member.getId() + ", and info: "
+                        + member.getUser().getEmail() + ", has been deleted";
+                String notificationMessage = "You have successfully deleted your member account: "
+                        + member.getUser().getEmail();
+                jwtFilter.sendNotifications("/topic/deleteMember", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, member);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Member deleted successfully");
             } catch (DataIntegrityViolationException ex) {
                 // Handle foreign key constraint violation when deleting
@@ -268,7 +278,11 @@ public class MemberServiceImplement implements MemberService {
 
             member.setStatus(status);
             memberRepo.save(member);
-            simpMessagingTemplate.convertAndSend("/topic/updateMemberStatus", member);
+            String adminNotificationMessage = "Member with id: " + member.getId() +
+                    ", status has been set to " + status;
+            String notificationMessage = "You have successfully set your membership status to: " + status;
+            jwtFilter.sendNotifications("/topic/updateMemberStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, member);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (
                 Exception ex) {
@@ -350,7 +364,6 @@ public class MemberServiceImplement implements MemberService {
     private void getMemberFromMap(Map<String, String> requestMap, User user) throws ParseException {
         Member member = new Member();
         member.setUser(user);
-
         double height = Double.parseDouble(requestMap.get("height"));
         member.setHeight(height);
         double weight = Double.parseDouble(requestMap.get("weight"));
@@ -379,7 +392,11 @@ public class MemberServiceImplement implements MemberService {
         member.setLastUpdate(new Date());
         member.setStatus("false");
         Member savedMember = memberRepo.save(member);
-        simpMessagingTemplate.convertAndSend("/topic/getMemberFromMap", savedMember);
+        String adminNotificationMessage = "A new member with id: " + savedMember.getId()
+                + " and info" + savedMember.getUser().getEmail() + ", has been added";
+        String notificationMessage = "You have successfully added a new member: " + savedMember.getUser().getEmail();
+        jwtFilter.sendNotifications("/topic/getMemberFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedMember);
     }
 
     private boolean validateRequestFromMap(Map<String, String> requestMap, boolean validId) {

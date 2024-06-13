@@ -6,6 +6,7 @@ import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.util.Date;
+import java.util.List;
 
 @Data
 @Entity
@@ -22,15 +23,17 @@ public class TrainerBenefit {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "trainer_fk", nullable = false)
+    @JoinColumn(name = "trainer_fk", nullable = false, unique = true)
     private Trainer trainer;
 
-    @Column(name = "benefit", columnDefinition = "TEXT")
-    private String benefit;
+    @ElementCollection
+    @CollectionTable(name = "benefits", joinColumns = @JoinColumn(name = "trainer_benefit_id"))
+    @Column(name = "benefits")
+    private List<String> benefits;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "last_update", columnDefinition = "DATE")
+    @Column(name = "last_update", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 }

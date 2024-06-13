@@ -75,4 +75,16 @@ public interface SubscriptionRest {
     @GetMapping(path = "/getSubscription")
     ResponseEntity<Subscription> getSubscription(Integer id);
 
+    /**
+     * Get subscriptions related to a user.
+     *
+     * @return ResponseEntity containing the subscription with the specified ID.
+     */
+    @GetMapping(path = "/getMySubscriptions")
+    ResponseEntity<List<Subscription>> getMySubscriptions();
+
+    @PutMapping(path = "/bulkAction")
+    ResponseEntity<String> bulkAction(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;
+
+
 }

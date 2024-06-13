@@ -67,8 +67,8 @@ public class TagServiceImplement implements TagService {
     @Override
     public ResponseEntity<List<Tag>> getAllTags() {
         try {
-            log.info("inside if block for getAllTags{}");
-            return new ResponseEntity<List<Tag>>(tagRepo.getAllTags(), HttpStatus.OK);
+            log.info("inside if block for getAllTags");
+            return new ResponseEntity<>(tagRepo.getAllTags(), HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -103,8 +103,13 @@ public class TagServiceImplement implements TagService {
             tag.setName(requestMap.get("name"));
             tag.setDescription(requestMap.get("description"));
             tag.setLastUpdate(new Date());
-            tagRepo.save(tag);
-            simpMessagingTemplate.convertAndSend("/topic/updateTag", tag);
+            Tag savedTag = tagRepo.save(tag);
+            String adminNotificationMessage = "Tag with id: " + savedTag.getId() + ", and info: / "
+                    + savedTag.getName() + " /, has been updated successfully";
+            String notificationMessage = "You have successfully updated tag: "
+                    + savedTag.getName();
+            jwtFilter.sendNotifications("/topic/updateTag", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedTag);
             return buildResponse(HttpStatus.OK, "Tag updated successfully");
 
         } catch (Exception ex) {
@@ -147,9 +152,13 @@ public class TagServiceImplement implements TagService {
 
             tag.setStatus(status);
             tagRepo.save(tag);
-            simpMessagingTemplate.convertAndSend("/topic/updateTagStatus", tag);
+            String adminNotificationMessage = "Tag with id: " + tag.getId() + ", status "
+                    + ", has been set to: " + status;
+            String notificationMessage = "You have successfully set tag with id: "
+                    + tag.getId() + " status to : " + status;
+            jwtFilter.sendNotifications("/topic/updateTagStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, tag);
             return buildResponse(HttpStatus.OK, responseMessage);
-
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -174,6 +183,7 @@ public class TagServiceImplement implements TagService {
                 return ResponseEntity.badRequest().body("Tag id not found");
             }
         } catch (Exception ex) {
+            ex.printStackTrace();
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
     }
@@ -199,7 +209,12 @@ public class TagServiceImplement implements TagService {
             log.info("inside optional {}", id);
             Tag tag = optional.get();
             tagRepo.deleteById(id);
-            simpMessagingTemplate.convertAndSend("/topic/deleteTag", tag);
+            String adminNotificationMessage = "Tag with id: " + tag.getId() + ", has "
+                    + ", has been deleted successfully!";
+            String notificationMessage = "You have successfully deleted tag with id: "
+                    + tag.getId();
+            jwtFilter.sendNotifications("/topic/deleteTag", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, tag);
             return buildResponse(HttpStatus.OK, "Tag deleted successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -237,7 +252,7 @@ public class TagServiceImplement implements TagService {
         }
     }
 
-    private Tag getTagFromMap(Map<String, String> requestMap, Boolean isAdd) {
+    private void getTagFromMap(Map<String, String> requestMap, Boolean isAdd) {
         Tag tag = new Tag();
         Date currentDate = new Date();
         if (isAdd) {
@@ -249,8 +264,11 @@ public class TagServiceImplement implements TagService {
         tag.setStatus("true");
         tag.setLastUpdate(currentDate);
         Tag savedTag = tagRepo.save(tag);
-        simpMessagingTemplate.convertAndSend("/topic/getTagFromMap", savedTag);
-        return tag;
+        String adminNotificationMessage = "Tag with id: " + savedTag.getId() + ", and info: / "
+                + savedTag.getName() + " /, has been created successfully";
+        String notificationMessage = "You have successfully added a new tag: " + savedTag.getName();
+        jwtFilter.sendNotifications("/topic/getTagFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedTag);
     }
 
     /**

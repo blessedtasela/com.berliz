@@ -3,7 +3,9 @@ package com.berliz.serviceImplement;
 import com.berliz.JWT.JWTFilter;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.Brand;
+import com.berliz.models.User;
 import com.berliz.repositories.BrandRepo;
+import com.berliz.repositories.UserRepo;
 import com.berliz.services.BrandService;
 import com.berliz.utils.BerlizUtilities;
 import com.google.common.base.Strings;
@@ -27,6 +29,9 @@ public class BrandServiceImplement implements BrandService {
     BrandRepo brandRepo;
 
     @Autowired
+    UserRepo userRepo;
+
+    @Autowired
     SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
@@ -37,7 +42,8 @@ public class BrandServiceImplement implements BrandService {
                 if (validateBrandMap(requestMap, false)) {
                     Brand brand = brandRepo.findByName(requestMap.get("name"));
                     if (brand == null) {
-                        getBrandFromMap(requestMap);
+                        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
+                        getBrandFromMap(requestMap, user);
                         return BerlizUtilities.getResponseEntity("Brand added successfully", HttpStatus.OK);
                     } else {
                         return BerlizUtilities.getResponseEntity("Brand exists", HttpStatus.BAD_REQUEST);
@@ -77,6 +83,7 @@ public class BrandServiceImplement implements BrandService {
                 if (isValid) {
                     Optional<Brand> optional = brandRepo.findById(Integer.parseInt(requestMap.get("id")));
                     if (optional.isPresent()) {
+                        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
                         log.info("inside optional {}", requestMap);
                         brandRepo.updateBrand(
                                 requestMap.get("name"),
@@ -84,6 +91,11 @@ public class BrandServiceImplement implements BrandService {
                                 Float.parseFloat(requestMap.get("ratings")),
                                 Integer.parseInt(requestMap.get("id"))
                         );
+                        String adminNotificationMessage = "Brand with id: " + optional.get().getId() +
+                                ", has been updated";
+                        String notificationMessage = "YBrand information has been updated : " + optional.get().getId();
+                        jwtFilter.sendNotifications("/topic/updateBrand", adminNotificationMessage,
+                                user, notificationMessage, optional.get());
                         return BerlizUtilities.getResponseEntity("Brand updated successfully", HttpStatus.OK);
                     } else {
                         return BerlizUtilities.getResponseEntity("Brand id not found", HttpStatus.BAD_REQUEST);
@@ -107,8 +119,14 @@ public class BrandServiceImplement implements BrandService {
             if (jwtFilter.isAdmin()) {
                 Optional<Brand> optional = brandRepo.findById(id);
                 if (optional.isPresent()) {
+                    User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
                     log.info("inside optional {}", id);
                     brandRepo.deleteById(id);
+                    String adminNotificationMessage = "Brand with id: " + optional.get().getId() + ", and name "
+                            + optional.get().getName() + ", has been deleted";
+                    String notificationMessage = "You have successfully deleted brand : " + optional.get().getName();
+                    jwtFilter.sendNotifications("/topic/deleteBrand", adminNotificationMessage,
+                            user, notificationMessage, optional.get());
                     return BerlizUtilities.getResponseEntity("Brand deleted successfully", HttpStatus.OK);
                 } else {
                     return BerlizUtilities.getResponseEntity("Brand id not found", HttpStatus.BAD_REQUEST);
@@ -127,25 +145,35 @@ public class BrandServiceImplement implements BrandService {
         try {
             log.info("Inside updateStatus {}", id);
             String status;
-            if (jwtFilter.isAdmin()) {
-                Optional<Brand> optional = brandRepo.findById(id);
-                if (optional.isPresent()) {
-                    log.info("Inside optional {}", optional);
-                    status = optional.get().getStatus();
-                    if (status.equalsIgnoreCase("true")) {
-                        status = "false";
-                        brandRepo.updateStatus(id, status);
-                        return BerlizUtilities.getResponseEntity("Brand Status updated successfully. Now DISABLED", HttpStatus.OK);
-                    } else {
-                        status = "true";
-                        brandRepo.updateStatus(id, status);
-                        return BerlizUtilities.getResponseEntity("Brand Status updated successfully. Now ACTIVE", HttpStatus.OK);
-                    }
-                } else {
-                    return BerlizUtilities.getResponseEntity("Brand id not found", HttpStatus.BAD_REQUEST);
-                }
-            } else {
+            if (!jwtFilter.isAdmin()) {
                 return BerlizUtilities.getResponseEntity(BerlizConstants.UNAUTHORIZED_REQUEST, HttpStatus.UNAUTHORIZED);
+            }
+            Optional<Brand> optional = brandRepo.findById(id);
+            if (optional.isEmpty()) {
+                return BerlizUtilities.getResponseEntity("Brand id not found", HttpStatus.BAD_REQUEST);
+            }
+            log.info("Inside optional {}", optional);
+            status = optional.get().getStatus();
+            Brand brand = optional.get();
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
+            if (status.equalsIgnoreCase("true")) {
+                status = "false";
+                brandRepo.updateStatus(id, status);
+                String adminNotificationMessage = "Brand with id: " + brand.getId() +
+                        ", account status has been set to " + status;
+                String notificationMessage = "You have successfully set your brand status to : " + status;
+                jwtFilter.sendNotifications("/topic/updateUserStatus", adminNotificationMessage,
+                        user, notificationMessage, brand);
+                return BerlizUtilities.getResponseEntity("Brand Status updated successfully. Now DISABLED", HttpStatus.OK);
+            } else {
+                status = "true";
+                brandRepo.updateStatus(id, status);
+                String adminNotificationMessage = "Brand with id: " + brand.getId() +
+                        ", account status has been set to " + status;
+                String notificationMessage = "You have successfully set your brand status to : " + status;
+                jwtFilter.sendNotifications("/topic/updateUserStatus", adminNotificationMessage,
+                        user, notificationMessage, brand);
+                return BerlizUtilities.getResponseEntity("Brand Status updated successfully. Now ACTIVE", HttpStatus.OK);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -182,7 +210,7 @@ public class BrandServiceImplement implements BrandService {
         }
     }
 
-    private Brand getBrandFromMap(Map<String, String> requestMap) {
+    private void getBrandFromMap(Map<String, String> requestMap, User user) {
         Brand brand = new Brand();
         Date currentDate = new Date();
         brand.setName(requestMap.get("name"));
@@ -192,7 +220,10 @@ public class BrandServiceImplement implements BrandService {
         brand.setLastUpdate(currentDate);
         brand.setDate(currentDate);
         Brand savedBrand = brandRepo.save(brand);
-        simpMessagingTemplate.convertAndSend("/topic/getBrandFromMap", savedBrand);
-        return brand;
+        String adminNotificationMessage = "A new brand with id: " + savedBrand.getId() + " and description: "
+                + savedBrand.getDescription() + ", has been added for " + savedBrand.getName();
+        String notificationMessage = "You have successfully added a new brand: " + savedBrand.getName();
+        jwtFilter.sendNotifications("/topic/getBrandFromMap", adminNotificationMessage,
+                user, notificationMessage, savedBrand);
     }
 }

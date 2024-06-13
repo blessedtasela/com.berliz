@@ -28,7 +28,7 @@ public interface UserRepo extends JpaRepository<User, Integer> {
 
     @Transactional
     @Modifying
-    Integer updateUserRole(@Param("role") String role, @Param("id") Integer id);
+    void updateUserRole(@Param("role") String role, @Param("id") Integer id);
 
     User findByEmail(String email);
 

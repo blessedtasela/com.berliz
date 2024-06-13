@@ -33,7 +33,7 @@ public class CenterLike implements Serializable {
     @JoinColumn(name = "center_fk")
     private Center center;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
 }

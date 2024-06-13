@@ -33,7 +33,7 @@ public class CategoryLike implements Serializable {
     @JoinColumn(name = "category_fk")
     private Category category;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
 }

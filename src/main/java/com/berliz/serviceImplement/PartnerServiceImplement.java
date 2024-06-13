@@ -63,7 +63,7 @@ public class PartnerServiceImplement implements PartnerService {
             }
 
             String role = request.getRole();
-            if (!isValidRole(role)) {
+            if (isValidRole(role)) {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Invalid role value. Allowed values are 'store', 'center', or 'trainer'");
             }
 
@@ -98,8 +98,8 @@ public class PartnerServiceImplement implements PartnerService {
 
             } else {
                 Integer userId = jwtFilter.getCurrentUserId();
-                User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
-                if (user ==  null) {
+                User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
+                if (user == null) {
                     return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid user");
                 }
 
@@ -147,7 +147,7 @@ public class PartnerServiceImplement implements PartnerService {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
-            if (!isValidRole(role)) {
+            if (isValidRole(role)) {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Invalid role value. Allowed values are 'store', 'center'," +
                         " 'trainer', or 'driver'");
             }
@@ -158,7 +158,7 @@ public class PartnerServiceImplement implements PartnerService {
             }
 
             Partner existingPartner = optional.get();
-            String currentUser = jwtFilter.getCurrentUser();
+            String currentUser = jwtFilter.getCurrentUserEmail();
             if (!(jwtFilter.isAdmin() || existingPartner.getUser().getEmail().equals(currentUser))) {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -190,7 +190,12 @@ public class PartnerServiceImplement implements PartnerService {
                         " updated your partnership application";
             }
 
-            simpMessagingTemplate.convertAndSend("/topic/updatePartner", existingPartner);
+            String adminNotificationMessage = "Partner with id: " + existingPartner.getId() + ", and info: "
+                    + existingPartner.getUser().getEmail() + ", information has been updated";
+            String notificationMessage = "Your partnership information has been updated : "
+                    + existingPartner.getUser().getEmail();
+            jwtFilter.sendNotifications("/topic/updatePartner", adminNotificationMessage,
+                    existingPartner.getUser(), notificationMessage, existingPartner);
             return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -225,7 +230,12 @@ public class PartnerServiceImplement implements PartnerService {
             }
             try {
                 partnerRepo.delete(partner);
-                simpMessagingTemplate.convertAndSend("/topic/deletePartner", partner);
+                String adminNotificationMessage = "Partner with id: " + partner.getId() + ", and info: "
+                        + partner.getUser().getEmail() + ", has been deleted";
+                String notificationMessage = "You have successfully deleted your partnership: "
+                        + partner.getUser().getEmail();
+                jwtFilter.sendNotifications("/topic/deletePartner", adminNotificationMessage,
+                        partner.getUser(), notificationMessage, partner);
                 return buildResponse(HttpStatus.OK, "Partner deleted successfully");
             } catch (DataIntegrityViolationException ex) {
                 // Handle foreign key constraint violation when deleting
@@ -249,14 +259,13 @@ public class PartnerServiceImplement implements PartnerService {
             }
             String status;
             Optional<Partner> optional = partnerRepo.findById(id);
-            Optional<User> user = userRepo.findById(optional.get().getUser().getId());
-
             if (optional.isEmpty()) {
                 return buildResponse(HttpStatus.NOT_FOUND, "Partner id not found");
             }
 
             log.info("Inside optional {}", optional);
-            Integer userId = user.get().getId();
+            User user = optional.get().getUser();
+            Integer userId = user.getId();
             String role = optional.get().getRole();
             String responseMessage;
             Partner partner = optional.get();
@@ -285,7 +294,11 @@ public class PartnerServiceImplement implements PartnerService {
             partnerRepo.save(partner);
             emailUtilities.sendPartnerShipStatusMailToAdmins(status, optional.get().getUser().getEmail(), userRepo.getAllAdminsMail());
             emailUtilities.sendPartnerShipStatusMailToUser(status, optional.get().getUser().getEmail(), role);
-            simpMessagingTemplate.convertAndSend("/topic/updatePartnerStatus", partner);
+            String adminNotificationMessage = "Partner with id: " + partner.getId() +
+                    ", status has been set to " + status;
+            String notificationMessage = "You have successfully set your partnership status to: " + status;
+            jwtFilter.sendNotifications("/topic/updatePartnerStatus", adminNotificationMessage,
+                    partner.getUser(), notificationMessage, partner);
             return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -296,7 +309,7 @@ public class PartnerServiceImplement implements PartnerService {
     @Override
     public ResponseEntity<String> updateFile(PartnerRequest request) throws JsonProcessingException {
         try {
-            log.info("Inside updateFile", request);
+            log.info("Inside updateFile {}", request);
             boolean isValid = request != null;
 
             if (!isValid) {
@@ -314,7 +327,7 @@ public class PartnerServiceImplement implements PartnerService {
             Partner existingPartner = optional.get();
 
             // Check if the logged-in user has permission to update the partner
-            String currentUser = jwtFilter.getCurrentUser();
+            String currentUser = jwtFilter.getCurrentUserEmail();
             if (!(jwtFilter.isAdmin() || existingPartner.getUser().getEmail().equals(currentUser))) {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -335,7 +348,12 @@ public class PartnerServiceImplement implements PartnerService {
             // Save the updated partner in the repository
             partnerRepo.save(existingPartner);
 
-            simpMessagingTemplate.convertAndSend("/topic/updatePartnerFile", existingPartner);
+            String adminNotificationMessage = "Partner with id: " + existingPartner.getId() + ", and info: "
+                    + existingPartner.getUser().getEmail() + ", files has been updated";
+            String notificationMessage = "Your partnership files has been updated : "
+                    + existingPartner.getUser().getEmail();
+            jwtFilter.sendNotifications("/topic/updatePartner", adminNotificationMessage,
+                    existingPartner.getUser(), notificationMessage, existingPartner);
             return buildResponse(HttpStatus.OK, "Partner files updated successfully");
 
         } catch (Exception ex) {
@@ -347,7 +365,7 @@ public class PartnerServiceImplement implements PartnerService {
     @Override
     public ResponseEntity<Partner> getPartner() {
         try {
-            log.info("Inside getPartner", jwtFilter.getCurrentUser());
+            log.info("Inside getPartner {}", jwtFilter.getCurrentUserEmail());
 
             // Get the current user's ID from the JWT token
             Integer userId = jwtFilter.getCurrentUserId();
@@ -378,7 +396,6 @@ public class PartnerServiceImplement implements PartnerService {
     public ResponseEntity<String> rejectApplication(Integer id) throws JsonProcessingException {
         try {
             log.info("Inside rejectApplication {}", id);
-
             if (!jwtFilter.isAdmin()) {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -390,12 +407,18 @@ public class PartnerServiceImplement implements PartnerService {
             // Get partner's email and role for sending notification
             String email = optional.get().getUser().getEmail();
             String role = optional.get().getRole();
+            Partner partner = optional.get();
             String response = email + " partnership application " + role + " has been rejected";
 
             // Send application rejection notification
             emailUtilities.sendPartnershipFailedMail(email, role);
-            simpMessagingTemplate.convertAndSend("/topic/rejectPartnerApplication", response);
-            return buildResponse(HttpStatus.OK, "Mail sent successfully. Application rejected");
+            String adminNotificationMessage = "Partner with id: " + partner.getId() + ", and info: "
+                    + partner.getUser().getEmail() + ", application has been rejected";
+            String notificationMessage = "Sorry, your partnership application has been rejected: "
+                    + partner.getUser().getEmail();
+            jwtFilter.sendNotifications("/topic/rejectPartnerApplication", adminNotificationMessage,
+                    partner.getUser(), notificationMessage, partner);
+            return buildResponse(HttpStatus.OK, "Mail sent successfully. " + response);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -422,10 +445,9 @@ public class PartnerServiceImplement implements PartnerService {
      * Creates and returns a new Partner object based on the provided requestMap and userId.
      *
      * @param request A map containing partner data from the request
-     * @param user  The user associated with the partner
-     * @return The created Partner object
+     * @param user    The user associated with the partner
      */
-    private Partner getPartnerFromMap(PartnerRequest request, User user) throws IOException {
+    private void getPartnerFromMap(PartnerRequest request, User user) throws IOException {
         // Initialize Partner and User objects
         Partner partner = new Partner();
         partner.setUser(user);
@@ -444,8 +466,13 @@ public class PartnerServiceImplement implements PartnerService {
         partner.setLastUpdate(new Date());
         partner.setStatus("false");
         Partner savedPartner = partnerRepo.save(partner);
-        simpMessagingTemplate.convertAndSend("/topic/getPartnerFromMap", savedPartner);
-        return partner;
+        String adminNotificationMessage = "Partner with id: " + partner.getId() + ", and info: "
+                + partner.getUser().getEmail() + ", application has been added successfully";
+        String notificationMessage = "You have successfully added a partnership application: "
+                + partner.getUser().getEmail();
+        jwtFilter.sendNotifications("/topic/getPartnerFromMap", adminNotificationMessage,
+                partner.getUser(), notificationMessage, savedPartner);
+        simpMessagingTemplate.convertAndSend("/topic/", savedPartner);
     }
 
     /**
@@ -457,7 +484,7 @@ public class PartnerServiceImplement implements PartnerService {
     private boolean isValidRole(String role) {
         List<String> validRoles = Arrays.asList("store", "driver", "trainer", "center");
         String lowercaseRole = role.toLowerCase();
-        return validRoles.contains(lowercaseRole);
+        return !validRoles.contains(lowercaseRole);
     }
 
     /**

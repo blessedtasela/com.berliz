@@ -137,10 +137,15 @@ public class UserServiceImplement implements UserService {
                 user.setToken("");
                 user.setStatus("true");
                 userRepo.save(user);
-                simpMessagingTemplate.convertAndSend("/topic/activateAccount", user);
+                emailUtilities.sendStatusMailToUser("true", "User", user.getEmail());
+                String adminNotificationMessage = "User with id: " + user.getId() +
+                        ", account has been activated  for " + user.getEmail();
+                String notificationMessage = "You have successfully activated your user account: " + user.getEmail();
+                jwtFilter.sendNotifications("/topic/activateAccount", adminNotificationMessage,
+                        user, notificationMessage, user);
                 return buildResponse(HttpStatus.OK, "Your account has successfully been activated");
             } else {
-                return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+                return buildResponse(HttpStatus.UNAUTHORIZED, "Code is invalid");
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -256,6 +261,17 @@ public class UserServiceImplement implements UserService {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.EMAIL_EXISTS);
             }
             user = new User();
+            user.setFirstname("");
+            user.setLastname("");
+            user.setPhone("");
+            user.setDob("");
+            user.setGender("");
+            user.setCountry("");
+            user.setState("");
+            user.setCity("");
+            user.setAddress("");
+            user.setPostalCode(0);
+            user.setProfilePhoto(new byte[0]);
             user.setEmail(requestMap.get("email"));
             user.setDate(new Date());
             user.setLastUpdate(new Date());
@@ -264,6 +280,12 @@ public class UserServiceImplement implements UserService {
             user.setPassword(passwordEncoder.encode(requestMap.get("password")));
             userRepo.save(user);
             confirmAccount(requestMap.get("email"));
+            String adminNotificationMessage = "A new user and incomplete account information with id: " + user.getId()
+                    + " and email: " + user.getEmail() + ", has been added for " + user.getEmail();
+            String notificationMessage = "You have successfully created your user account: " + user.getEmail()
+                    + " and it is incomplete";
+            jwtFilter.sendNotifications("/topic/getUserFromMap", adminNotificationMessage,
+                    user, notificationMessage, user);
             return buildResponse(HttpStatus.OK, BerlizConstants.SIGNUP_SUCCESS);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -287,7 +309,7 @@ public class UserServiceImplement implements UserService {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Sorry, email does not exist");
             }
 
-            if(user.getStatus().equalsIgnoreCase("true")){
+            if (user.getStatus().equalsIgnoreCase("true")) {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Account is already active");
 
             }
@@ -300,6 +322,46 @@ public class UserServiceImplement implements UserService {
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
+    @Override
+    public ResponseEntity<String> forcePasswordChange(Integer id, String password) throws JsonProcessingException {
+        log.info("Inside forcePasswordChange {}", id);
+        try {
+            boolean isValidRequest = id != null && password != null;
+            log.info("is request valid? {}", isValidRequest);
+            if (!jwtFilter.isAdmin() &&
+                    !jwtFilter.getCurrentUser().getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN)) {
+                return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            if (!isValidRequest) {
+                return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
+            }
+
+            User user = userRepo.findByUserId(id);
+            if (Objects.isNull(user)) {
+                return buildResponse(HttpStatus.BAD_REQUEST, "Sorry, user does not exist");
+            }
+
+            if (user.getStatus().equalsIgnoreCase("false")) {
+                return buildResponse(HttpStatus.BAD_REQUEST, "Cannot force change password. " +
+                        "Account is inactive");
+
+            }
+
+            user.setPassword(passwordEncoder.encode(password));
+            emailUtilities.sendPasswordForceChanged(user.getEmail(), password);
+            String adminNotificationMessage = "User with id: " + user.getId() + ", and email " + user.getEmail() +
+                    ", account password has been forced changed";
+            String notificationMessage = "You have successfully force changed your account password : " + user.getEmail();
+            jwtFilter.sendNotifications("/topic/changePassword", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, user);
+            return buildResponse(HttpStatus.OK, "Password force changed successfully." +
+                    " Please prompt user to login again");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
 
     /**
      * Deactivate the user's account. This method is used to mark the user's account as inactive.
@@ -312,17 +374,21 @@ public class UserServiceImplement implements UserService {
     @Override
     public ResponseEntity<String> deactivateAccount() throws JsonProcessingException {
         try {
-            String currentUser = jwtFilter.getCurrentUser();
+            String currentUser = jwtFilter.getCurrentUserEmail();
             User user = userRepo.findByEmail(currentUser);
             if (user == null) {
                 return buildResponse(HttpStatus.NOT_FOUND, "User is null");
             }
 
-            log.info("Inside deactivateAccount {}", jwtFilter.getCurrentUser());
+            log.info("Inside deactivateAccount {}", jwtFilter.getCurrentUserEmail());
             user.setStatus("false");
             userRepo.save(user);
             emailUtilities.sendStatusMailToUser("false", "User", user.getEmail());
-            simpMessagingTemplate.convertAndSend("/topic/deactivateAccount", user);
+            String adminNotificationMessage = "User with id: " + user.getId() +
+                    ", account has been deactivated  for " + user.getEmail();
+            String notificationMessage = "You have successfully deactivated your user account: " + user.getEmail();
+            jwtFilter.sendNotifications("/topic/activateAccount", adminNotificationMessage,
+                    user, notificationMessage, user);
             return buildResponse(HttpStatus.OK, "Your account has successfully been deactivated");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -343,7 +409,7 @@ public class UserServiceImplement implements UserService {
     public ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException {
         try {
             log.info("Inside updateStatus {}", id);
-            String adminMail = jwtFilter.getCurrentUser();
+            String adminMail = jwtFilter.getCurrentUserEmail();
             User admin = userRepo.findByEmail(adminMail);
 
             if (!jwtFilter.isAdmin()) {
@@ -378,7 +444,12 @@ public class UserServiceImplement implements UserService {
             userRepo.save(user);
             emailUtilities.sendStatusMailToAdmins(status, optional.get().getEmail(), userRepo.getAllAdminsMail(), "User");
             emailUtilities.sendStatusMailToUser(status, "User", optional.get().getEmail());
-            simpMessagingTemplate.convertAndSend("/topic/updateUserStatus", user);
+            String adminNotificationMessage = "User with id: " + user.getId() + ", and email: " + user.getEmail() +
+                    ", account status has been set to " + user.getStatus();
+            String notificationMessage = "You have successfully set your account status to : " +
+                    user.getStatus() + ", " + user.getEmail();
+            jwtFilter.sendNotifications("/topic/updateUserStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, user);
             return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -407,7 +478,7 @@ public class UserServiceImplement implements UserService {
                 return buildResponse(HttpStatus.NOT_FOUND, "User id not found");
             }
 
-            User adminUser = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User adminUser = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             if (!adminUser.getEmail().equalsIgnoreCase("berlizworld@gmail.com")) {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -421,7 +492,12 @@ public class UserServiceImplement implements UserService {
             userRepo.save(user);
             emailUtilities.sendRoleMailToAdmins(role, user.getEmail(), userRepo.getAllAdminsMail());
             emailUtilities.sendRoleMailToUser(role, user.getEmail());
-            simpMessagingTemplate.convertAndSend("/topic/updateUserRole", user);
+            String adminNotificationMessage = "User with id: " + user.getId() +
+                    ", account role has been set to " + user.getRole() + ", " + user.getEmail();
+            String notificationMessage = "You have successfully set your account role to : " +
+                    user.getRole() + ", " + user.getEmail();
+            jwtFilter.sendNotifications("/topic/updateUserRole", adminNotificationMessage,
+                    user, notificationMessage, user);
             return buildResponse(HttpStatus.OK, "User role updated successfully");
 
         } catch (Exception ex) {
@@ -447,7 +523,7 @@ public class UserServiceImplement implements UserService {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            User adminUser = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User adminUser = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             if (!adminUser.getEmail().equalsIgnoreCase("berlizworld@gmail.com")) {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -465,7 +541,11 @@ public class UserServiceImplement implements UserService {
             User user = optional.get();
             userRepo.delete(user);
             emailUtilities.sendAccountDeletedMail(optional.get().getEmail(), userRepo.getAllAdminsMail());
-            simpMessagingTemplate.convertAndSend("/topic/deleteUser", user);
+            String adminNotificationMessage = "User with id: " + user.getId() + ", and email " + user.getEmail() +
+                    ", account has been deleted";
+            String notificationMessage = "You have successfully deleted your user your account : " + user.getEmail();
+            jwtFilter.sendNotifications("/topic/deleteUser", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, user);
             return buildResponse(HttpStatus.OK, "User account deleted successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -548,7 +628,7 @@ public class UserServiceImplement implements UserService {
     public ResponseEntity<String> updateBio(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             log.info("Inside updateBio {}", requestMap);
-            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             if (user == null) {
                 return buildResponse(HttpStatus.NOT_FOUND, "User is null");
             }
@@ -559,7 +639,11 @@ public class UserServiceImplement implements UserService {
 
             user.setBio(requestMap.get("bio"));
             userRepo.save(user);
-            simpMessagingTemplate.convertAndSend("/topic/updateUserBio", user);
+            String adminNotificationMessage = "User with id: " + user.getId() + ", and email " + user.getEmail() +
+                    ", account bio has been deleted";
+            String notificationMessage = "You have successfully update your bio in your account : " + user.getEmail();
+            jwtFilter.sendNotifications("/topic/updateUserBio", adminNotificationMessage,
+                    user, notificationMessage, user);
             return buildResponse(HttpStatus.OK, "You have successfully updated your Bio");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -567,6 +651,77 @@ public class UserServiceImplement implements UserService {
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
+    @Override
+    public ResponseEntity<String> validateEmail(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside validateEmail {}", requestMap);
+            User user = jwtFilter.getCurrentUser();
+            if (jwtFilter.isAdmin()) {
+                user = userRepo.findByUserId(Integer.valueOf(requestMap.get("id")));
+            }
+
+            if (Objects.isNull(user)) {
+                return buildResponse(HttpStatus.BAD_REQUEST, "User not found");
+            }
+
+            if ("false".equalsIgnoreCase(user.getStatus())) {
+                return buildResponse(HttpStatus.BAD_REQUEST, "Cannot update email. Account is inactive");
+            }
+
+            String email = requestMap.get("email");
+            Optional<User> existingUser = Optional.ofNullable(userRepo.findByEmail(email));
+            if (existingUser.isPresent()) {
+                return buildResponse(HttpStatus.BAD_REQUEST, "Email already exists. Please input another email.");
+            }
+
+            emailUtilities.validateUpdateMail(email, "Validate new login details", user);
+            return buildResponse(HttpStatus.OK, "A confirmation code has been sent to your email." +
+                    " Please input code to continue");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> updateEmail(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            log.info("Inside updateEmail {}", requestMap);
+            User user = userRepo.findByUserId(Integer.valueOf(requestMap.get("id")));
+            if (user == null) {
+                return buildResponse(HttpStatus.NOT_FOUND, "User is null");
+            }
+
+            if (!jwtFilter.isBerlizUser()) {
+                return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            boolean isValidToken = user.getToken().equalsIgnoreCase(requestMap.get("token"));
+            if (!isValidToken) {
+                return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid token. Please check code again");
+            }
+
+            boolean isValidPassword  = passwordEncoder.matches(requestMap.get("password"), user.getPassword());
+            if (!isValidPassword) {
+                return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid password. Please input correct password");
+            }
+
+            String oldEmail = user.getEmail();
+            user.setEmail(requestMap.get("email"));
+            user.setToken("");
+            userRepo.save(user);
+            String adminNotificationMessage = "User with id: " + user.getId() + ", and email " + oldEmail +
+                    ", account login has been changed to: " + user.getEmail();
+            String notificationMessage = "You have successfully update your login : " + oldEmail + "to: "
+                    + user.getEmail();
+            jwtFilter.sendNotifications("/topic/updateUserEmail", adminNotificationMessage,
+                    user, notificationMessage, user);
+            return buildResponse(HttpStatus.OK, "Login updated successfully. Please login again to continue");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
 
     /**
      * Check if a user token is valid.
@@ -598,7 +753,7 @@ public class UserServiceImplement implements UserService {
     public ResponseEntity<String> changePassword(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             log.info("Inside changePassword {}", requestMap);
-            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
 
             if (user == null) {
                 return buildResponse(HttpStatus.NOT_FOUND, "User is null");
@@ -610,6 +765,11 @@ public class UserServiceImplement implements UserService {
 
             user.setPassword(passwordEncoder.encode(requestMap.get("newPassword")));
             userRepo.save(user);
+            String adminNotificationMessage = "User with id: " + user.getId() + ", and email " + user.getEmail() +
+                    ", account password has been changed";
+            String notificationMessage = "Your account password has been changed : " + user.getEmail();
+            jwtFilter.sendNotifications("/topic/changePassword", adminNotificationMessage,
+                    user, notificationMessage, user);
             return buildResponse(HttpStatus.OK, "Password changed successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -633,7 +793,7 @@ public class UserServiceImplement implements UserService {
                     return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
                 }
 
-                User adminUser = userRepo.findByEmail(jwtFilter.getCurrentUser());
+                User adminUser = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
                 if (!adminUser.getEmail().equalsIgnoreCase("berlizworld@gmail.com")) {
                     return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
                 }
@@ -646,6 +806,11 @@ public class UserServiceImplement implements UserService {
                 User user = optional.get();
                 user.setPassword(passwordEncoder.encode(requestMap.get("newPassword")));
                 userRepo.save(user);
+                String adminNotificationMessage = "User with id: " + user.getId() + ", and email " + user.getEmail() +
+                        ", account password has been changed";
+                String notificationMessage = "Your account password has been changed : " + user.getEmail();
+                jwtFilter.sendNotifications("/topic/changePassword", adminNotificationMessage,
+                        user, notificationMessage, user);
                 return buildResponse(HttpStatus.OK, "You have successfully updated " + user.getFirstname() + "'s password");
             }
         } catch (Exception ex) {
@@ -698,8 +863,12 @@ public class UserServiceImplement implements UserService {
                 user.setPassword(passwordEncoder.encode(requestMap.get("password")));
                 user.setToken("");
                 userRepo.save(user);
+                String adminNotificationMessage = "User with id: " + user.getId() + ", and email " + user.getEmail() +
+                        ", account password has been reset";
+                String notificationMessage = "Your account password has been reset : " + user.getEmail();
+                jwtFilter.sendNotifications("/topic/resetPassword", adminNotificationMessage,
+                        user, notificationMessage, user);
                 return buildResponse(HttpStatus.OK, "You have successfully reset your password");
-
             } else {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
@@ -741,25 +910,29 @@ public class UserServiceImplement implements UserService {
                     responseMessage = "You have successfully updated " + user.getEmail() + " account information";
                 } else {
                     log.info("Inside adminUser {}", requestMap);
-                    user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+                    user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
                     if (user == null) {
                         return buildResponse(HttpStatus.NOT_FOUND, "User is null");
                     }
-                    responseMessage = "Hello " + user.getEmail() + "you have successfully updated your account information";
+                    responseMessage = "Hello " + user.getEmail() + " you have successfully updated your account information";
                 }
             } else {
                 log.info("Inside user {}", requestMap);
                 // Find the user based on the JWT token
-                user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+                user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
                 if (user == null) {
                     return buildResponse(HttpStatus.NOT_FOUND, "User is null");
                 }
-                responseMessage = "Hello " + user.getEmail() + "you have successfully updated your account information";
+                responseMessage = "Hello " + user.getEmail() + ", you have successfully updated your account information";
             }
 
             updateUserFromMap(user, requestMap);
             userRepo.save(user);
-            simpMessagingTemplate.convertAndSend("/topic/updateUser", user);
+            String adminNotificationMessage = "User with id: " + user.getId() + ", and email " + user.getEmail() +
+                    ", account information has been updated";
+            String notificationMessage = "Your account information has been updated : " + user.getEmail();
+            jwtFilter.sendNotifications("/topic/updateUser", adminNotificationMessage,
+                    user, notificationMessage, user);
             return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -778,7 +951,7 @@ public class UserServiceImplement implements UserService {
     public ResponseEntity<String> updateSuperUser(Map<String, String> requestMap) throws JsonProcessingException {
         try {
             log.info("Inside updateSuperUser {}", requestMap);
-            User superUser = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User superUser = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             log.info("Inside updateUserAdmin {}", requestMap);
             if (validateUpdateUserMap(requestMap)) {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
@@ -804,7 +977,11 @@ public class UserServiceImplement implements UserService {
             User user = optional.get();
             updateUserFromMap(user, requestMap);
             userRepo.save(user);
-            simpMessagingTemplate.convertAndSend("/topic/updateUser", user);
+            String adminNotificationMessage = "User with id: " + user.getId() + ", and email " + user.getEmail() +
+                    ", account information has been updated";
+            String notificationMessage = "Your account information has been updated : " + user.getEmail();
+            jwtFilter.sendNotifications("/topic/updateUser", adminNotificationMessage,
+                    user, notificationMessage, user);
             return buildResponse(HttpStatus.OK, user.getFirstname() + " information updated successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -850,8 +1027,39 @@ public class UserServiceImplement implements UserService {
             User user = optional.get();
             user.setProfilePhoto(file.getBytes());
             userRepo.save(user);
-            simpMessagingTemplate.convertAndSend("/topic/updateProfilePhoto", user);
+            String adminNotificationMessage = "User with id: " + user.getId() + ", and email " + user.getEmail() +
+                    ", profile photo has been changed";
+            String notificationMessage = "Your profile photo has been changed : " + user.getEmail();
+            jwtFilter.sendNotifications("/topic/updateProfilePhoto", adminNotificationMessage,
+                    user, notificationMessage, user);
             return buildResponse(HttpStatus.OK, user.getFirstname() + "'s profile photo updated successfully");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
+    public ResponseEntity<String> removePhoto(Integer id) throws JsonProcessingException {
+        try {
+            log.info("Inside removePhoto{}", id);
+            User user = userRepo.findByUserId(id);
+            if (user == null) {
+                return buildResponse(HttpStatus.NOT_FOUND, "User not found");
+            }
+
+            if (!(jwtFilter.isAdmin() || jwtFilter.getCurrentUser().equals(user))) {
+                return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
+            }
+
+            user.setProfilePhoto(new byte[0]);
+            userRepo.save(user);
+            String adminNotificationMessage = "User with id: " + user.getId() + ", and email " + user.getEmail() +
+                    ", profile photo has been removed";
+            String notificationMessage = "Your profile photo has been removed : " + user.getEmail();
+            jwtFilter.sendNotifications("/topic/updateProfilePhoto", adminNotificationMessage,
+                    user, notificationMessage, user);
+            return buildResponse(HttpStatus.OK, user.getFirstname() + "'s profile photo removed successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -873,14 +1081,14 @@ public class UserServiceImplement implements UserService {
             if (jwtFilter.isAdmin()) {
                 user = userRepo.findByUserId(request.getId());
             } else {
-                user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+                user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             }
 
             if (user == null) {
                 return buildResponse(HttpStatus.NOT_FOUND, "User is null");
             }
 
-            log.info("Inside currentUser {}", jwtFilter.getCurrentUser());
+            log.info("Inside currentUser {}", jwtFilter.getCurrentUserEmail());
             MultipartFile file = request.getProfilePhoto();
 
             if (file == null) {
@@ -904,8 +1112,11 @@ public class UserServiceImplement implements UserService {
             } else {
                 responseMessage = "Hello " + user.getFirstname() + ", you have successfully " + "updated your profile photo";
             }
-
-            simpMessagingTemplate.convertAndSend("/topic/updateProfilePhoto", user);
+            String adminNotificationMessage = "User with id: " + user.getId() + ", and email " + user.getEmail() +
+                    ", profile photo has been changed";
+            String notificationMessage = "Your profile photo has been changed : " + user.getEmail();
+            jwtFilter.sendNotifications("/topic/updateProfilePhoto", adminNotificationMessage,
+                    user, notificationMessage, user);
             return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -942,7 +1153,11 @@ public class UserServiceImplement implements UserService {
         user.setDate(new Date());
         user.setLastUpdate(new Date());
         User savedUser = userRepo.save(user);
-        simpMessagingTemplate.convertAndSend("/topic/getUserFromMap", savedUser);
+        String adminNotificationMessage = "A new user with id: " + savedUser.getId() + " and first name: "
+                + savedUser.getFirstname() + ", has been added for: " + savedUser.getEmail();
+        String notificationMessage = "You have successfully created your user account: " + savedUser.getEmail();
+        jwtFilter.sendNotifications("/topic/getUserFromMap", adminNotificationMessage,
+                user, notificationMessage, savedUser);
     }
 
     /**
@@ -963,7 +1178,6 @@ public class UserServiceImplement implements UserService {
                 || !requestMap.containsKey("state")
                 || !requestMap.containsKey("city")
                 || !requestMap.containsKey("address")
-                || !requestMap.containsKey("bio")
                 || !requestMap.containsKey("postalCode");
     }
 
@@ -989,7 +1203,6 @@ public class UserServiceImplement implements UserService {
         user.setBio(requestMap.get("bio"));
         user.setPostalCode(Integer.parseInt(requestMap.get("postalCode")));
         user.setLastUpdate(new Date());
-        simpMessagingTemplate.convertAndSend("/topic/updateUserFromMap", user);
     }
 
     /**

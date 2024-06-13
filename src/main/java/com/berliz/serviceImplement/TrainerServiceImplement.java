@@ -172,9 +172,14 @@ public class TrainerServiceImplement implements TrainerService {
             trainer.setExperience(requestMap.get("experience"));
             trainer.setLikes(Integer.parseInt(requestMap.get("likes")));
             trainer.setLastUpdate(new Date());
-            trainerRepo.save(trainer);
+            Trainer savedTrainer = trainerRepo.save(trainer);
+            String adminNotificationMessage = "Trainer with id: " + savedTrainer.getId()
+                    + ", and info: " + savedTrainer.getName() + "/ account information has been updated";
+            String notificationMessage = "You have update your trainer account: " +
+                    savedTrainer.getName();
+            jwtFilter.sendNotifications("/topic/updateTrainer", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedTrainer);
 
-            simpMessagingTemplate.convertAndSend("/topic/updateTrainer", trainer);
             if (jwtFilter.isAdmin())
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer information updated successfully");
             else
@@ -216,7 +221,7 @@ public class TrainerServiceImplement implements TrainerService {
     public ResponseEntity<String> deleteTrainer(Integer id) throws JsonProcessingException {
         try {
             log.info("Inside deleteTrainer {}", id);
-            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             boolean authorizedUser = user.getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN);
             if (!(jwtFilter.isAdmin() && authorizedUser)) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
@@ -229,10 +234,14 @@ public class TrainerServiceImplement implements TrainerService {
             if (trainer.getStatus().equalsIgnoreCase("true")) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer is active, Cannot complete request");
             }
-            trainerRepo.delete(trainer);
-            simpMessagingTemplate.convertAndSend("/topic/deleteTrainer", trainer);
-            return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer deleted successfully");
 
+            trainerRepo.delete(trainer);
+            String adminNotificationMessage = "Trainer with id: " + trainer.getId() + ", and name " + trainer.getName() +
+                    ", account has been deleted";
+            String notificationMessage = "You have successfully deleted your trainer your account : " + trainer.getName();
+            jwtFilter.sendNotifications("/topic/deleteTrainer", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, trainer);
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer deleted successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -284,7 +293,12 @@ public class TrainerServiceImplement implements TrainerService {
                     (newStatus.equalsIgnoreCase("true") ? "Trainer has been successfully activated" : "Trainer has been deactivated successfully") :
                     (newStatus.equalsIgnoreCase("true") ? "Hello " + userEmail + ", your Trainer account has successfully been activated" :
                             "Hello " + userEmail + ", your Trainer account has been deactivated");
-            simpMessagingTemplate.convertAndSend("/topic/updateTrainerStatus", savedTrainer);
+            String adminNotificationMessage = "Trainer with id: " + savedTrainer.getId() +
+                    ", status has been set to " + savedTrainer.getStatus();
+            String notificationMessage = "You have successfully set your trainer status to : " +
+                    savedTrainer.getStatus();
+            jwtFilter.sendNotifications("/topic/updateTrainerStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedTrainer);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -352,7 +366,7 @@ public class TrainerServiceImplement implements TrainerService {
         try {
             log.info("Inside likeTrainer {}", id);
             Trainer trainer = trainerRepo.findByTrainerId(id);
-            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             boolean validUser = jwtFilter.isBerlizUser();
 
             if (!validUser) {
@@ -370,7 +384,11 @@ public class TrainerServiceImplement implements TrainerService {
                 trainerLikeRepo.deleteByUserAndTrainer(user, trainer);
                 trainer.setLikes(trainer.getLikes() - 1);
                 responseMessage = "Hello, " + user.getFirstname() + " you have disliked " + trainer.getName() + " profile";
-
+                String adminNotificationMessage = "Trainer with id: " + trainer.getId() +
+                        ", and name: " + trainer.getName() + " has just been disliked by: " + user.getEmail();
+                String notificationMessage = "You have successfully disliked trainer : " + trainer.getName();
+                jwtFilter.sendNotifications("/topic/likeTrainer", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, trainer);
             } else {
                 // like trainer
                 TrainerLike trainerLike = new TrainerLike();
@@ -380,10 +398,14 @@ public class TrainerServiceImplement implements TrainerService {
                 trainerLikeRepo.save(trainerLike);
                 trainer.setLikes(trainer.getLikes() + 1);
                 responseMessage = "Hello, " + user.getFirstname() + " you just liked " + trainer.getName() + " profile";
+                String adminNotificationMessage = "Trainer with id: " + trainer.getId() +
+                        ", and name: " + trainer.getName() + " has just been liked by: " + user.getEmail();
+                String notificationMessage = "You have successfully liked trainer : " + trainer.getName();
+                jwtFilter.sendNotifications("/topic/likeTrainer", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, trainer);
             }
 
             trainerRepo.save(trainer);
-            simpMessagingTemplate.convertAndSend("/topic/likeTrainer", trainer);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
 
         } catch (Exception ex) {
@@ -455,7 +477,12 @@ public class TrainerServiceImplement implements TrainerService {
             } else {
                 responseMessage = "Your cover photo has been updated successfully";
             }
-            simpMessagingTemplate.convertAndSend("/topic/updatePhoto", trainer);
+
+            String adminNotificationMessage = "Trainer photo with id: " + trainer.getId()
+                    + ", and info: " + trainer.getName() + "/ has been updated";
+            String notificationMessage = "You have update your trainer photo: " + trainer.getName();
+            jwtFilter.sendNotifications("/topic/updatePhoto", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, trainer);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -551,7 +578,7 @@ public class TrainerServiceImplement implements TrainerService {
             boolean isValid = validateTrainerPricingRequestFromMap(requestMap, true);
             log.info("Is request valid? {}", isValid);
 
-            if (!jwtFilter.isAdmin() || jwtFilter.isTrainer()) {
+            if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer())) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
@@ -565,7 +592,7 @@ public class TrainerServiceImplement implements TrainerService {
             }
 
             TrainerPricing trainerPricing = optional.get();
-            String currentUser = jwtFilter.getCurrentUser();
+            String currentUser = jwtFilter.getCurrentUserEmail();
             if (!(jwtFilter.isAdmin()
                     || trainerPricing.getTrainer().getPartner().getUser().getEmail().equals(currentUser))) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
@@ -598,7 +625,12 @@ public class TrainerServiceImplement implements TrainerService {
                         " updated your pricing information";
             }
 
-            simpMessagingTemplate.convertAndSend("/topic/updateTrainerPricing", savedTrainerPricing);
+            String adminNotificationMessage = "Trainer pricing with id: " + savedTrainerPricing.getId()
+                    + ", and info: " + savedTrainerPricing.getPriceOnline() + "/ has been updated";
+            String notificationMessage = "You have update your trainer pricing: " +
+                    savedTrainerPricing.getPriceOnline();
+            jwtFilter.sendNotifications("/topic/updateTrainerPricing", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedTrainerPricing);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -637,16 +669,20 @@ public class TrainerServiceImplement implements TrainerService {
     public ResponseEntity<TrainerPricing> getMyTrainerPricing() {
         try {
             log.info("Inside getMyCenterPricing");
-            if (!(jwtFilter.isAdmin()) || jwtFilter.isCenter()) {
+            if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer())) {
                 return new ResponseEntity<>(new TrainerPricing(), HttpStatus.UNAUTHORIZED);
             }
 
             Trainer trainer = trainerRepo.findByUserId(jwtFilter.getCurrentUserId());
             if (trainer == null) {
-                return new ResponseEntity<>(new TrainerPricing(), HttpStatus.UNAUTHORIZED);
+                return new ResponseEntity<>(new TrainerPricing(), HttpStatus.BAD_REQUEST);
             }
 
             TrainerPricing trainerPricing = trainerPricingRepo.findByTrainer(trainer);
+            if (trainerPricing == null) {
+                return new ResponseEntity<>(new TrainerPricing(), HttpStatus.NOT_FOUND);
+            }
+
             return new ResponseEntity<>(trainerPricing, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -665,7 +701,7 @@ public class TrainerServiceImplement implements TrainerService {
     public ResponseEntity<String> deleteTrainerPricing(Integer id) throws JsonProcessingException {
         try {
             log.info("Inside deleteTrainerPricing {}", id);
-            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             boolean authorizedUser = user.getEmail().equalsIgnoreCase(BerlizConstants.BERLIZ_SUPER_ADMIN);
             if (!(jwtFilter.isAdmin() && authorizedUser)) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
@@ -678,7 +714,13 @@ public class TrainerServiceImplement implements TrainerService {
 
             TrainerPricing trainerPricing = optional.get();
             trainerPricingRepo.delete(trainerPricing);
-            simpMessagingTemplate.convertAndSend("/topic/deleteTrainerPricing", trainerPricing);
+            String adminNotificationMessage = "Trainer pricing with id: " + trainerPricing.getId()
+                    + ", and info " + trainerPricing.getPriceOnline() +
+                    ", account has been deleted";
+            String notificationMessage = "You have successfully deleted your trainer pricing: "
+                    + trainerPricing.getPriceOnline();
+            jwtFilter.sendNotifications("/topic/deleteTrainerPricing", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, trainerPricing);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "TrainerPricing deleted successfully");
 
         } catch (Exception ex) {
@@ -788,7 +830,12 @@ public class TrainerServiceImplement implements TrainerService {
             String responseMessage = jwtFilter.isAdmin() ?
                     trainer.getName() + "!, photo have successfully been updated in their album" :
                     "Hello " + trainer.getName() + "!, you have successfully updated the photo in your album";
-            simpMessagingTemplate.convertAndSend("/topic/updateTrainerPhotoAlbum", existingPhotoAlbum);
+            String adminNotificationMessage = "Trainer photo with id: " + existingPhotoAlbum.getId()
+                    + ", and info: " + existingPhotoAlbum.getUuid() + "/ has been updated";
+            String notificationMessage = "You have update your trainer video: " +
+                    existingPhotoAlbum.getUuid();
+            jwtFilter.sendNotifications("/topic/updateTrainerPhotoAlbum", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, existingPhotoAlbum);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -816,7 +863,12 @@ public class TrainerServiceImplement implements TrainerService {
             }
 
             trainerPhotoAlbumRepo.delete(trainerPhotoAlbum);
-            simpMessagingTemplate.convertAndSend("/topic/deleteTrainerPhotoAlbum", trainerPhotoAlbum);
+            String adminNotificationMessage = "Trainer photo with id: " + trainerPhotoAlbum.getId()
+                    + ", and info " + trainerPhotoAlbum.getUuid() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your trainer video: "
+                    + trainerPhotoAlbum.getUuid();
+            jwtFilter.sendNotifications("/topic/deleteTrainerPhotoAlbum", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, trainerPhotoAlbum);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer photo deleted from album successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -933,13 +985,15 @@ public class TrainerServiceImplement implements TrainerService {
             }
 
             TrainerBenefit trainerBenefit = optional.get();
-            String currentUser = jwtFilter.getCurrentUser();
+            String currentUser = jwtFilter.getCurrentUserEmail();
             if (!(jwtFilter.isAdmin()
                     || trainerBenefit.getTrainer().getPartner().getUser().getEmail().equals(currentUser))) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            trainerBenefit.setBenefit(requestMap.get("benefit"));
+            // Split the benefits string using "#" delimiter and store as a list
+            List<String> benefits = Arrays.asList(requestMap.get("benefit").split("#"));
+            trainerBenefit.setBenefits(benefits);
             trainerBenefit.setLastUpdate(new Date());
             TrainerBenefit savedTrainerBenefit = trainerBenefitRepo.save(trainerBenefit);
             String responseMessage;
@@ -951,7 +1005,12 @@ public class TrainerServiceImplement implements TrainerService {
                         " updated your trainer benefit information";
             }
 
-            simpMessagingTemplate.convertAndSend("/topic/updateTrainerBenefit", savedTrainerBenefit);
+            String adminNotificationMessage = "Trainer benefit with id: " + savedTrainerBenefit.getId()
+                    + ", and info: " + savedTrainerBenefit.getBenefits() + "/ has been updated";
+            String notificationMessage = "You have update your trainer benefit: " +
+                    savedTrainerBenefit.getBenefits();
+            jwtFilter.sendNotifications("/topic/updateTrainerBenefit", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedTrainerBenefit);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -979,9 +1038,13 @@ public class TrainerServiceImplement implements TrainerService {
             }
 
             trainerBenefitRepo.delete(trainerBenefit);
-            simpMessagingTemplate.convertAndSend("/topic/deleteTrainerBenefit", trainerBenefit);
+            String adminNotificationMessage = "Trainer benefit with id: " + trainerBenefit.getId()
+                    + ", and info " + trainerBenefit.getBenefits() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your trainer benefit : "
+                    + trainerBenefit.getBenefits();
+            jwtFilter.sendNotifications("/topic/deleteTrainerBenefit", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, trainerBenefit);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer benefit deleted successfully");
-
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -1084,7 +1147,7 @@ public class TrainerServiceImplement implements TrainerService {
             boolean isValid = introductionRequest != null;
             log.info("Is request valid? {}", isValid);
 
-            if (!jwtFilter.isAdmin() || !jwtFilter.isTrainer()) {
+            if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer())) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
@@ -1113,7 +1176,12 @@ public class TrainerServiceImplement implements TrainerService {
             String responseMessage = jwtFilter.isAdmin() ?
                     trainer.getName() + "!, introduction have successfully been updated in their album" :
                     "Hello " + trainer.getName() + "!, you have successfully updated your trainer's profile introduction";
-            simpMessagingTemplate.convertAndSend("/topic/updateTrainerIntroduction", savedTrainerIntroduction);
+            String adminNotificationMessage = "Trainer introduction with id: " + savedTrainerIntroduction.getId()
+                    + ", and info: " + savedTrainerIntroduction.getIntroduction() + "/ has been updated";
+            String notificationMessage = "You have update your trainer introduction: " +
+                    savedTrainerIntroduction.getIntroduction();
+            jwtFilter.sendNotifications("/topic/updateTrainerIntroduction", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedTrainerIntroduction);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1141,7 +1209,12 @@ public class TrainerServiceImplement implements TrainerService {
             }
 
             trainerIntroductionRepo.delete(trainerIntroduction);
-            simpMessagingTemplate.convertAndSend("/topic/deleteTrainerIntroduction", trainerIntroduction);
+            String adminNotificationMessage = "Trainer introduction with id: " + trainerIntroduction.getId()
+                    + ", and info " + trainerIntroduction.getIntroduction() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your trainer introduction : "
+                    + trainerIntroduction.getIntroduction();
+            jwtFilter.sendNotifications("/topic/deleteTrainerIntroduction", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, trainerIntroduction);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer introduction deleted from profile successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1168,7 +1241,7 @@ public class TrainerServiceImplement implements TrainerService {
     public ResponseEntity<TrainerIntroduction> getMyTrainerIntroduction() {
         try {
             log.info("Inside getMyTrainerIntroduction");
-            if (!jwtFilter.isAdmin()) {
+            if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer())) {
                 return new ResponseEntity<>(new TrainerIntroduction(), HttpStatus.UNAUTHORIZED);
             }
 
@@ -1286,7 +1359,12 @@ public class TrainerServiceImplement implements TrainerService {
             String responseMessage = jwtFilter.isAdmin() ?
                     trainer.getName() + "!, video have successfully been updated in their album" :
                     "Hello " + trainer.getName() + "!, you have successfully updated the video in your album";
-            simpMessagingTemplate.convertAndSend("/topic/updateTrainerVideoAlbum", savedTrainerVideoAlbum);
+            String adminNotificationMessage = "Trainer video with id: " + savedTrainerVideoAlbum.getId()
+                    + ", and info: " + savedTrainerVideoAlbum.getUuid() + "/ has been updated";
+            String notificationMessage = "You have update your trainer video: " +
+                    savedTrainerVideoAlbum.getUuid();
+            jwtFilter.sendNotifications("/topic/updateTrainerVideoAlbum", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedTrainerVideoAlbum);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1314,7 +1392,12 @@ public class TrainerServiceImplement implements TrainerService {
             }
 
             trainerVideoAlbumRepo.delete(trainerVideoAlbum);
-            simpMessagingTemplate.convertAndSend("/topic/deleteTrainerVideoAlbum", trainerVideoAlbum);
+            String adminNotificationMessage = "Trainer video with id: " + trainerVideoAlbum.getId()
+                    + ", and info " + trainerVideoAlbum.getComment() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your trainer video : "
+                    + trainerVideoAlbum.getComment();
+            jwtFilter.sendNotifications("/topic/deleteTrainerVideoAlbum", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, trainerVideoAlbum);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer video deleted from album successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1496,7 +1579,12 @@ public class TrainerServiceImplement implements TrainerService {
             String responseMessage = jwtFilter.isAdmin() ?
                     trainer.getName() + "!, feature video have successfully been updated in their album" :
                     "Hello " + trainer.getName() + "!, you have successfully updated the a feature video in your album";
-            simpMessagingTemplate.convertAndSend("/topic/updateTrainerFeatureVideo", savedFeatureVideo);
+            String adminNotificationMessage = "Trainer feature video with id: " + savedFeatureVideo.getId()
+                    + ", and info: " + savedFeatureVideo.getMotivation() + "/ has been updated";
+            String notificationMessage = "You have update your trainer feature video: " +
+                    savedFeatureVideo.getMotivation();
+            jwtFilter.sendNotifications("/topic/updateTrainerFeatureVideo", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedFeatureVideo);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1523,7 +1611,12 @@ public class TrainerServiceImplement implements TrainerService {
             }
 
             trainerFeatureVideoRepo.delete(trainerFeatureVideo);
-            simpMessagingTemplate.convertAndSend("/topic/deleteTrainerFeatureVideo", trainerFeatureVideo);
+            String adminNotificationMessage = "Trainer feature video with id: " + trainerFeatureVideo.getId()
+                    + ", and info " + trainerFeatureVideo.getMotivation() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your trainer feature video : "
+                    + trainerFeatureVideo.getMotivation();
+            jwtFilter.sendNotifications("/topic/deleteTrainerFeatureVideo", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, trainerFeatureVideo);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer feature video deleted from album successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1573,7 +1666,7 @@ public class TrainerServiceImplement implements TrainerService {
             log.info("Inside likeClientReview {}", id);
             Optional<TrainerReview> optional = trainerReviewRepo.findById(id);
             TrainerReview trainerReview = optional.orElse(null);
-            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             boolean validUser = jwtFilter.isBerlizUser();
 
             if (!validUser) {
@@ -1593,6 +1686,13 @@ public class TrainerServiceImplement implements TrainerService {
                 responseMessage = "Hello, " + user.getFirstname() + " you have disliked " +
                         trainerReview.getClient().getUser().getFirstname() + " review on" +
                         trainerReview.getTrainer().getName() + "'s profile";
+                String adminNotificationMessage = "Trainer review with id: " + trainerReview.getId() +
+                        ", and info: " + trainerReview.getReview() + " has just been disliked by: "
+                        + user.getEmail();
+                String notificationMessage = "You have successfully disliked a trainer review  : "
+                        + trainerReview.getReview();
+                jwtFilter.sendNotifications("/topic/likeTrainerReview", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, trainerReview);
             } else {
                 // like trainer
                 TrainerReviewLike trainerReviewLike = new TrainerReviewLike();
@@ -1604,10 +1704,16 @@ public class TrainerServiceImplement implements TrainerService {
                 responseMessage = "Hello, " + user.getFirstname() + " you just liked " +
                         trainerReview.getClient().getUser().getFirstname() + " review on" +
                         trainerReview.getTrainer().getName() + "'s profile";
+                String adminNotificationMessage = "Trainer review with id: " + trainerReview.getId() +
+                        ", and info: " + trainerReview.getReview() + " has just been liked by: "
+                        + user.getEmail();
+                String notificationMessage = "You have successfully liked a trainer review  : "
+                        + trainerReview.getReview();
+                jwtFilter.sendNotifications("/topic/likeTrainerReview", adminNotificationMessage,
+                        jwtFilter.getCurrentUser(), notificationMessage, trainerReview);
             }
 
             TrainerReview savedTrainerReview = trainerReviewRepo.save(trainerReview);
-            simpMessagingTemplate.convertAndSend("/topic/likeClientReview", savedTrainerReview);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
 
         } catch (Exception ex) {
@@ -1665,12 +1771,12 @@ public class TrainerServiceImplement implements TrainerService {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
-                if (trainerReviewRequest.getTrainerId() == null) {
-                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "trainer id is invalid");
-                }
+            if (trainerReviewRequest.getTrainerId() == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "trainer id is invalid");
+            }
 
-                Trainer trainer = trainerRepo.findByTrainerId(trainerReviewRequest.getTrainerId());
-                if (trainer == null) {
+            Trainer trainer = trainerRepo.findByTrainerId(trainerReviewRequest.getTrainerId());
+            if (trainer == null) {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer not found in db");
             }
 
@@ -1769,7 +1875,12 @@ public class TrainerServiceImplement implements TrainerService {
                     "Hello " + trainerReview.getClient().getUser().getFirstname() + "!, you have successfully " +
                             "updated your Trainer review for" +
                             trainer.getName();
-            simpMessagingTemplate.convertAndSend("/topic/updateTrainerReview", savedTrainerReview);
+            String adminNotificationMessage = "Trainer review with id: " + savedTrainerReview.getId()
+                    + ", and info: " + savedTrainerReview.getReview() + "/ has been updated";
+            String notificationMessage = "You have update your trainer review: " +
+                    savedTrainerReview.getReview();
+            jwtFilter.sendNotifications("/topic/updateTrainerReview", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedTrainerReview);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1805,7 +1916,12 @@ public class TrainerServiceImplement implements TrainerService {
 
             trainerTrainerReview.setStatus(status);
             TrainerReview savedTrainerReview = trainerReviewRepo.save(trainerTrainerReview);
-            simpMessagingTemplate.convertAndSend("/topic/updateTrainerReviewStatus", savedTrainerReview);
+            String adminNotificationMessage = "Trainer review with id: " + savedTrainerReview.getId() +
+                    ", status has been set to " + savedTrainerReview.getStatus();
+            String notificationMessage = "You have successfully set your trainer review status to : " +
+                    savedTrainerReview.getStatus();
+            jwtFilter.sendNotifications("/topic/updateTrainerReviewStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedTrainerReview);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1830,7 +1946,12 @@ public class TrainerServiceImplement implements TrainerService {
             TrainerReview trainerReview = optional.get();
             trainerReview.setStatus("false");
             TrainerReview savedTrainerReview = trainerReviewRepo.save(trainerReview);
-            simpMessagingTemplate.convertAndSend("/topic/disableTrainerReview", savedTrainerReview);
+            String adminNotificationMessage = "Trainer review with id: " + savedTrainerReview.getId() + ", and info "
+                    + savedTrainerReview.getReview() + ", has been disabled for: " + savedTrainerReview.getTrainer().getName();
+            String notificationMessage = "You have successfully disabled a review for trainer : "
+                    + savedTrainerReview.getTrainer().getName() + " and review info: " + savedTrainerReview.getReview();
+            jwtFilter.sendNotifications("/topic/disableTrainerReview", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, savedTrainerReview);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Review for " + trainerReview.getTrainer().getName() +
                     " has been removed from feed successfully");
         } catch (Exception ex) {
@@ -1848,23 +1969,28 @@ public class TrainerServiceImplement implements TrainerService {
             }
 
             Optional<TrainerReview> optional = trainerReviewRepo.findById(id);
-            TrainerReview trainerTrainerReview = optional.orElse(null);
-            if (trainerTrainerReview == null) {
+            TrainerReview trainerReview = optional.orElse(null);
+            if (trainerReview == null) {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer review id not found");
             }
 
-            if (isAuthorizedToDeleteTrainerReview(trainerTrainerReview)) {
+            if (isAuthorizedToDeleteTrainerReview(trainerReview)) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            if (!trainerTrainerReview.getTrainer().getStatus().equalsIgnoreCase("false")) {
+            if (!trainerReview.getTrainer().getStatus().equalsIgnoreCase("false")) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer is inactive, Cannot complete request");
             }
 
-            trainerReviewRepo.delete(trainerTrainerReview);
-            simpMessagingTemplate.convertAndSend("/topic/deleteTrainerReview", trainerTrainerReview);
+            trainerReviewRepo.delete(trainerReview);
+            String adminNotificationMessage = "Trainer review with id: " + trainerReview.getId() +
+                    ", and info " + trainerReview.getReview() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your trainer trainer review : "
+                    + trainerReview.getReview();
+            jwtFilter.sendNotifications("/topic/deleteTrainerReview", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, trainerReview);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer review for" +
-                    trainerTrainerReview.getTrainer().getName() + "  deleted successfully");
+                    trainerReview.getTrainer().getName() + "  deleted successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -1976,7 +2102,7 @@ public class TrainerServiceImplement implements TrainerService {
             String userEmail = partner.getUser().getEmail();
             user = userRepo.findByEmail(userEmail);
         } else {
-            user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         }
         user.setRole("trainer");
         userRepo.save(user);
@@ -2008,7 +2134,11 @@ public class TrainerServiceImplement implements TrainerService {
         trainer.setLastUpdate(new Date());
         trainer.setStatus("false");
         Trainer savedTrainer = trainerRepo.save(trainer);
-        simpMessagingTemplate.convertAndSend("/topic/getTrainerFromMap", savedTrainer);
+        String adminNotificationMessage = "A new trainer with id: " + savedTrainer.getId()
+                + " and info" + savedTrainer.getName() + ", has been added";
+        String notificationMessage = "You have successfully added your account as a trainer: " + savedTrainer.getName();
+        jwtFilter.sendNotifications("/topic/getTrainerFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedTrainer);
     }
 
     /**
@@ -2166,7 +2296,13 @@ public class TrainerServiceImplement implements TrainerService {
 
         // Save TrainerPricing entity and broadcast the updated information
         TrainerPricing savedTrainerPricing = trainerPricingRepo.save(trainerPricing);
-        simpMessagingTemplate.convertAndSend("/topic/getTrainerPricingFromMap", savedTrainerPricing);
+        String adminNotificationMessage = "A new pricing with id: " + savedTrainerPricing.getId()
+                + " and info" + savedTrainerPricing.getPricePersonal()
+                + ", has been added for trainer: " + savedTrainerPricing.getTrainer().getName();
+        String notificationMessage = "You have successfully added pricing for your center: "
+                + savedTrainerPricing.getPriceOnline();
+        jwtFilter.sendNotifications("/topic/getTrainerPricingFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedTrainerPricing);
     }
 
     /**
@@ -2199,7 +2335,13 @@ public class TrainerServiceImplement implements TrainerService {
 
         // Save TrainerPhotoAlbum entity and broadcast the updated information
         TrainerPhotoAlbum savedTrainerPhotoAlbum = trainerPhotoAlbumRepo.save(trainerPhotoAlbum);
-        simpMessagingTemplate.convertAndSend("/topic/getTrainerPhotoAlbumFromMap", savedTrainerPhotoAlbum);
+        String adminNotificationMessage = "A new photo with id: " + savedTrainerPhotoAlbum.getId()
+                + " and info" + savedTrainerPhotoAlbum.getUuid()
+                + ", has been added for trainer: " + trainer.getName();
+        String notificationMessage = "You have successfully added a photo to your trainer's profile: "
+                + savedTrainerPhotoAlbum.getUuid();
+        jwtFilter.sendNotifications("/topic/getTrainerPhotoAlbumFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedTrainerPhotoAlbum);
     }
 
     /**
@@ -2211,15 +2353,24 @@ public class TrainerServiceImplement implements TrainerService {
     private void getTrainerBenefitFromMap(Map<String, String> requestMap, Trainer trainer) {
         TrainerBenefit trainerBenefit = new TrainerBenefit();
 
+        // Split the benefits string using "#" delimiter and store as a list
+        List<String> benefits = Arrays.asList(requestMap.get("benefit").split("#"));
+        trainerBenefit.setBenefits(benefits);
+
         // Set TrainerBenefit properties from the provided Map
         trainerBenefit.setTrainer(trainer);
-        trainerBenefit.setBenefit(requestMap.get("benefit"));
         trainerBenefit.setDate(new Date());
         trainer.setLastUpdate(new Date());
 
         // Save TrainerBenefit entity and broadcast the updated information
         TrainerBenefit savedTrainerBenefit = trainerBenefitRepo.save(trainerBenefit);
-        simpMessagingTemplate.convertAndSend("/topic/getTrainerBenefitFromMap", savedTrainerBenefit);
+        String adminNotificationMessage = "A new benefit with id: " + savedTrainerBenefit.getId()
+                + " and info" + savedTrainerBenefit.getBenefits()
+                + ", has been added for trainer: " + trainer.getName();
+        String notificationMessage = "You have successfully added a new benefit for your trainer profile: "
+                + savedTrainerBenefit.getBenefits();
+        jwtFilter.sendNotifications("/topic/getTrainerBenefitFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedTrainerBenefit);
     }
 
     /**
@@ -2255,7 +2406,13 @@ public class TrainerServiceImplement implements TrainerService {
         trainerIntroduction.setDate(new Date());
         trainerIntroduction.setLastUpdate(new Date());
         TrainerIntroduction savedTrainerIntroduction = trainerIntroductionRepo.save(trainerIntroduction);
-        simpMessagingTemplate.convertAndSend("/topic/getTrainerIntroductionFromMap", savedTrainerIntroduction);
+        String adminNotificationMessage = "A savedTrainerIntroduction introduction with id: " + savedTrainerIntroduction.getId()
+                + " and info" + savedTrainerIntroduction.getIntroduction()
+                + ", has been added for trainer: " + trainer.getName();
+        String notificationMessage = "You have successfully added an introduction for your trainer: "
+                + savedTrainerIntroduction.getIntroduction();
+        jwtFilter.sendNotifications("/topic/getTrainerIntroductionFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedTrainerIntroduction);
     }
 
     /**
@@ -2282,7 +2439,13 @@ public class TrainerServiceImplement implements TrainerService {
         trainerVideoAlbum.setDate(new Date());
         trainerVideoAlbum.setLastUpdate(new Date());
         TrainerVideoAlbum savedTrainerVideoAlbum = trainerVideoAlbumRepo.save(trainerVideoAlbum);
-        simpMessagingTemplate.convertAndSend("/topic/getTrainerVideoAlbumFromMap", savedTrainerVideoAlbum);
+        String adminNotificationMessage = "A new video with id: " + savedTrainerVideoAlbum.getId()
+                + " and info" + savedTrainerVideoAlbum.getComment()
+                + ", has been added for trainer: " + trainer.getName();
+        String notificationMessage = "You have successfully added a video to your trainer's profile: "
+                + savedTrainerVideoAlbum.getComment();
+        jwtFilter.sendNotifications("/topic/getTrainerVideoAlbumFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedTrainerVideoAlbum);
     }
 
     /**
@@ -2309,15 +2472,21 @@ public class TrainerServiceImplement implements TrainerService {
         trainerFeatureVideo.setDate(new Date());
         trainerFeatureVideo.setLastUpdate(new Date());
         TrainerFeatureVideo savedTrainerFeatureVideo = trainerFeatureVideoRepo.save(trainerFeatureVideo);
-        simpMessagingTemplate.convertAndSend("/topic/getTrainerFeatureVideoFromMap", savedTrainerFeatureVideo);
+        String adminNotificationMessage = "A new feature video with id: " + savedTrainerFeatureVideo.getId()
+                + " and info" + savedTrainerFeatureVideo.getMotivation()
+                + ", has been added for trainer: " + trainer.getName();
+        String notificationMessage = "You have successfully added a feature video to your trainer's profile: "
+                + savedTrainerFeatureVideo.getMotivation();
+        jwtFilter.sendNotifications("/topic/getTrainerFeatureVideoFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedTrainerFeatureVideo);
     }
 
     /**
      * Processes a Trainer's review information from a TrainerReviewRequest object and saves it to the database.
      *
      * @param trainerReviewRequest The TrainerReviewRequest object containing client review details.
-     * @param trainer      The Trainer object associated with the review.
-     * @param client       The Client object associated with the review.
+     * @param trainer              The Trainer object associated with the review.
+     * @param client               The Client object associated with the review.
      * @throws IOException If an I/O error occurs while handling the client review photos.
      */
     private void getTrainerReviewFromMap(TrainerReviewRequest trainerReviewRequest, Trainer trainer, Client client) throws IOException {
@@ -2360,7 +2529,11 @@ public class TrainerServiceImplement implements TrainerService {
         trainerReview.setStatus("false");
         trainerReview.setLastUpdate(new Date());
         TrainerReview savedTrainerReview = trainerReviewRepo.save(trainerReview);
-        simpMessagingTemplate.convertAndSend("/topic/getTrainerReviewFromMap", savedTrainerReview);
+        String adminNotificationMessage = "A new review with id: " + savedTrainerReview.getId() + " and info"
+                + savedTrainerReview.getReview() + ", has been added for trainer: " + trainer.getName();
+        String notificationMessage = "You have successfully added a review for trainer: " + trainer.getName();
+        jwtFilter.sendNotifications("/topic/getTrainerReviewFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedTrainerReview);
     }
 
     /**
@@ -2382,7 +2555,7 @@ public class TrainerServiceImplement implements TrainerService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteTrainerReview(TrainerReview trainerReview) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(trainerReview.getTrainer()
                 .getPartner().getUser().getEmail());
         return !jwtFilter.isAdmin() && !authorizedUser;
@@ -2395,7 +2568,7 @@ public class TrainerServiceImplement implements TrainerService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteTrainerPhotoAlbum(TrainerPhotoAlbum trainerPhotoAlbum) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(trainerPhotoAlbum.getTrainer().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
     }
@@ -2407,7 +2580,7 @@ public class TrainerServiceImplement implements TrainerService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteTrainerBenefit(TrainerBenefit trainerBenefit) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(trainerBenefit.getTrainer().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
     }
@@ -2419,7 +2592,7 @@ public class TrainerServiceImplement implements TrainerService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteTrainerIntroduction(TrainerIntroduction trainerIntroduction) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(trainerIntroduction.getTrainer().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
     }
@@ -2431,7 +2604,7 @@ public class TrainerServiceImplement implements TrainerService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteTrainerVideoAlbum(TrainerVideoAlbum trainerVideoAlbum) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(trainerVideoAlbum.getTrainer().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
     }
@@ -2443,7 +2616,7 @@ public class TrainerServiceImplement implements TrainerService {
      * @return True if the user is authorized, false otherwise.
      */
     private boolean isAuthorizedToDeleteTrainerFeatureVideo(TrainerFeatureVideo trainerFeatureVideo) {
-        User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+        User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
         boolean authorizedUser = user.getEmail().equalsIgnoreCase(trainerFeatureVideo.getTrainer().getPartner().getUser().getEmail());
         return jwtFilter.isAdmin() || authorizedUser;
     }

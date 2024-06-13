@@ -45,10 +45,10 @@ public class CenterPricing implements Serializable {
     @Column(name = "discount_2_programs", columnDefinition = "DECIMAL(5, 2)")
     private BigDecimal discount2Programs;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "last_update", columnDefinition = "DATE")
+    @Column(name = "last_update", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 
 }

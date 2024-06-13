@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface TrainerBenefitRepo extends JpaRepository<TrainerBenefit, Integer> {
 
-    TrainerBenefit findByBenefit(String benefit);
+    TrainerBenefit findByBenefits(String benefit);
 
     List<TrainerBenefit> findByTrainer(Trainer trainer);
 }

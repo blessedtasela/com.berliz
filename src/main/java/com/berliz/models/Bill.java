@@ -42,9 +42,9 @@ public class Bill implements Serializable {
     @JoinColumn(name = "user_fk", nullable = false)
     private User user;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "lastPrinted", columnDefinition = "DATE")
+    @Column(name = "lastPrinted", columnDefinition = "TIMESTAMP")
     private Date lastPrinted;
 }

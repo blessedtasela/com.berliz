@@ -26,4 +26,8 @@ public interface CategoryRepo  extends JpaRepository<Category, Integer> {
 
     List<Category> getByTag(@Param("id") Integer id);
 
+    int countByName(String name);
+
+    int countByNameExceptId(@Param("name") String name, @Param("id") Integer id);
+
 }

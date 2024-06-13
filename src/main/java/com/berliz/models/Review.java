@@ -41,9 +41,9 @@ public class Review implements Serializable {
     @Column(name = "likes", columnDefinition = "INTEGER")
     private Integer likes;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private String date;
 
-    @Column(name = "lastUpdate", columnDefinition = "DATE")
+    @Column(name = "lastUpdate", columnDefinition = "TIMESTAMP")
     private String lastUpdate;
 }

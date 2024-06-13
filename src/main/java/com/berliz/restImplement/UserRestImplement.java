@@ -208,13 +208,42 @@ public class UserRestImplement implements UserRest {
             ex.printStackTrace();
         }
         return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 
+    @Override
+    public ResponseEntity<String> validateEmail(Map<String, String> requestMap) {
+        try {
+            return userService.validateEmail(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> updateEmail(Map<String, String> requestMap) {
+        try {
+            return userService.updateEmail(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
     public ResponseEntity<String> updateProfilePhoto(ProfilePhotoRequest request) {
         try {
             return userService.updateProfilePhoto(request);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> removePhoto(Integer id) {
+        try {
+            return userService.removePhoto(id);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -256,6 +285,16 @@ public class UserRestImplement implements UserRest {
     public ResponseEntity<String> deleteUser(Integer id) {
         try {
             return userService.deleteUser(id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.getResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> forcePasswordChange(Integer id, String password) {
+        try {
+            return userService.forcePasswordChange(id, password);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

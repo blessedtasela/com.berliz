@@ -44,37 +44,37 @@ public class User implements Serializable {
     private Integer id;
 
     @Column(name = "firstname")
-    private String firstname = " ";
+    private String firstname;
 
     @Column(name = "lastname")
-    private String lastname = " ";
+    private String lastname;
 
     @Column(name = "phone")
-    private String phone = " ";
+    private String phone;
 
     @Column(name = "dob")
-    private String dob = " ";
+    private String dob;
 
     @Column(name = "gender")
-    private String gender = " ";
+    private String gender;
 
     @Column(name = "country")
-    private String country = " ";
+    private String country;
 
     @Column(name = "state")
-    private String state = " ";
+    private String state;
 
     @Column(name = "city")
-    private String city = " ";
+    private String city;
 
     @Column(name = "postalCode", columnDefinition = "INTEGER")
-    private Integer postalCode = 0;
+    private Integer postalCode;
 
     @Column(name = "address", columnDefinition = "TEXT")
-    private String address = " ";
+    private String address;
 
     @Column(name = "bio", columnDefinition = "TEXT")
-    private String bio = " ";
+    private String bio;
 
     @Column(name = "email", unique = true)
     private String email;
@@ -102,9 +102,9 @@ public class User implements Serializable {
     @Column(name = "status")
     private String status;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "lastUpdate", columnDefinition = "DATE")
+    @Column(name = "lastUpdate", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 }

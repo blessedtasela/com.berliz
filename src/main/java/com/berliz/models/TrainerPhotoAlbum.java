@@ -35,10 +35,10 @@ public class TrainerPhotoAlbum {
     @Column(name = "comment", columnDefinition = "TEXT")
     private String comment;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "last_update", columnDefinition = "DATE")
+    @Column(name = "last_update", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 
     @PrePersist

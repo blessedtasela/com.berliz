@@ -55,7 +55,7 @@ public class JWTUtility {
                 .setSubject(username)
                 .setId(String.valueOf(id))
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 6))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60))
                 .signWith(SignatureAlgorithm.HS256, SECRET_KEY).compact();
     }
 

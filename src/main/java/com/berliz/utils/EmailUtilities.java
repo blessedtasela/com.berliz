@@ -111,11 +111,28 @@ public class EmailUtilities {
         mailSender.send(mailMessage);
     }
 
+    public void validateUpdateMail(String to, String subject, User user) throws MessagingException {
+        MimeMessage mailMessage = mailSender.createMimeMessage();
+        MimeMessageHelper messageHelper = new MimeMessageHelper(mailMessage, true);
+        messageHelper.setFrom("berlizworld@gmail.com");
+        messageHelper.setTo(to);
+        messageHelper.setSubject(subject);
+        String validateEmailToken = jwtUtility.generateConfirmAccountToken();
+        if (user != null) {
+            user.setToken(validateEmailToken);
+            userRepo.save(user);
+        }
+
+        String emailBody = "Hello,<br> use this code to verify your new login.\n\n " + validateEmailToken +
+                "<br>If you did not initiate this request, please ignore this email." + "<br>Thank you.";
+        mailMessage.setContent(emailBody, "text/html");
+        mailSender.send(mailMessage);
+    }
 
     public void sendAccountDeletedMail(String user, List<String> allAdmins) {
-        allAdmins.remove(jwtFilter.getCurrentUser());
+        allAdmins.remove(jwtFilter.getCurrentUserEmail());
         if (jwtFilter.isAdmin()) {
-            composeBulkMail(user, "Account deleted", "User: " + user + " account has been deleted by admin: " + jwtFilter.getCurrentUser(), allAdmins);
+            composeBulkMail(user, "Account deleted", "User: " + user + " account has been deleted by admin: " + jwtFilter.getCurrentUserEmail(), allAdmins);
         } else {
             composeSimpleMail(user, "Account deleted", "Hello " + user + ", you have deleted your account permanently by");
         }
@@ -168,7 +185,7 @@ public class EmailUtilities {
     }
 
     public void sendRoleMailToAdmins(String role, String user, List<String> allAdmins) {
-        allAdmins.remove(jwtFilter.getCurrentUser());
+        allAdmins.remove(jwtFilter.getCurrentUserEmail());
         if (role != null) {
             String subject;
             String message;
@@ -204,10 +221,10 @@ public class EmailUtilities {
             }
 
             // Compose the message
-            message = "USER: " + user + "\n role has been changed by \nADMIN: " + jwtFilter.getCurrentUser();
+            message = "USER: " + user + "\n role has been changed by \nADMIN: " + jwtFilter.getCurrentUserEmail();
 
             // Send the email
-            composeBulkMail(jwtFilter.getCurrentUser(), subject, message, allAdmins);
+            composeBulkMail(jwtFilter.getCurrentUserEmail(), subject, message, allAdmins);
         }
     }
 
@@ -258,10 +275,10 @@ public class EmailUtilities {
                 subject = "Contact Us Message Reviewed";
                 body = "Hello Admins,\n\n" +
                         "The contact us message from user " + user + " has been successfully reviewed by Admin: " +
-                        jwtFilter.getCurrentUser() + ". The user has received a response to their inquiry.\n\n" +
+                        jwtFilter.getCurrentUserEmail() + ". The user has received a response to their inquiry.\n\n" +
                         "Thank you for your prompt attention to this matter!";
             }
-            composeBulkMail(jwtFilter.getCurrentUser(), subject, body, allAdmins);
+            composeBulkMail(jwtFilter.getCurrentUserEmail(), subject, body, allAdmins);
         }
     }
 
@@ -313,7 +330,7 @@ public class EmailUtilities {
      */
     public void sendStatusMailToAdmins(String status, String userEmail, List<String> allAdmins, String accountType) {
         // Remove the current user's email from the list of administrators
-        allAdmins.remove(jwtFilter.getCurrentUser());
+        allAdmins.remove(jwtFilter.getCurrentUserEmail());
 
         // Check if the current user is an admin
         if (jwtFilter.isAdmin()) {
@@ -323,15 +340,15 @@ public class EmailUtilities {
             // Determine the subject and message based on the account status and type
             if ("true".equalsIgnoreCase(status)) {
                 subject = accountType + " account activated";
-                message = accountType + ": " + userEmail + " account has been approved by: " + jwtFilter.getCurrentUser();
+                message = accountType + ": " + userEmail + " account has been approved by: " + jwtFilter.getCurrentUserEmail();
             } else {
                 subject = accountType + " account disabled";
-                message = accountType + ": " + userEmail + " account has been disabled by: " + jwtFilter.getCurrentUser();
+                message = accountType + ": " + userEmail + " account has been disabled by: " + jwtFilter.getCurrentUserEmail();
             }
 
             // Send an email notification to all administrators
             composeBulkMail(
-                    jwtFilter.getCurrentUser(),
+                    jwtFilter.getCurrentUserEmail(),
                     subject,
                     message,
                     allAdmins
@@ -397,6 +414,21 @@ public class EmailUtilities {
     }
 
     /**
+     * Sends an email notification to the user whose password was changed.
+     *
+     * @param email The email address of the user
+     * @param password  The new password for the user
+     */
+    public void sendPasswordForceChanged(String email, String password) {
+        String subject = "Application Status"; // Subject of the email
+        String message = "Hello " + email + ", your password has been reset due to security reasons. " +
+                "Login in with this temporal password and change your password afterwards: " + password; // Email message content
+
+        // Send the email using the emailUtilities instance
+        composeSimpleMail(email, subject, message);
+    }
+
+    /**
      * Sends notification emails to all admins about the status of a partner's application.
      *
      * @param status    The status of the application ("true" for approved, "false" for rejected)
@@ -405,12 +437,12 @@ public class EmailUtilities {
      */
     public void sendPartnerShipStatusMailToAdmins(String status, String user, List<String> allAdmins) {
         // Remove the current user's email from the list of admins to avoid sending duplicate notifications
-        allAdmins.remove(jwtFilter.getCurrentUser());
+        allAdmins.remove(jwtFilter.getCurrentUserEmail());
 
         // Construct email subject and message based on the application status
         String subject;
         String message;
-        String adminUsername = jwtFilter.getCurrentUser(); // Admin who initiated the status update
+        String adminUsername = jwtFilter.getCurrentUserEmail(); // Admin who initiated the status update
 
         if (status != null && status.equalsIgnoreCase("true")) {
             subject = "Application Approved";
@@ -459,6 +491,6 @@ public class EmailUtilities {
      * @param emails The list of user's email address
      */
     public void sendBulkNewsletterMail(List<String> emails, String body, String subject) {
-        composeBulkMail(jwtFilter.getCurrentUser(), subject, body, emails);
+        composeBulkMail(jwtFilter.getCurrentUserEmail(), subject, body, emails);
     }
 }

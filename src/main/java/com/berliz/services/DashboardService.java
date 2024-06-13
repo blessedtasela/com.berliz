@@ -12,4 +12,6 @@ public interface DashboardService {
     ResponseEntity<Map<String, Object>> getBerlizData();
 
     ResponseEntity<String> getPartnerDetails();
+
+    ResponseEntity<Map<String, Object>> getProfileData();
 }

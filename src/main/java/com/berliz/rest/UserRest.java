@@ -67,8 +67,17 @@ public interface UserRest {
     @PutMapping(path = "/updateBio")
     ResponseEntity<String> updateBio(@RequestBody Map<String, String> requestMap);
 
+    @PutMapping(path = "/validateEmail")
+    ResponseEntity<String> validateEmail(@RequestBody Map<String, String> requestMap);
+
+    @PutMapping(path = "/updateEmail")
+    ResponseEntity<String> updateEmail(@RequestBody Map<String, String> requestMap);
+
     @PutMapping(path = "/updateProfilePhoto")
     ResponseEntity<String> updateProfilePhoto(@ModelAttribute ProfilePhotoRequest request);
+
+    @PutMapping(path = "/removePhoto/{id}")
+    ResponseEntity<String> removePhoto(@PathVariable Integer id);
 
     @PutMapping(path = "/updateProfilePhotoAdmin")
     ResponseEntity<String> updateProfilePhotoByAdmin(@ModelAttribute ProfilePhotoRequest request);
@@ -81,5 +90,8 @@ public interface UserRest {
 
     @DeleteMapping(path = "/delete/{id}")
     ResponseEntity<String> deleteUser(@PathVariable Integer id);
+
+    @PutMapping(path = "/forcePasswordChange/{id}/{password}")
+    ResponseEntity<String> forcePasswordChange(@PathVariable Integer id, @PathVariable String password);
 
 }

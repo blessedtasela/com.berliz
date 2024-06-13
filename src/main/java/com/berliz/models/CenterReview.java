@@ -38,10 +38,10 @@ public class CenterReview {
     @Column(name = "likes", columnDefinition = "INTEGER")
     private Integer likes;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "last_update", columnDefinition = "DATE")
+    @Column(name = "last_update", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 
     @Column(name = "status")

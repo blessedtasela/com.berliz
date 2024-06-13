@@ -11,6 +11,7 @@
     <groupId>com.berliz</groupId>
     <artifactId>com.berliz</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+
     <name>com.berliz</name>
     <description>Berliz web application - helping clients achieve their goals</description>
     <properties>
@@ -140,6 +141,8 @@
     </dependencies>
 
     <build>
+        <finalName>com.berliz</finalName>
+
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -147,8 +150,8 @@
                 <configuration>
                     <excludes>
                         <exclude>
-                            <groupId>org.project-lombok</groupId>
-                            <artifactId>lombok</artifactId>
+                            <groupId>com.example</groupId>
+                            <artifactId>example</artifactId>
                         </exclude>
                     </excludes>
                 </configuration>

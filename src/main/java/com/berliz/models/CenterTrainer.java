@@ -31,10 +31,10 @@ public class CenterTrainer {
     @JoinColumn(name = "trainer_fk", nullable = false)
     private Trainer trainer;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "lastUpdate", columnDefinition = "DATE")
+    @Column(name = "lastUpdate", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 
     @Column(name = "status")

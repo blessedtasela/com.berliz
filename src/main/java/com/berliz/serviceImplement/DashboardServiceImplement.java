@@ -98,17 +98,17 @@ public class DashboardServiceImplement implements DashboardService {
     public ResponseEntity<Map<String, Object>> getDetails() {
         try {
             log.info("Inside getDetails");
-            Integer userOrdersCount = orderRepo.countOrdersByEmail(jwtFilter.getCurrentUser());
-            Integer partnerApplicationCount = partnerRepo.countPartnerByEmail(jwtFilter.getCurrentUser());
-            Integer myTodoCount = todoListRepo.countMyTodosByEmail(jwtFilter.getCurrentUser());
-            Integer clientTaskCount = taskRepo.countClientTasksByEmail(jwtFilter.getCurrentUser());
-            Integer trainerTaskCount = taskRepo.countTrainerTasksByEmail(jwtFilter.getCurrentUser());
-            Integer clientSubscriptionCount = subscriptionRepo.countClientSubscriptionsByEmail(jwtFilter.getCurrentUser());
-            Integer trainerClientCount = clientRepo.countTrainerClientsByEmail(jwtFilter.getCurrentUser());
-            Integer centerMemberCount = memberRepo.countCenterMembersByEmail(jwtFilter.getCurrentUser());
-            Integer memberSubscriptionCount = subscriptionRepo.countMemberSubscriptionsByEmail(jwtFilter.getCurrentUser());
-            Integer userTestimonialCount = testimonialRepo.countUserTestimonialsByEmail(jwtFilter.getCurrentUser());
-            Integer centerTestimonialCount = testimonialRepo.countCenterTestimonialsByEmail(jwtFilter.getCurrentUser());
+            Integer userOrdersCount = orderRepo.countOrdersByEmail(jwtFilter.getCurrentUserEmail());
+            Integer partnerApplicationCount = partnerRepo.countPartnerByEmail(jwtFilter.getCurrentUserEmail());
+            Integer myTodoCount = todoListRepo.countMyTodosByEmail(jwtFilter.getCurrentUserEmail());
+            Integer clientTaskCount = taskRepo.countClientTasksByEmail(jwtFilter.getCurrentUserEmail());
+            Integer trainerTaskCount = taskRepo.countTrainerTasksByEmail(jwtFilter.getCurrentUserEmail());
+            Integer clientSubscriptionCount = subscriptionRepo.countClientSubscriptionsByEmail(jwtFilter.getCurrentUserEmail());
+            Integer trainerClientCount = clientRepo.countTrainerClientsByEmail(jwtFilter.getCurrentUserEmail());
+            Integer centerMemberCount = memberRepo.countCenterMembersByEmail(jwtFilter.getCurrentUserEmail());
+            Integer memberSubscriptionCount = subscriptionRepo.countMemberSubscriptionsByEmail(jwtFilter.getCurrentUserEmail());
+            Integer userTestimonialCount = testimonialRepo.countUserTestimonialsByEmail(jwtFilter.getCurrentUserEmail());
+            Integer centerTestimonialCount = testimonialRepo.countCenterTestimonialsByEmail(jwtFilter.getCurrentUserEmail());
 
             Map<String, Object> map = new HashMap<>();
             if (jwtFilter.isAdmin()) {
@@ -199,6 +199,25 @@ public class DashboardServiceImplement implements DashboardService {
             map.put("categories", categoryRepo.count());
             map.put("trainers", trainerRepo.count());
             map.put("centers", centerRepo.count());
+
+            return new ResponseEntity<>(map, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity(BerlizConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<Map<String, Object>> getProfileData() {
+        try {
+            Integer myTodoCount = todoListRepo.countMyTodosByEmail(jwtFilter.getCurrentUserEmail());
+            Integer clientTaskCount = taskRepo.countClientTasksByEmail(jwtFilter.getCurrentUserEmail());
+            Integer mySubscriptionCount = subscriptionRepo.countMemberSubscriptionsByEmail(jwtFilter.getCurrentUserEmail());
+
+            Map<String, Object> map = new HashMap<>();
+            map.put("tasks", clientTaskCount);
+            map.put("subscriptions", mySubscriptionCount);
+            map.put("todos", myTodoCount);
 
             return new ResponseEntity<>(map, HttpStatus.OK);
         } catch (Exception ex) {

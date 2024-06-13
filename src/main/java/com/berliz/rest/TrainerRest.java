@@ -91,7 +91,7 @@ public interface TrainerRest {
     @GetMapping(path = "/getMyTrainerBenefits")
     ResponseEntity<List<TrainerBenefit>> getMyTrainerBenefits();
 
-    @PutMapping(path = "/addTrainerIntroduction")
+    @PostMapping(path = "/addTrainerIntroduction")
     ResponseEntity<String> addTrainerIntroduction(@ModelAttribute IntroductionRequest introductionRequest) throws JsonProcessingException;
 
     @PutMapping(path = "/updateTrainerIntroduction")

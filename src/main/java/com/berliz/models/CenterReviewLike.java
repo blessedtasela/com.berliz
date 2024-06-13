@@ -33,7 +33,7 @@ public class CenterReviewLike {
     @JoinColumn(name = "centerReview_fk")
     private CenterReview centerReview;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
 }

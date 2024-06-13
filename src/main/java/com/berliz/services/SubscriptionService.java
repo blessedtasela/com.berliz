@@ -21,4 +21,8 @@ public interface SubscriptionService {
     ResponseEntity<String> updateStatus(Integer id) throws JsonProcessingException;
 
     ResponseEntity<Subscription> getSubscription(Integer id);
+
+    ResponseEntity<List<Subscription>> getMySubscriptions();
+
+    ResponseEntity<String> bulkAction(Map<String, String> requestMap) throws JsonProcessingException;
 }

@@ -162,7 +162,12 @@ public class ContactUsServiceImplement implements ContactUsService {
             contactUs.setMessage(requestMap.get("message"));
             contactUsRepo.save(contactUs);
 
-            simpMessagingTemplate.convertAndSend("/topic/updateContactUs", contactUs);
+            String adminNotificationMessage = "Contact us with id: " + contactUs.getId() + ", and info: "
+                    + contactUs.getMessage() + ", information has been updated";
+            String notificationMessage = "Your Contact us information has been updated : "
+                    + contactUs.getMessage();
+            jwtFilter.sendNotifications("/topic/updateContactUs", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, contactUs);
             return buildResponse(HttpStatus.OK, "ContactUs updated successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -220,7 +225,13 @@ public class ContactUsServiceImplement implements ContactUsService {
             } else {
                 responseMessage = "ContactUs is now pending";
             }
-            simpMessagingTemplate.convertAndSend("/topic/updateContactUsStatus", contactUs);
+
+            String adminNotificationMessage = "Contact us with id: " + contactUs.getId() +
+                    ", status has been set to " + status;
+            String notificationMessage = "You have successfully set your contact us status to : " +
+                    status;
+            jwtFilter.sendNotifications("/topic/updateContactUsStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, contactUs);
             return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -252,7 +263,12 @@ public class ContactUsServiceImplement implements ContactUsService {
             log.info("inside optional {}", id);
             ContactUs contactUs = optional.get();
             contactUsRepo.deleteById(id);
-            simpMessagingTemplate.convertAndSend("/topic/deleteContactUs", contactUs);
+            String adminNotificationMessage = "Contact us with id: " + contactUs.getId() + ", and info: "
+                    + contactUs.getMessage() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your contact us : "
+                    + contactUs.getMessage();
+            jwtFilter.sendNotifications("/topic/deleteContactUs", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, contactUs);
             return buildResponse(HttpStatus.OK, "ContactUs deleted successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -299,7 +315,12 @@ public class ContactUsServiceImplement implements ContactUsService {
 
             emailUtilities.sendContactUsMailToUser(subject, name, status, email, message);
             emailUtilities.sendContactUsMailToAdmins(status, optional.get().getEmail(), userRepo.getAllAdminsMail());
-            simpMessagingTemplate.convertAndSend("/topic/reviewContactUs", contactUs);
+            String adminNotificationMessage = "Contact us with id: " + contactUs.getId() +
+                    ", has been reviewed";
+            String notificationMessage = "You have successfully reviewed your contact us";
+            jwtFilter.sendNotifications("/topic/reviewContactUs", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, contactUs);
+            simpMessagingTemplate.convertAndSend("/topic/", contactUs);
             return buildResponse(HttpStatus.OK, "ContactUs has been reviewed successfully");
         } catch (Exception ex) {
             log.error("SSomething went wrong", ex);
@@ -350,9 +371,8 @@ public class ContactUsServiceImplement implements ContactUsService {
      * Converts a map of request data to a ContactUs object.
      *
      * @param requestMap A map containing contact information.
-     * @return A ContactUs object with data from the request map.
      */
-    private ContactUs getContactUsFromMap(Map<String, String> requestMap) {
+    private void getContactUsFromMap(Map<String, String> requestMap) {
         ContactUs contactUs = new ContactUs();
         Date currentDate = new Date();
 
@@ -363,8 +383,13 @@ public class ContactUsServiceImplement implements ContactUsService {
         contactUs.setStatus("false");
         contactUs.setLastUpdate(currentDate);
         ContactUs savedContactUs = contactUsRepo.save(contactUs);
-        simpMessagingTemplate.convertAndSend("/topic/getContactUsFromMap", savedContactUs);
-        return contactUs;
+        String adminNotificationMessage = "A new contact-us message with id: " + savedContactUs.getId()
+                + " and info" + savedContactUs.getMessage()
+                + ", has been added by: " + savedContactUs.getEmail();
+        String notificationMessage = "You have successfully added a new contact message: "
+                + savedContactUs.getMessage();
+        jwtFilter.sendNotifications("/topic/getContactUsFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedContactUs);
     }
 
     /**

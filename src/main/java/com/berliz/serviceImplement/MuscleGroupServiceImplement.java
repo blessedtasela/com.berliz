@@ -143,7 +143,12 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
             MuscleGroup muscleGroup = optional.get();
             muscleGroup.setImage(file.getBytes());
             muscleGroupRepo.save(muscleGroup);
-            simpMessagingTemplate.convertAndSend("/topic/updateMuscleGroupImage", muscleGroup);
+            String adminNotificationMessage = "Muscle group image with id: " + muscleGroup.getId() + ", and info: "
+                    + muscleGroup.getName() + ", information has been updated";
+            String notificationMessage = "Your muscle group image has been updated : "
+                    + muscleGroup.getName();
+            jwtFilter.sendNotifications("/topic/updateMuscleGroupImage", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, muscleGroup);
             return BerlizUtilities.buildResponse(HttpStatus.OK, muscleGroup.getName() + "'s photo updated successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -182,7 +187,12 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
             muscleGroup.setDescription(requestMap.get("description"));
             muscleGroup.setLastUpdate(new Date());
             muscleGroupRepo.save(muscleGroup);
-            simpMessagingTemplate.convertAndSend("/topic/updateMuscleGroup", muscleGroup);
+            String adminNotificationMessage = "Muscle group with id: " + muscleGroup.getId() + ", and info: "
+                    + muscleGroup.getName() + ", information has been updated";
+            String notificationMessage = "Your muscle group information has been updated : "
+                    + muscleGroup.getName();
+            jwtFilter.sendNotifications("/topic/updateMuscleGroup", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, muscleGroup);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "MuscleGroup updated successfully");
 
         } catch (Exception ex) {
@@ -217,7 +227,11 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
 
             muscleGroup.setStatus(status);
             muscleGroupRepo.save(muscleGroup);
-            simpMessagingTemplate.convertAndSend("/topic/updateMuscleGroupStatus", muscleGroup);
+            String adminNotificationMessage = "Muscle group with id: " + muscleGroup.getId() +
+                    ", status has been set to " + status;
+            String notificationMessage = "You have successfully set your muscle group status to: " + status;
+            jwtFilter.sendNotifications("/topic/updateMuscleGroupStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, muscleGroup);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (
                 Exception ex) {
@@ -244,7 +258,11 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
             }
 
             muscleGroupRepo.deleteById(id);
-            simpMessagingTemplate.convertAndSend("/topic/deleteMuscleGroup", muscleGroup);
+            String adminNotificationMessage = "Muscle group with id: " + muscleGroup.getId() + ", and info: "
+                    + muscleGroup.getName() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your muscle group: " + muscleGroup.getName();
+            jwtFilter.sendNotifications("/topic/deleteMuscleGroup", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, muscleGroup);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "MuscleGroup deleted successfully");
 
         } catch (Exception ex) {
@@ -253,7 +271,7 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
-    private MuscleGroup getMuscleGroupFromMap(MuscleGroupRequest request) throws IOException {
+    private void getMuscleGroupFromMap(MuscleGroupRequest request) throws IOException {
         MuscleGroup muscleGroup = new MuscleGroup();
         byte[] image = request.getImage().getBytes();
 
@@ -265,8 +283,11 @@ public class MuscleGroupServiceImplement implements MuscleGroupService {
         muscleGroup.setLastUpdate(new Date());
         muscleGroup.setStatus("false");
         MuscleGroup savedMuscleGroup = muscleGroupRepo.save(muscleGroup);
-        simpMessagingTemplate.convertAndSend("/topic/getMuscleGroupFromMap", savedMuscleGroup);
-        return muscleGroup;
+        String adminNotificationMessage = "A new muscle group with id: " + savedMuscleGroup.getId()
+                + " and info" + savedMuscleGroup.getName() + ", has been added";
+        String notificationMessage = "You have successfully added a new muscle group: " + savedMuscleGroup.getName();
+        jwtFilter.sendNotifications("/topic/getMuscleGroupFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedMuscleGroup);
     }
 
     private boolean validateMuscleGroupMap(Map<String, String> requestMap, boolean validId) {

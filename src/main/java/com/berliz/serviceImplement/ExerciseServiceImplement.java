@@ -149,7 +149,12 @@ public class ExerciseServiceImplement implements ExerciseService {
             Exercise exercise = optional.get();
             exercise.setDemo(file.getBytes());
             exerciseRepo.save(exercise);
-            simpMessagingTemplate.convertAndSend("/topic/updateExerciseDemo", exercise);
+            String adminNotificationMessage = "Exercise with id: " + exercise.getId() + ", and info: "
+                    + exercise.getName() + ", demo has been updated";
+            String notificationMessage = "Your exercise demo has been updated : "
+                    + exercise.getName();
+            jwtFilter.sendNotifications("/topic/updateExerciseDemo", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, exercise);
             return BerlizUtilities.buildResponse(HttpStatus.OK, exercise.getName() + "'s demo updated successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -165,7 +170,7 @@ public class ExerciseServiceImplement implements ExerciseService {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            boolean isValid = validateExerciseMap(requestMap, true);
+            boolean isValid = validateExerciseMap(requestMap);
             log.info("Is request valid? {}", isValid);
             if (!isValid) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
@@ -216,7 +221,12 @@ public class ExerciseServiceImplement implements ExerciseService {
             }
 
             exerciseRepo.save(exercise);
-            simpMessagingTemplate.convertAndSend("/topic/updateExercise", exercise);
+            String adminNotificationMessage = "Exercise with id: " + exercise.getId() + ", and info: "
+                    + exercise.getName() + ", information has been updated";
+            String notificationMessage = "Your exercise information has been updated : "
+                    + exercise.getName();
+            jwtFilter.sendNotifications("/topic/updateExercise", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, exercise);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Exercise updated successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -250,7 +260,11 @@ public class ExerciseServiceImplement implements ExerciseService {
 
             exercise.setStatus(status);
             exerciseRepo.save(exercise);
-            simpMessagingTemplate.convertAndSend("/topic/updateExerciseStatus", exercise);
+            String adminNotificationMessage = "Exercise with id: " + exercise.getId() +
+                    ", status has been set to " + status;
+            String notificationMessage = "You have successfully set your exercise status to: " + status;
+            jwtFilter.sendNotifications("/topic/updateExerciseStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, exercise);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
         } catch (
                 Exception ex) {
@@ -277,7 +291,11 @@ public class ExerciseServiceImplement implements ExerciseService {
             }
 
             exerciseRepo.deleteById(id);
-            simpMessagingTemplate.convertAndSend("/topic/deleteExercise", exercise);
+            String adminNotificationMessage = "Exercise with id: " + exercise.getId() + ", and info: "
+                    + exercise.getName() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your exercise: " + exercise.getName();
+            jwtFilter.sendNotifications("/topic/deleteExercise", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, exercise);
             return BerlizUtilities.buildResponse(HttpStatus.OK, "Exercise deleted successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -285,11 +303,10 @@ public class ExerciseServiceImplement implements ExerciseService {
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
-    private Exercise getExerciseFromMap(ExerciseRequest request) throws IOException {
+    private void getExerciseFromMap(ExerciseRequest request) throws IOException {
         Exercise exercise = new Exercise();
         MultipartFile demoFile = request.getDemo();
         byte[] video = demoFile.getBytes();
-
         exercise.setDescription(request.getDescription());
         exercise.setDemo(video);
         exercise.setName(request.getName());
@@ -324,13 +341,17 @@ public class ExerciseServiceImplement implements ExerciseService {
             }
             exercise.setCategories(categories);
         }
+
         Exercise savedExercise = exerciseRepo.save(exercise);
-        simpMessagingTemplate.convertAndSend("/topic/getExerciseFromMap", savedExercise);
-        return exercise;
+        String adminNotificationMessage = "A new exercise with id: " + savedExercise.getId()
+                + " and info" + savedExercise.getName() + ", has been added";
+        String notificationMessage = "You have successfully added a new exercise: " + savedExercise.getName();
+        jwtFilter.sendNotifications("/topic/getExerciseFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedExercise);
     }
 
-    private boolean validateExerciseMap(Map<String, String> requestMap, boolean validId) {
-        if (validId) {
+    private boolean validateExerciseMap(Map<String, String> requestMap) {
+        if (true) {
             return requestMap.containsKey("id")
                     && requestMap.containsKey("name")
                     && requestMap.containsKey("description");

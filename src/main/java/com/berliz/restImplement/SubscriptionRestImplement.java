@@ -89,4 +89,26 @@ public class SubscriptionRestImplement implements SubscriptionRest {
         return new ResponseEntity<>(new Subscription(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @Override
+    public ResponseEntity<List<Subscription>> getMySubscriptions() {
+        try {
+            return subscriptionService.getMySubscriptions();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> bulkAction(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return subscriptionService.bulkAction(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
 }

@@ -34,10 +34,10 @@ public class CenterAnnouncement {
     @Column(name = "icon", columnDefinition = "BYTEA")
     private byte[] icon;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "lastUpdate", columnDefinition = "DATE")
+    @Column(name = "lastUpdate", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 
     @Column(name = "status")

@@ -53,16 +53,16 @@ public class Task implements Serializable {
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SubTask> subTasks = new ArrayList<>();
 
-    @Column(name = "startData", columnDefinition = "DATE")
+    @Column(name = "startData", columnDefinition = "TIMESTAMP")
     private Date startDate;
 
-    @Column(name = "endDate", columnDefinition = "DATE")
+    @Column(name = "endDate", columnDefinition = "TIMESTAMP")
     private Date endDate;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "lastUpdate", columnDefinition = "DATE")
+    @Column(name = "lastUpdate", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 
     @Column(name = "status")

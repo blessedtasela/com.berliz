@@ -109,7 +109,12 @@ public class NewsletterServiceImplement implements NewsletterService {
 
             newsletter.setEmail(requestMap.get("email"));
             newsletterRepo.save(newsletter);
-            simpMessagingTemplate.convertAndSend("/topic/updateNewsletter", newsletter);
+            String adminNotificationMessage = "Newsletter with id: " + newsletter.getId() + ", and info: "
+                    + newsletter.getEmail() + ", information has been updated";
+            String notificationMessage = "Your newsletter information has been updated : "
+                    + newsletter.getEmail();
+            jwtFilter.sendNotifications("/topic/updateNewsletter", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, newsletter);
             return buildResponse(HttpStatus.OK, "Newsletter updated successfully");
 
         } catch (Exception ex) {
@@ -182,7 +187,11 @@ public class NewsletterServiceImplement implements NewsletterService {
             log.info("inside optional {}", id);
             Newsletter newsletter = optional.get();
             newsletterRepo.deleteById(id);
-            simpMessagingTemplate.convertAndSend("/topic/deleteNewsletter", newsletter);
+            String adminNotificationMessage = "Newsletter with id: " + newsletter.getId() + ", and info: "
+                    + newsletter.getEmail() + ", has been deleted";
+            String notificationMessage = "You have successfully deleted your newsletter: " + newsletter.getEmail();
+            jwtFilter.sendNotifications("/topic/deleteNewsletter", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, newsletter);
             return buildResponse(HttpStatus.OK, "Newsletter deleted successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -226,7 +235,11 @@ public class NewsletterServiceImplement implements NewsletterService {
             }
 
             newsletterRepo.save(newsletter);
-            simpMessagingTemplate.convertAndSend("/topic/updateNewsletterStatus", newsletter);
+            String adminNotificationMessage = "Newsletter with id: " + newsletter.getId() +
+                    ", status has been set to " + status;
+            String notificationMessage = "You have successfully set your newsletter status to: " + status;
+            jwtFilter.sendNotifications("/topic/updateNewsletterStatus", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, newsletter);
             return buildResponse(HttpStatus.OK, responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -256,6 +269,10 @@ public class NewsletterServiceImplement implements NewsletterService {
             }
 
             emailUtilities.sendBulkNewsletterMail(emails, body, subject);
+            String adminNotificationMessage = "Newsletters has been sent in bulk: " + newsletterMessage;
+            String notificationMessage = "You have successfully sent newsletter in bulk: " + newsletterMessage;
+            jwtFilter.sendNotifications("/topic/sendBulkNewsletter", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, newsletterMessage);
             return buildResponse(HttpStatus.OK, "Newsletter has been sent to all active participants");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -290,6 +307,11 @@ public class NewsletterServiceImplement implements NewsletterService {
             }
 
             emailUtilities.sendNewsletterMail(email, body, subject);
+            String adminNotificationMessage = "Newsletter with id: " + newsletter.getId() +
+                    ", and info: " + newsletterMessage + ", has been sent successfully";
+            String notificationMessage = "You have successfully sent newsletter message: " + newsletterMessage;
+            jwtFilter.sendNotifications("/topic/sendNewsletter", adminNotificationMessage,
+                    jwtFilter.getCurrentUser(), notificationMessage, newsletter);
             return buildResponse(HttpStatus.OK, "Newsletter has been sent to participant");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -358,9 +380,8 @@ public class NewsletterServiceImplement implements NewsletterService {
      * Creates a Newsletter object from the provided request map.
      *
      * @param requestMap A map containing key-value pairs from the request
-     * @return A Newsletter object with data from the request map
      */
-    private Newsletter getNewsletterFromMap(Map<String, String> requestMap) {
+    private void getNewsletterFromMap(Map<String, String> requestMap) {
         Newsletter newsletter = new Newsletter();
         Date currentDate = new Date();
         newsletter.setDate(currentDate);
@@ -368,8 +389,11 @@ public class NewsletterServiceImplement implements NewsletterService {
         newsletter.setStatus("true");
         newsletter.setLastUpdate(currentDate);
         Newsletter savedNewsletter = newsletterRepo.save(newsletter);
-        simpMessagingTemplate.convertAndSend("/topic/getNewsletterFromMap", savedNewsletter);
-        return newsletter;
+        String adminNotificationMessage = "A new newsletter with id: " + savedNewsletter.getId()
+                + " and info" + savedNewsletter.getEmail() + ", has been added";
+        String notificationMessage = "You have successfully added a new newsletter: " + savedNewsletter.getEmail();
+        jwtFilter.sendNotifications("/topic/getNewsletterFromMap", adminNotificationMessage,
+                jwtFilter.getCurrentUser(), notificationMessage, savedNewsletter);
     }
 
     /**

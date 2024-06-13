@@ -254,7 +254,7 @@ public class OrderServiceImplement implements OrderService {
     public ResponseEntity<List<Order>> getByUser(Integer id) {
         try {
             log.info("Inside getByUser {}", id);
-            if (jwtFilter.isAdmin() || !jwtFilter.getCurrentUser().isEmpty()) {
+            if (jwtFilter.isAdmin() || !jwtFilter.getCurrentUserEmail().isEmpty()) {
                 List<Order> order = orderRepo.findByUserId(id);
                 if (order != null) {
                     log.info("Inside optional {}", order);
@@ -465,16 +465,16 @@ public class OrderServiceImplement implements OrderService {
                 Integer productId = (Integer) productMap.get("productId");
 
                 // Find product in repository by product id
-                Product product = productRepo.getById(productId);
+                Product product = productRepo.getReferenceById(productId);
 
                 // Check if the product ID is null or not found
-                if (product == null || !productRepo.existsById(productId)) {
+                if (!productRepo.existsById(productId)) {
                     throw new Exception("product id is null");
                 }
 
                 // Check if the product ID has already been processed
                 if (processedProductIds.contains(productId)) {
-                    log.info("Duplicate product id. Only one added", processedProductIds);
+                    log.info("Duplicate product id. Only one added");
                 } else {
                     // Mark the product ID as processed
                     processedProductIds.add(productId);

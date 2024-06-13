@@ -23,6 +23,12 @@ import java.util.Set;
 @NamedQuery(name = "Subscription.countMemberSubscriptionsByEmail",
         query = "SELECT COUNT(s) FROM Subscription s WHERE s.user.email =: email")
 
+@NamedQuery(name = "Subscription.bulkUpdateStatusByIds",
+        query = "UPDATE Subscription SET status = :status WHERE id IN :ids")
+
+@NamedQuery(name = "Subscription.bulkDeleteByIds",
+        query = "DELETE FROM Subscription WHERE id IN :ids")
+
 @Data
 @Entity
 @DynamicInsert
@@ -49,10 +55,10 @@ public class Subscription implements Serializable {
     @JoinColumn(name = "center_id")
     private Center center;
 
-    @Column(name = "startDate", columnDefinition = "DATE")
+    @Column(name = "startDate", columnDefinition = "TIMESTAMP")
     private Date startDate;
 
-    @Column(name = "endDate", columnDefinition = "DATE")
+    @Column(name = "endDate", columnDefinition = "TIMESTAMP")
     private Date endDate;
 
     @ManyToMany(fetch = FetchType.LAZY)
@@ -72,10 +78,10 @@ public class Subscription implements Serializable {
     @Column(name = "mode")
     private String mode;
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "lastUpdate", columnDefinition = "DATE")
+    @Column(name = "lastUpdate", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 
     @Column(name = "status")

@@ -62,14 +62,18 @@ public class CategoryServiceImplement implements CategoryService {
             if (!jwtFilter.isAdmin()) {
                 return buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
+
             if (!validateCategoryMap(requestMap, false)) {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
+
             Category category = categoryRepo.findByName(requestMap.get("name"));
             if (category != null) {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Category exists");
             }
-            getCategoryFromMap(requestMap);
+
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
+            getCategoryFromMap(requestMap, user);
             return buildResponse(HttpStatus.OK, "Category added successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -135,13 +139,18 @@ public class CategoryServiceImplement implements CategoryService {
 
             // Validate the request data
             boolean isValid = validateCategoryMap(requestMap, true);
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             log.info("Is request valid? {}", isValid);
             if (!isValid) {
                 return buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
-            // Extract category ID from the request
             Integer id = Integer.parseInt(requestMap.get("id"));
+            String name = requestMap.get("name");
+            Category category = categoryRepo.findByName(name);
+            if (category != null && categoryRepo.countByNameExceptId(name, id) >= 1) {
+                return buildResponse(HttpStatus.BAD_REQUEST, "Category exists");
+            }
 
             // Check if the category with the given ID exists
             Optional<Category> optional = categoryRepo.findById(id);
@@ -172,10 +181,7 @@ public class CategoryServiceImplement implements CategoryService {
             for (String tagIdString : tagIdsArray) {
                 // Remove leading and trailing spaces before parsing
                 int tagId = Integer.parseInt(tagIdString.trim());
-                Tag tag = tagRepo.findById(tagId).orElse(null);
-                if (tag != null) {
-                    updatedTags.add(tag); // Add the tag to the set of updated tags
-                }
+                tagRepo.findById(tagId).ifPresent(updatedTags::add);
             }
 
             // Set the updated tags for the existingCategory
@@ -183,7 +189,11 @@ public class CategoryServiceImplement implements CategoryService {
 
             // Save the updated category
             categoryRepo.save(existingCategory);
-            simpMessagingTemplate.convertAndSend("/topic/updateCategory", existingCategory);
+            String adminNotificationMessage = "Category with id: " + existingCategory.getId()
+                    + ", and name " + existingCategory.getName() + ", has been updated";
+            String notificationMessage = "You have updated category: " + existingCategory.getName();
+            jwtFilter.sendNotifications("/topic/updateCategory", adminNotificationMessage,
+                    user, notificationMessage, existingCategory);
             return buildResponse(HttpStatus.OK, "Category updated successfully");
 
         } catch (Exception ex) {
@@ -211,14 +221,19 @@ public class CategoryServiceImplement implements CategoryService {
                 return buildResponse(HttpStatus.NOT_FOUND, "Category id not found");
             }
             log.info("inside optional {}", id);
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             Category category = optional.get();
             if (category.getStatus().equalsIgnoreCase("true")) {
                 return buildResponse(HttpStatus.BAD_REQUEST, "Category iis active, cannot complete request");
             }
-            categoryRepo.deleteById(id);
-            simpMessagingTemplate.convertAndSend("/topic/deleteCategory", category);
-            return buildResponse(HttpStatus.OK, "Category deleted successfully");
 
+            categoryRepo.deleteById(id);
+            String adminNotificationMessage = "Category with id: " + category.getId() + ", and name "
+                    + category.getName() + ", account has been deleted";
+            String notificationMessage = "You have successfully deleted category: " + category.getName();
+            jwtFilter.sendNotifications("/topic/deleteCategory", adminNotificationMessage,
+                    user, notificationMessage, category);
+            return buildResponse(HttpStatus.OK, "Category deleted successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -256,9 +271,15 @@ public class CategoryServiceImplement implements CategoryService {
                 responseMessage = "Category Status updated successfully. Now Activated";
             }
 
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             category.setStatus(status);
             categoryRepo.save(category);
-            simpMessagingTemplate.convertAndSend("/topic/updateCategoryStatus", category);
+            String adminNotificationMessage = "Category with id: " + category.getId() +
+                    ", account status has been set to " + status;
+            String notificationMessage = "You have successfully set category status to : " +
+                    status + " -: " + category.getName();
+            jwtFilter.sendNotifications("/topic/updateCategoryStatus", adminNotificationMessage,
+                    user, notificationMessage, category);
             return buildResponse(HttpStatus.OK, responseMessage);
         } catch (
                 Exception ex) {
@@ -278,11 +299,9 @@ public class CategoryServiceImplement implements CategoryService {
         try {
             log.info("Inside getCategory {}", id);
             Optional<Category> optional = categoryRepo.findById(id);
-            if (optional.isPresent()) {
-                return new ResponseEntity<>(optional.get(), HttpStatus.OK);
-            } else {
-                return new ResponseEntity<>(new Category(), HttpStatus.OK);
-            }
+            return optional.<ResponseEntity<?>>map(category
+                            -> new ResponseEntity<>(category, HttpStatus.OK))
+                    .orElseGet(() -> new ResponseEntity<>(new Category(), HttpStatus.OK));
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -304,7 +323,7 @@ public class CategoryServiceImplement implements CategoryService {
                 log.info("Inside optional {}", category);
                 return new ResponseEntity<>(category, HttpStatus.OK);
             } else {
-                return new ResponseEntity("Tag ID not found in any Category", HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.BAD_REQUEST);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -317,7 +336,7 @@ public class CategoryServiceImplement implements CategoryService {
         try {
             log.info("Inside likeTrainer {}", id);
             Optional<Category> optional = categoryRepo.findById(id);
-            User user = userRepo.findByEmail(jwtFilter.getCurrentUser());
+            User user = userRepo.findByEmail(jwtFilter.getCurrentUserEmail());
             boolean validUser = jwtFilter.isBerlizUser();
 
             if (!validUser) {
@@ -335,7 +354,11 @@ public class CategoryServiceImplement implements CategoryService {
                 categoryLikeRepo.deleteByUserAndCategory(user, category);
                 category.setLikes(category.getLikes() - 1);
                 categoryRepo.save(category);
-                simpMessagingTemplate.convertAndSend("/topic/likeCategory", category);
+                String adminNotificationMessage = "Category with id: " + category.getId() +
+                        ", has been disliked ";
+                String notificationMessage = "You have just disliked category : " + category.getName();
+                jwtFilter.sendNotifications("/topic/likeCategory", adminNotificationMessage,
+                        user, notificationMessage, category);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Hello, " + user.getFirstname() + " you have disliked " + category.getName() + " category");
 
             } else {
@@ -347,7 +370,11 @@ public class CategoryServiceImplement implements CategoryService {
                 categoryLikeRepo.save(categoryLike);
                 category.setLikes(category.getLikes() + 1);
                 categoryRepo.save(category);
-                simpMessagingTemplate.convertAndSend("/topic/likeCategory", category);
+                String adminNotificationMessage = "Category with id: " + category.getId() +
+                        ", has been liked ";
+                String notificationMessage = "You have just liked category : " + category.getName();
+                jwtFilter.sendNotifications("/topic/likeCategory", adminNotificationMessage,
+                        user, notificationMessage, category);
                 return BerlizUtilities.buildResponse(HttpStatus.OK, "Hello, " +
                         user.getFirstname() + " you just liked " + category.getName() + " category");
             }
@@ -385,9 +412,8 @@ public class CategoryServiceImplement implements CategoryService {
      * Creates a Category object from the provided request map containing category data.
      *
      * @param requestMap The map containing category data as key-value pairs.
-     * @return A Category object created from the provided map.
      */
-    private Category getCategoryFromMap(Map<String, String> requestMap) {
+    private void getCategoryFromMap(Map<String, String> requestMap, User user) {
         Category category = new Category();
         Date currentDate = new Date();
 
@@ -400,7 +426,7 @@ public class CategoryServiceImplement implements CategoryService {
                 // Remove leading and trailing spaces before parsing
                 int tagId = Integer.parseInt(tagIdString.trim());
                 Tag tag = tagRepo.findById(tagId)
-                        .orElseThrow(() -> new EntityNotFoundException("Tag not found with ID: " + tagId));
+                        .orElseThrow(() -> new EntityNotFoundException("Category not found with ID: " + tagId));
                 tagSet.add(tag);
             }
             category.setTagSet(tagSet);
@@ -414,8 +440,11 @@ public class CategoryServiceImplement implements CategoryService {
         category.setStatus("true");
         category.setLastUpdate(currentDate);
         Category savedCategory = categoryRepo.save(category);
-        simpMessagingTemplate.convertAndSend("/topic/getCategoryFromMap", savedCategory);
-        return category;
+        String adminNotificationMessage = "A new category with id: " + savedCategory.getId() + " and name"
+                + savedCategory.getName() + ", has been added";
+        String notificationMessage = "You have successfully added a new category: " + savedCategory.getName();
+        jwtFilter.sendNotifications("/topic/getCategoryFromMap", adminNotificationMessage,
+                user, notificationMessage, savedCategory);
     }
 
     /**

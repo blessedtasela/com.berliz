@@ -19,8 +19,14 @@ import java.util.Set;
 
 @NamedQuery(name = "Category.getByTag",
         query = "select c from Category c " +
-        "join c.tagSet t " +
-        "where t.id = :id")
+                "join c.tagSet t " +
+                "where t.id = :id")
+
+@NamedQuery(name = "Category.countByName",
+        query = "SELECT COUNT(c) FROM Category c WHERE c.name = :name")
+
+@NamedQuery(name = "Category.countByNameExceptId",
+        query = "SELECT COUNT(c) FROM Category c WHERE LOWER(c.name) = LOWER(:name) AND c.id <> :id")
 
 @Data
 @Entity
@@ -56,10 +62,10 @@ public class Category implements Serializable {
     )
     private Set<Tag> tagSet = new HashSet<>();
 
-    @Column(name = "date", columnDefinition = "DATE")
+    @Column(name = "date", columnDefinition = "TIMESTAMP")
     private Date date;
 
-    @Column(name = "lastUpdate", columnDefinition = "DATE")
+    @Column(name = "lastUpdate", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 
     @Column(name = "status")

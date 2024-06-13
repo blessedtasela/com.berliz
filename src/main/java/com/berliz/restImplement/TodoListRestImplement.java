@@ -62,6 +62,16 @@ public class TodoListRestImplement implements TodoListRest {
     }
 
     @Override
+    public ResponseEntity<String> bulkAction(Map<String, String> requestMap) throws JsonProcessingException {
+        try {
+            return todoListService.bulkAction(requestMap);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
+    }
+
+    @Override
     public ResponseEntity<String> updateStatus(Integer id, String status) throws JsonProcessingException {
         try {
             return todoListService.updateStatus(id, status);
