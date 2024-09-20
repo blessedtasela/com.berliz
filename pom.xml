@@ -16,8 +16,8 @@
     <description>Berliz web application - helping clients achieve their goals</description>
     <properties>
         <java.version>17</java.version>
-            <maven.compiler.source>17</maven.compiler.source>
-            <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
     </properties>
     <dependencies>
         <dependency>
@@ -91,7 +91,6 @@
             <artifactId>pdfbox</artifactId>
             <version>2.0.27</version>
         </dependency>
-
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
@@ -139,12 +138,10 @@
             <artifactId>commons-io</artifactId>
             <version>2.11.0</version>
         </dependency>
-
     </dependencies>
 
     <build>
         <finalName>com.berliz</finalName>
-
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -168,5 +165,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>

@@ -11,6 +11,6 @@ public interface TrainerFeatureVideoRepo extends JpaRepository<TrainerFeatureVid
 
     TrainerIntroduction findByMotivation(String motivation);
 
-    List<TrainerFeatureVideo> findByTrainer(Trainer trainer);
+    TrainerFeatureVideo findByTrainer(Trainer trainer);
 
 }

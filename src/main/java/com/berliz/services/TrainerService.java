@@ -63,7 +63,7 @@ public interface TrainerService {
 
     ResponseEntity<List<TrainerBenefit>> getAllTrainerBenefits();
 
-    ResponseEntity<List<TrainerBenefit>> getMyTrainerBenefits();
+    ResponseEntity<TrainerBenefit> getMyTrainerBenefit();
 
     ResponseEntity<String> addTrainerIntroduction(@ModelAttribute IntroductionRequest introductionRequest) throws JsonProcessingException;
 
@@ -101,7 +101,7 @@ public interface TrainerService {
 
     ResponseEntity<List<TrainerFeatureVideo>> getAllTrainerFeatureVideos();
 
-    ResponseEntity<List<TrainerFeatureVideo>> getMyTrainerFeatureVideos();
+    ResponseEntity<TrainerFeatureVideo> getMyTrainerFeatureVideo();
 
     ResponseEntity<String> likeTrainerReview(Integer id) throws JsonProcessingException;
 

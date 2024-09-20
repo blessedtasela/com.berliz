@@ -9,5 +9,5 @@ public interface TrainerBenefitRepo extends JpaRepository<TrainerBenefit, Intege
 
     TrainerBenefit findByBenefits(String benefit);
 
-    List<TrainerBenefit> findByTrainer(Trainer trainer);
+    TrainerBenefit findByTrainer(Trainer trainer);
 }

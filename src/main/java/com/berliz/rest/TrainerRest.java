@@ -88,8 +88,8 @@ public interface TrainerRest {
     @GetMapping(path = "/getAllTrainerBenefits")
     ResponseEntity<List<TrainerBenefit>> getAllTrainerBenefits();
 
-    @GetMapping(path = "/getMyTrainerBenefits")
-    ResponseEntity<List<TrainerBenefit>> getMyTrainerBenefits();
+    @GetMapping(path = "/getMyTrainerBenefit")
+    ResponseEntity<TrainerBenefit> getMyTrainerBenefit();
 
     @PostMapping(path = "/addTrainerIntroduction")
     ResponseEntity<String> addTrainerIntroduction(@ModelAttribute IntroductionRequest introductionRequest) throws JsonProcessingException;
@@ -139,8 +139,8 @@ public interface TrainerRest {
     @GetMapping(path = "/getAllTrainerFeatureVideos")
     ResponseEntity<List<TrainerFeatureVideo>> getAllTrainerFeatureVideos();
 
-    @GetMapping(path = "/getMyTrainerFeatureVideos")
-    ResponseEntity<List<TrainerFeatureVideo>> getMyTrainerFeatureVideos();
+    @GetMapping(path = "/getMyTrainerFeatureVideo")
+    ResponseEntity<TrainerFeatureVideo> getMyTrainerFeatureVideo();
 
     @DeleteMapping(path = "/likeTrainerReview/{id}")
     ResponseEntity<String> likeTrainerReview(@PathVariable Integer id) throws JsonProcessingException;

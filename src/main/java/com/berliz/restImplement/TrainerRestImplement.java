@@ -267,13 +267,13 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<List<TrainerBenefit>> getMyTrainerBenefits() {
+    public ResponseEntity<TrainerBenefit> getMyTrainerBenefit() {
         try {
-            return trainerService.getMyTrainerBenefits();
+            return trainerService.getMyTrainerBenefit();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(new TrainerBenefit(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
@@ -458,13 +458,13 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<List<TrainerFeatureVideo>> getMyTrainerFeatureVideos() {
+    public ResponseEntity<TrainerFeatureVideo> getMyTrainerFeatureVideo() {
         try {
-            return trainerService.getMyTrainerFeatureVideos();
+            return trainerService.getMyTrainerFeatureVideo();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(new TrainerFeatureVideo(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override

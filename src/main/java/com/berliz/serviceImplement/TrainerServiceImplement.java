@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.Random;
 
 @Slf4j
 @Service
@@ -992,7 +993,7 @@ public class TrainerServiceImplement implements TrainerService {
             }
 
             // Split the benefits string using "#" delimiter and store as a list
-            List<String> benefits = Arrays.asList(requestMap.get("benefit").split("#"));
+            List<String> benefits = new ArrayList<>(Arrays.asList(requestMap.get("benefits").split("#")));
             trainerBenefit.setBenefits(benefits);
             trainerBenefit.setLastUpdate(new Date());
             TrainerBenefit savedTrainerBenefit = trainerBenefitRepo.save(trainerBenefit);
@@ -1067,24 +1068,24 @@ public class TrainerServiceImplement implements TrainerService {
     }
 
     @Override
-    public ResponseEntity<List<TrainerBenefit>> getMyTrainerBenefits() {
+    public ResponseEntity<TrainerBenefit> getMyTrainerBenefit() {
         try {
             log.info("Inside getMyTrainerBenefits");
-            if (!jwtFilter.isAdmin()) {
-                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer())) {
+                return new ResponseEntity<>(new TrainerBenefit(), HttpStatus.UNAUTHORIZED);
             }
 
             Trainer trainer = trainerRepo.findByUserId(jwtFilter.getCurrentUserId());
             if (trainer == null) {
-                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+                return new ResponseEntity<>(new TrainerBenefit(), HttpStatus.UNAUTHORIZED);
             }
 
-            List<TrainerBenefit> trainerBenefits = trainerBenefitRepo.findByTrainer(trainer);
-            return new ResponseEntity<>(trainerBenefits, HttpStatus.OK);
+            TrainerBenefit trainerBenefit = trainerBenefitRepo.findByTrainer(trainer);
+            return new ResponseEntity<>(trainerBenefit, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(new TrainerBenefit(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
@@ -1483,7 +1484,7 @@ public class TrainerServiceImplement implements TrainerService {
             boolean isValid = featureVideoRequest != null;
             log.info("Is request valid? {}", isValid);
 
-            if (!jwtFilter.isAdmin() || jwtFilter.isTrainer()) {
+            if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer())) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
@@ -1504,8 +1505,8 @@ public class TrainerServiceImplement implements TrainerService {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer not found in db");
             }
 
-            List<TrainerFeatureVideo> trainerFeatureVideo = trainerFeatureVideoRepo.findByTrainer(trainer);
-            if (trainerFeatureVideo == null || trainerFeatureVideo.size() < 5) {
+            TrainerFeatureVideo trainerFeatureVideo = trainerFeatureVideoRepo.findByTrainer(trainer);
+            if (trainerFeatureVideo == null) {
                 getTrainerFeatureVideoFromMap(featureVideoRequest, trainer);
             } else {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED,
@@ -1543,7 +1544,7 @@ public class TrainerServiceImplement implements TrainerService {
             boolean isValid = featureVideoRequest != null;
             log.info("Is request valid? {}", isValid);
 
-            if (!jwtFilter.isAdmin() || !jwtFilter.isTrainer()) {
+            if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer())) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
@@ -1640,24 +1641,24 @@ public class TrainerServiceImplement implements TrainerService {
     }
 
     @Override
-    public ResponseEntity<List<TrainerFeatureVideo>> getMyTrainerFeatureVideos() {
+    public ResponseEntity<TrainerFeatureVideo> getMyTrainerFeatureVideo() {
         try {
             log.info("Inside getMyTrainerFeatureVideos");
             if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer())) {
-                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+                return new ResponseEntity<>(new TrainerFeatureVideo(), HttpStatus.UNAUTHORIZED);
             }
 
             Trainer trainer = trainerRepo.findByUserId(jwtFilter.getCurrentUserId());
             if (trainer == null) {
-                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+                return new ResponseEntity<>(new TrainerFeatureVideo(), HttpStatus.UNAUTHORIZED);
             }
 
-            List<TrainerFeatureVideo> trainerFeatureVideos = trainerFeatureVideoRepo.findByTrainer(trainer);
+            TrainerFeatureVideo trainerFeatureVideos = trainerFeatureVideoRepo.findByTrainer(trainer);
             return new ResponseEntity<>(trainerFeatureVideos, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(new TrainerFeatureVideo(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
@@ -2354,13 +2355,13 @@ public class TrainerServiceImplement implements TrainerService {
         TrainerBenefit trainerBenefit = new TrainerBenefit();
 
         // Split the benefits string using "#" delimiter and store as a list
-        List<String> benefits = Arrays.asList(requestMap.get("benefit").split("#"));
+        List<String> benefits = Arrays.asList(requestMap.get("benefits").split("#"));
         trainerBenefit.setBenefits(benefits);
 
         // Set TrainerBenefit properties from the provided Map
         trainerBenefit.setTrainer(trainer);
         trainerBenefit.setDate(new Date());
-        trainer.setLastUpdate(new Date());
+        trainerBenefit.setLastUpdate(new Date());
 
         // Save TrainerBenefit entity and broadcast the updated information
         TrainerBenefit savedTrainerBenefit = trainerBenefitRepo.save(trainerBenefit);
@@ -2384,10 +2385,10 @@ public class TrainerServiceImplement implements TrainerService {
         if (isValid) {
             // Validate additional attributes when isValid is true
             return requestMap.containsKey("id")
-                    && requestMap.containsKey("benefit");
+                    && requestMap.containsKey("benefits");
         }
         // Validate only the "benefit" attribute when isValid is false
-        return requestMap.containsKey("benefit");
+        return requestMap.containsKey("benefits");
     }
 
     /**
@@ -2459,8 +2460,9 @@ public class TrainerServiceImplement implements TrainerService {
         TrainerFeatureVideo trainerFeatureVideo = new TrainerFeatureVideo();
         String videoFolderPath = BerlizConstants.TRAINER_FEATURE_VIDEO;
         long numericUUID = UUID.randomUUID().getMostSignificantBits();
-        String truncatedUUID = String.valueOf(numericUUID).substring(0, 15);
-        String videoFileName = trainer.getName() + "_video-" + truncatedUUID;
+        String truncatedUUID = String.valueOf(numericUUID).substring(0, 5);
+        long uniqueId = System.currentTimeMillis();
+        String videoFileName = trainer.getName() + "_feature_video-" + uniqueId + ".mp4";
         String videoFilePath = videoFolderPath + videoFileName;
         Path path = Paths.get(videoFilePath);
         Files.write(path, featureVideoRequest.getVideo().getBytes());
@@ -2666,8 +2668,8 @@ public class TrainerServiceImplement implements TrainerService {
      * @return True if the Trainer has less than 5 benefits or no benefits; false otherwise.
      */
     private boolean isTrainerBenefitsInvalid(Trainer trainer) {
-        List<TrainerBenefit> trainerBenefits = trainerBenefitRepo.findByTrainer(trainer);
-        return trainerBenefits.isEmpty() || trainerBenefits.size() < 5;
+        TrainerBenefit trainerBenefits = trainerBenefitRepo.findByTrainer(trainer);
+        return trainerBenefits.getBenefits().isEmpty() || trainerBenefits.getBenefits().size() < 5;
     }
 
     /**
@@ -2721,8 +2723,8 @@ public class TrainerServiceImplement implements TrainerService {
      * @return True if the Trainer has no featured videos; false otherwise.
      */
     private boolean isTrainerFeatureVideoInvalid(Trainer trainer) {
-        List<TrainerFeatureVideo> trainerFeatureVideos = trainerFeatureVideoRepo.findByTrainer(trainer);
-        return trainerFeatureVideos.isEmpty();
+        TrainerFeatureVideo trainerFeatureVideos = trainerFeatureVideoRepo.findByTrainer(trainer);
+        return trainerFeatureVideos == null;
     }
 
 }
