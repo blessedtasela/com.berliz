@@ -27,6 +27,8 @@ public class BerlizConstants {
 
     public static final String TRAINER_FEATURE_VIDEO = "C:\\berliz-project\\back-end\\com.berliz\\src\\main\\resources\\trainer_feature_video\\";
 
+    public static final String TRAINER_FEATURE_VIDEO_PATH = "trainer_feature_video/";
+
     public static final String TRAINER_CLIENT_REVIEW = "C:\\berliz-project\\back-end\\com.berliz\\src\\main\\resources\\trainer_client_review\\";
 
     public static final String CENTER_PHOTO_ALBUM_LOCATION = "C:\\berliz-project\\back-end\\com.berliz\\src\\main\\resources\\center_photo_album\\";
