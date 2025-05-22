@@ -3,8 +3,6 @@ package com.berliz.JWT;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
-import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.BeanIds;
@@ -62,12 +60,16 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+
         httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthEntryPoint))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth ->
-                        auth.requestMatchers(
+                        auth
+                                // Allow access to static resources
+                                .requestMatchers("/images/**","/videos/**", "/public/**", "/css/**", "/js/**", "/webjars/**").permitAll()
+                                .requestMatchers(
                                         ("/user/login"),
                                         ("/user/signup"),
                                         ("/user/refreshToken"),
@@ -84,7 +86,8 @@ public class SecurityConfig {
                                         ("/center/getActiveCenters"),
                                         ("/stomp"),
                                         ("/user/quickAdd"),
-                                        ("/user/sendActivationToken/**")
+                                        ("/user/sendActivationToken/**"),
+                                        ("/static/**")
                                 ).permitAll()
                                 .anyRequest().authenticated());
 

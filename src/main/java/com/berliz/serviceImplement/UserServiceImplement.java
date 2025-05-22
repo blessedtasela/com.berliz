@@ -88,7 +88,7 @@ public class UserServiceImplement implements UserService {
 
             getUserFromMap(request);
             confirmAccount(request.getEmail());
-            return buildResponse(HttpStatus.OK, BerlizConstants.SIGNUP_SUCCESS);
+            return buildResponse(HttpStatus.CREATED, BerlizConstants.SIGNUP_SUCCESS);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

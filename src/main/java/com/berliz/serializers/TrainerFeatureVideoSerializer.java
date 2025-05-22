@@ -10,8 +10,9 @@ import org.hibernate.proxy.HibernateProxy;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Date;
 
-public class TrainerFeatureVideoSerializer  extends JsonSerializer<TrainerFeatureVideo> {
+public class TrainerFeatureVideoSerializer extends JsonSerializer<TrainerFeatureVideo> {
 
     @Override
     public void serialize(TrainerFeatureVideo featureVideo, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
@@ -26,21 +27,30 @@ public class TrainerFeatureVideoSerializer  extends JsonSerializer<TrainerFeatur
         jsonGenerator.writeStringField("motivation", featureVideo.getMotivation());
 
         // Load photo content from the project folder
-        String video = generateVideoUrl(featureVideo.getVideo());
-        jsonGenerator.writeStringField("video", video);
+        jsonGenerator.writeStringField("video", generateVideoUrl(featureVideo.getVideo()));
 
         jsonGenerator.writeStringField("date", featureVideo.getDate().toString());
         jsonGenerator.writeStringField("lastUpdate", featureVideo.getLastUpdate().toString());
         jsonGenerator.writeEndObject();
     }
 
-    private String generateVideoUrl(String videoName) {
-        // Base URL for your Heroku app
-        String baseUrl = "https://berliz-server-fd9efef771e8.herokuapp.com/";
-        return baseUrl + BerlizConstants.TRAINER_FEATURE_VIDEO_PATH + videoName;
+    private byte[] loadVideoFromFolder(String videoName) throws IOException {
+        // Specify the folder path where photos are stored
+        String videoFolderPath = BerlizConstants.TRAINER_FEATURE_VIDEO_PATH;
+
+        // Create a File instance for the photo
+        File video = new File(videoFolderPath + videoName);
+
+        // Read the photo content into a byte array
+        return FileUtils.readFileToByteArray(video);
     }
 
+    private String generateVideoUrl(String videoName) {
+        // Base URL for your Heroku app
+        return BerlizConstants.BERLIZ_SERVER_URL
+                + BerlizConstants.TRAINER_FEATURE_VIDEO_PATH
+                + videoName ;
+//                + "?t=" + System.currentTimeMillis();
+    }
 }
-
-
 

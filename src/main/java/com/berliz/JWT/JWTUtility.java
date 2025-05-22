@@ -9,9 +9,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.text.DecimalFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.function.Function;
 
 @Service
@@ -22,6 +24,9 @@ public class JWTUtility {
 
     @Value("${JWT_SECRET}")
     private String SECRET_KEY;
+
+    private static final DecimalFormat formatter = new DecimalFormat("000000");
+    private static final Random random = new Random();
 
     public String extractUsername(String token) {
         return extractClaims(token, Claims::getSubject);
@@ -103,5 +108,10 @@ public class JWTUtility {
     public Boolean isValidToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    public static String getUniqueRandomNumber() {
+        int number = random.nextInt(999999) + 1; // Generates number between 1 and 999999
+        return formatter.format(number); // Format number as 000000
     }
 }

@@ -2,6 +2,7 @@ package com.berliz.serviceImplement;
 
 import com.berliz.DTO.*;
 import com.berliz.JWT.JWTFilter;
+import com.berliz.JWT.JWTUtility;
 import com.berliz.constants.BerlizConstants;
 import com.berliz.models.*;
 import com.berliz.models.TrainerReview;
@@ -13,6 +14,7 @@ import com.berliz.utils.FileUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -75,6 +77,9 @@ public class TrainerServiceImplement implements TrainerService {
 
     @Autowired
     FileUtilities fileUtilities;
+
+    @Autowired
+    JWTUtility jwtUtility;
 
     @Autowired
     TrainerPricingRepo trainerPricingRepo;
@@ -1511,7 +1516,6 @@ public class TrainerServiceImplement implements TrainerService {
             } else {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED,
                         "You are only allowed to have maximum of 4 feature videos");
-
             }
             String responseMessage = jwtFilter.isAdmin() ?
                     trainer.getName() + "'s, feature video have successfully been added to their album" :
@@ -1565,17 +1569,31 @@ public class TrainerServiceImplement implements TrainerService {
             }
 
             Trainer trainer = featureVideo.getTrainer();
-            String videoFolderPath = BerlizConstants.TRAINER_PHOTO_ALBUM_LOCATION;
+            String videoFolderPath = BerlizConstants.TRAINER_FEATURE_VIDEO_LOCATION;
             String videoFileName = featureVideo.getVideo();
             String videoFilePath = videoFolderPath + videoFileName;
             Path path = Paths.get(videoFilePath);
+            int randomId = Integer.parseInt(JWTUtility.getUniqueRandomNumber());
+            String updatedVideoFileName = "trainer_id-" + trainer.getId() + "-feature_video.mp4";
+//            String updatedVideoFileName = "trainer-" + trainer.getId() + "-" + randomId + "-feature_video.mp4";
 
-            // Update photo content
+            // Step 1: Delete the previous video file if it exists
+            if (Files.exists(path)) {
+                Files.delete(path); // Delete the old video file
+                log.info("Deleted old video file: {}", videoFilePath);
+            } else {
+                log.warn("Old video file not found, cannot delete: {}", videoFilePath);
+            }
+
+            // Update video content
+            videoFilePath = videoFolderPath + updatedVideoFileName;
+            path = Paths.get(videoFilePath);
             Files.write(path, featureVideoRequest.getVideo().getBytes());
 
             // Update photo details in the database
             featureVideo.setMotivation(featureVideoRequest.getMotivation());
             featureVideo.setLastUpdate(new Date());
+            featureVideo.setVideo(updatedVideoFileName);
             TrainerFeatureVideo savedFeatureVideo = trainerFeatureVideoRepo.save(featureVideo);
             String responseMessage = jwtFilter.isAdmin() ?
                     trainer.getName() + "!, feature video have successfully been updated in their album" :
@@ -1587,6 +1605,9 @@ public class TrainerServiceImplement implements TrainerService {
             jwtFilter.sendNotifications("/topic/updateTrainerFeatureVideo", adminNotificationMessage,
                     jwtFilter.getCurrentUser(), notificationMessage, savedFeatureVideo);
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+//            return ResponseEntity.ok()
+//                    .cacheControl(CacheControl.noCache().mustRevalidate().noStore())  // Disable browser caching
+//                    .body(responseMessage);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -1643,7 +1664,7 @@ public class TrainerServiceImplement implements TrainerService {
     @Override
     public ResponseEntity<TrainerFeatureVideo> getMyTrainerFeatureVideo() {
         try {
-            log.info("Inside getMyTrainerFeatureVideos");
+            log.info("Inside getMyTrainerFeatureVideo");
             if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer())) {
                 return new ResponseEntity<>(new TrainerFeatureVideo(), HttpStatus.UNAUTHORIZED);
             }
@@ -2458,11 +2479,11 @@ public class TrainerServiceImplement implements TrainerService {
      */
     private void getTrainerFeatureVideoFromMap(FeatureVideoRequest featureVideoRequest, Trainer trainer) throws IOException {
         TrainerFeatureVideo trainerFeatureVideo = new TrainerFeatureVideo();
-        String videoFolderPath = BerlizConstants.TRAINER_FEATURE_VIDEO;
+        String videoFolderPath = BerlizConstants.TRAINER_FEATURE_VIDEO_PATH;
         long numericUUID = UUID.randomUUID().getMostSignificantBits();
         String truncatedUUID = String.valueOf(numericUUID).substring(0, 5);
         long uniqueId = System.currentTimeMillis();
-        String videoFileName = trainer.getName() + "_feature_video-" + uniqueId + ".mp4";
+        String videoFileName = "trainer_id-" + trainer.getId() + "-feature_video.mp4";
         String videoFilePath = videoFolderPath + videoFileName;
         Path path = Paths.get(videoFilePath);
         Files.write(path, featureVideoRequest.getVideo().getBytes());

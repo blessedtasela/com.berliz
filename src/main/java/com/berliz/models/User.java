@@ -107,4 +107,5 @@ public class User implements Serializable {
 
     @Column(name = "lastUpdate", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
+
 }

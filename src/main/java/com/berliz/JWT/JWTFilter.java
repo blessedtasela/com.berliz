@@ -54,6 +54,16 @@ public class JWTFilter extends OncePerRequestFilter {
             filterChain.doFilter(httpServletRequest, httpServletResponse);
         }
 
+
+        // Skip filtering for static resources
+        String requestPath = httpServletRequest.getRequestURI();
+        if (requestPath.startsWith("/images/") || requestPath.startsWith("/videos/")
+                || requestPath.startsWith("/css/") || requestPath.startsWith("/js/")
+                || requestPath.startsWith("/webjars/")  || requestPath.startsWith("/public/")) {
+            filterChain.doFilter(httpServletRequest, httpServletResponse);
+            return;
+        }
+
         if (httpServletRequest.getServletPath().matches("/user/login|/user/signup|" +
                 "/user/forgotPassword|/newsletter/add|/newsletter/updateStatus|" +
                 "/user/validatePasswordToken|/user/resetPassword|/user/activateAccount|" +
