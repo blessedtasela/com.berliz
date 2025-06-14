@@ -45,6 +45,8 @@ public class BerlizConstants {
 
     public static final String BERLIZ_SUPER_ADMIN = "berlizworld@gmail.com";
 
+    public static final String TRAINER_PHOTO_OWNER = "trainerPhotoAlbum";
+
     public static final String HEROKU_URL = "https://berliz-server-fd9efef771e8.herokuapp.com/";
 
 

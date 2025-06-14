@@ -1267,7 +1267,7 @@ public class CenterServiceImplement implements CenterService {
     public ResponseEntity<String> addCenterPhotoAlbum(PhotoAlbumRequest photoAlbumRequest) throws JsonProcessingException {
         try {
             log.info("Inside addCenterPhotoAlbum {}", photoAlbumRequest);
-            boolean isValid = photoAlbumRequest.isValidRequest(false);
+            boolean isValid = false;
             log.info("Is request valid? {}", isValid);
 
             if (!(jwtFilter.isAdmin() || jwtFilter.isCenter())) {
@@ -1279,13 +1279,13 @@ public class CenterServiceImplement implements CenterService {
             }
 
             Center center = centerRepo.findByUserId(jwtFilter.getCurrentUserId());
-            if (jwtFilter.isAdmin()) {
-                if (photoAlbumRequest.getCenterId() == null) {
-                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide center Id");
-                }
-
-                center = centerRepo.findByCenterId(photoAlbumRequest.getCenterId());
-            }
+//            if (jwtFilter.isAdmin()) {
+//                if (photoAlbumRequest.get() == null) {
+//                    return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide center Id");
+//                }
+//
+//                center = centerRepo.findByCenterId(photoAlbumRequest.getCenterId());
+//            }
 
             if (center == null) {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Center not found in db");
@@ -1320,7 +1320,7 @@ public class CenterServiceImplement implements CenterService {
         try {
             log.info("Inside updateCenterPhotoAlbum {}", photoAlbumRequest);
             Integer userId = jwtFilter.getCurrentUserId();
-            boolean isValid = photoAlbumRequest.isValidRequest(true);
+            boolean isValid = true;
             log.info("Is request valid? {}", isValid);
 
             if (!jwtFilter.isAdmin() || !jwtFilter.isCenter()) {
@@ -1349,7 +1349,7 @@ public class CenterServiceImplement implements CenterService {
             long numericUUID = UUID.randomUUID().getMostSignificantBits();
             String truncatedUUID = String.valueOf(numericUUID).substring(0, 15);
             String fileName = generateFileName(center.getName(), "photo", truncatedUUID);
-            writeToFile(filesFolderPath, fileName, photoAlbumRequest.getPhoto());
+//            writeToFile(filesFolderPath, fileName, photoAlbumRequest.getPhoto());
 
             // Save location details to the database
             centerPhotoAlbum.setComment(photoAlbumRequest.getComment());
@@ -2684,7 +2684,7 @@ public class CenterServiceImplement implements CenterService {
         long numericUUID = UUID.randomUUID().getMostSignificantBits();
         String truncatedUUID = String.valueOf(numericUUID).substring(0, 15);
         String fileName = generateFileName(center.getName(), "photo", truncatedUUID);
-        writeToFile(filesFolderPath, fileName, photoAlbumRequest.getPhoto());
+//        writeToFile(filesFolderPath, fileName, photoAlbumRequest.getPhoto());
 
         // Save location details to the database
         centerPhotoAlbum.setCenter(center);

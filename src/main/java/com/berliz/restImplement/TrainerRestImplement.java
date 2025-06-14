@@ -217,9 +217,30 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<List<TrainerPhotoAlbum>> getMyTrainerPhotoAlbums() {
+    public ResponseEntity<List<TrainerPhotoAlbumResponse>> getAllTrainerPhotoAlbumsWithPhotos() {
         try {
-            return trainerService.getMyTrainerPhotoAlbums();
+            return trainerService.getAllTrainerPhotoAlbumsWithPhotos();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+
+    @Override
+    public ResponseEntity<TrainerPhotoAlbumResponse> getMyTrainerPhotoAlbum(Integer albumId) {
+        try {
+            return trainerService.getMyTrainerPhotoAlbum(albumId);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return new ResponseEntity<>(new TrainerPhotoAlbumResponse(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<List<Photo>> getTrainerPhotoAlbumPhotos(Integer albumId) {
+        try {
+            return trainerService.getTrainerPhotoAlbumPhotos();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -287,7 +308,7 @@ public class TrainerRestImplement implements TrainerRest {
     }
 
     @Override
-    public ResponseEntity<String> updateTrainerIntroduction( IntroductionRequest introductionRequest) throws JsonProcessingException {
+    public ResponseEntity<String> updateTrainerIntroduction(IntroductionRequest introductionRequest) throws JsonProcessingException {
         try {
             return trainerService.updateTrainerIntroduction(introductionRequest);
         } catch (Exception ex) {

@@ -53,7 +53,11 @@ public interface TrainerService {
 
     ResponseEntity<List<TrainerPhotoAlbum>> getAllTrainerPhotoAlbums();
 
-    ResponseEntity<List<TrainerPhotoAlbum>> getMyTrainerPhotoAlbums();
+    ResponseEntity<List<TrainerPhotoAlbumResponse>> getAllTrainerPhotoAlbumsWithPhotos();
+
+    ResponseEntity<TrainerPhotoAlbumResponse> getMyTrainerPhotoAlbum(Integer albumId);
+
+    ResponseEntity<List<Photo>> getTrainerPhotoAlbumPhotos();
 
     ResponseEntity<String> addTrainerBenefit(Map<String, String> requestMap) throws JsonProcessingException;
 
@@ -120,4 +124,6 @@ public interface TrainerService {
     ResponseEntity<String> deleteTrainerReview(Integer id) throws JsonProcessingException;
 
     ResponseEntity<List<TrainerReview>> getMyTrainerReviews();
+
+
 }

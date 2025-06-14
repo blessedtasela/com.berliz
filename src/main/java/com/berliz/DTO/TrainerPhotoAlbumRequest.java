@@ -6,18 +6,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @Data
-public class PhotoAlbumRequest {
+public class TrainerPhotoAlbumRequest {
     private Integer id;
     private Integer trainerId;
-    private String comment;
     private List<MultipartFile> photos;
-
+    private String comment;
+    
     public boolean isValidRequest() {
-        return trainerId != null &&
-                photos != null &&
-                photos.size() >= 9 &&
-                photos.size() <= 15;
+        return trainerId != null && comment != null && photos != null && photos.size() >= 9 && photos.size() <= 15;
     }
-
 }
-

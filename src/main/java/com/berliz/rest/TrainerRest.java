@@ -73,8 +73,14 @@ public interface TrainerRest {
     @GetMapping(path = "/getAllTrainerPhotoAlbums")
     ResponseEntity<List<TrainerPhotoAlbum>> getAllTrainerPhotoAlbums();
 
-    @GetMapping(path = "/getMyTrainerPhotoAlbums")
-    ResponseEntity<List<TrainerPhotoAlbum>> getMyTrainerPhotoAlbums();
+    @GetMapping(path = "/getAllTrainerPhotoAlbumsWithPhotos")
+    ResponseEntity<List<TrainerPhotoAlbumResponse>> getAllTrainerPhotoAlbumsWithPhotos();
+
+    @GetMapping(path = "/getMyTrainerPhotoAlbum/{id}")
+    ResponseEntity<TrainerPhotoAlbumResponse> getMyTrainerPhotoAlbum(Integer albumId);
+
+    @GetMapping(path = "/getTrainerPhotoAlbumPhotos/{albumId}")
+    ResponseEntity<List<Photo>> getTrainerPhotoAlbumPhotos(@PathVariable Integer albumId);
 
     @PutMapping(path = "/addTrainerBenefit")
     ResponseEntity<String> addTrainerBenefit(@RequestBody Map<String, String> requestMap) throws JsonProcessingException;

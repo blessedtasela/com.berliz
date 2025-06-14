@@ -11,13 +11,12 @@ import com.berliz.services.TrainerService;
 import com.berliz.utils.BerlizUtilities;
 import com.berliz.utils.EmailUtilities;
 import com.berliz.utils.FileUtilities;
+import com.berliz.utils.TrainerUtilities;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,7 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.Random;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -94,7 +93,10 @@ public class TrainerServiceImplement implements TrainerService {
     TrainerReviewLikeRepo trainerReviewLikeRepo;
 
     @Autowired
-    SimpMessagingTemplate simpMessagingTemplate;
+    PhotoRepo photoRepo;
+
+    @Autowired
+    StrapiServiceImplement strapiService;
 
     /**
      * adds a Trainer based on data provided
@@ -739,30 +741,25 @@ public class TrainerServiceImplement implements TrainerService {
     public ResponseEntity<String> addTrainerPhotoAlbum(PhotoAlbumRequest photoAlbumRequest) throws JsonProcessingException {
         try {
             log.info("Inside addTrainerPhotoAlbum {}", photoAlbumRequest);
-
-            boolean isValid = photoAlbumRequest != null;
+            boolean isValid = photoAlbumRequest.isValidRequest();
             log.info("Is request valid? {}", isValid);
-
-            if (!jwtFilter.isAdmin() || jwtFilter.isTrainer()) {
+            if (!jwtFilter.isAdmin() || !jwtFilter.isTrainer()) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
-
             if (!isValid) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
-
             Trainer trainer = trainerRepo.findByUserId(jwtFilter.getCurrentUserId());
             if (jwtFilter.isAdmin()) {
                 if (photoAlbumRequest.getTrainerId() == null) {
                     return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Admin must provide trainerId");
                 }
-
                 trainer = trainerRepo.findByTrainerId(photoAlbumRequest.getTrainerId());
             }
-
             if (trainer == null) {
                 return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer not found in db");
             }
+
 
             getTrainerPhotoAlbumFromMap(photoAlbumRequest, trainer);
             String responseMessage = jwtFilter.isAdmin() ?
@@ -792,61 +789,91 @@ public class TrainerServiceImplement implements TrainerService {
     public ResponseEntity<String> updateTrainerPhotoAlbum(PhotoAlbumRequest photoAlbumRequest) throws JsonProcessingException {
         try {
             log.info("Inside updateTrainerPhotoAlbum {}", photoAlbumRequest);
-            Integer userId = jwtFilter.getCurrentUserId();
-            boolean isValid = photoAlbumRequest != null;
-            log.info("Is request valid? {}", isValid);
 
-            if (!jwtFilter.isAdmin() || !jwtFilter.isTrainer()) {
-                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
-            if (!isValid || photoAlbumRequest.getId() == null) {
+            if (photoAlbumRequest == null || photoAlbumRequest.getId() == null) {
                 return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, BerlizConstants.INVALID_DATA);
             }
 
-            TrainerPhotoAlbum existingPhotoAlbum = trainerPhotoAlbumRepo.findById(photoAlbumRequest.getId()).orElse(null);
-            if (existingPhotoAlbum == null) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Photo album not found in db");
+            Integer userId = jwtFilter.getCurrentUserId();
+
+            // Check if user is either an admin or trainer
+            if (!(jwtFilter.isAdmin() || jwtFilter.isTrainer())) {
+                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
+            TrainerPhotoAlbum existingPhotoAlbum = trainerPhotoAlbumRepo.findById(photoAlbumRequest.getId())
+                    .orElse(null);
+
+            if (existingPhotoAlbum == null) {
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Photo album not found in DB");
+            }
+
+            // Validate access: admin or the trainer who owns the album
             boolean validUser = jwtFilter.isAdmin() ||
-                    (jwtFilter.isTrainer() && userId.equals(existingPhotoAlbum
-                            .getTrainer().getPartner().getUser().getId()));
+                    (jwtFilter.isTrainer() &&
+                            userId.equals(existingPhotoAlbum.getTrainer().getPartner().getUser().getId()));
+
             if (!validUser) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            if (!jwtFilter.isAdmin() && !existingPhotoAlbum.getTrainer().getId().equals(jwtFilter.getCurrentUserId())) {
-                return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
-            }
-
             Trainer trainer = existingPhotoAlbum.getTrainer();
-            String photoFolderPath = BerlizConstants.TRAINER_PHOTO_ALBUM_LOCATION;
-            String photoFileName = existingPhotoAlbum.getPhoto();
-            String photoFilePath = photoFolderPath + photoFileName;
-            Path path = Paths.get(photoFilePath);
+            Integer ownerId = existingPhotoAlbum.getId();
 
-            // Update photo content
-            Files.write(path, photoAlbumRequest.getPhoto().getBytes());
-
-            // Update photo details in the database
+            // 1. Update album comment
             existingPhotoAlbum.setComment(photoAlbumRequest.getComment());
             existingPhotoAlbum.setLastUpdate(new Date());
             trainerPhotoAlbumRepo.save(existingPhotoAlbum);
-            String responseMessage = jwtFilter.isAdmin() ?
-                    trainer.getName() + "!, photo have successfully been updated in their album" :
-                    "Hello " + trainer.getName() + "!, you have successfully updated the photo in your album";
-            String adminNotificationMessage = "Trainer photo with id: " + existingPhotoAlbum.getId()
-                    + ", and info: " + existingPhotoAlbum.getUuid() + "/ has been updated";
-            String notificationMessage = "You have update your trainer video: " +
-                    existingPhotoAlbum.getUuid();
+
+            // 2. Fetch existing photos before DB deletion
+            List<Photo> existingPhotos = photoRepo.findByOwnerTypeAndOwnerId(BerlizConstants.TRAINER_PHOTO_OWNER, ownerId);
+
+            // 3. Delete from Strapi
+            List<Integer> strapiIds = existingPhotos.stream()
+                    .map(Photo::getStrapiId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            strapiService.deleteMultiplePhotosFromStrapi(strapiIds);
+
+            // 4. Delete from DB
+            photoRepo.deleteByOwnerTypeAndOwnerId(BerlizConstants.TRAINER_PHOTO_OWNER, ownerId);
+
+            // 5. Upload new photos and save metadata
+            for (MultipartFile file : photoAlbumRequest.getPhotos()) {
+                StrapiPhotoMetadata meta = strapiService.uploadPhoto(file);
+
+                Photo photo = new Photo();
+                photo.setPhotoUrl(meta.getPhotoUrl());
+                photo.setStrapiId(meta.getId());
+                photo.setName(meta.getName());
+                photo.setCaption(meta.getCaption());
+                photo.setMimeType(meta.getMimeType());
+                photo.setByteSize(meta.getByteSize());
+                photo.setOwnerType(BerlizConstants.TRAINER_PHOTO_OWNER);
+                photo.setOwnerId(ownerId);
+                photo.setLastUpdate(new Date());
+
+                photoRepo.save(photo);
+            }
+
+            // 6. Send notifications
+            String trainerName = trainer.getName();
+            String responseMessage = jwtFilter.isAdmin()
+                    ? trainerName + "!, photo album has been successfully updated"
+                    : "Hello " + trainerName + "!, you have successfully updated the photo album";
+
+            String adminNotificationMessage = "Trainer photo album with ID " + ownerId + " was updated.";
+            String notificationMessage = "Your trainer photo album has been successfully updated.";
+
             jwtFilter.sendNotifications("/topic/updateTrainerPhotoAlbum", adminNotificationMessage,
                     jwtFilter.getCurrentUser(), notificationMessage, existingPhotoAlbum);
+
             return BerlizUtilities.buildResponse(HttpStatus.OK, responseMessage);
+
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("Exception occurred in updateTrainerPhotoAlbum", ex);
+            return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
         }
-        return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
 
     @Override
@@ -857,30 +884,49 @@ public class TrainerServiceImplement implements TrainerService {
             TrainerPhotoAlbum trainerPhotoAlbum = optional.orElse(null);
 
             if (trainerPhotoAlbum == null) {
-                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer photo id not found");
+                return BerlizUtilities.buildResponse(HttpStatus.NOT_FOUND, "Trainer photo album not found");
             }
 
             if (!isAuthorizedToDeleteTrainerPhotoAlbum(trainerPhotoAlbum)) {
                 return BerlizUtilities.buildResponse(HttpStatus.UNAUTHORIZED, BerlizConstants.UNAUTHORIZED_REQUEST);
             }
 
-            if (!trainerPhotoAlbum.getTrainer().getStatus().equalsIgnoreCase("false")) {
-                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer is inactive, Cannot complete request");
+            if ("false".equalsIgnoreCase(trainerPhotoAlbum.getTrainer().getStatus())) {
+                return BerlizUtilities.buildResponse(HttpStatus.BAD_REQUEST, "Trainer is inactive. Cannot complete request");
             }
 
+            // STEP 1: Fetch photos for this ownerId
+            Integer ownerId = trainerPhotoAlbum.getId();
+            List<Photo> photos = photoRepo.findByOwnerTypeAndOwnerId(BerlizConstants.TRAINER_PHOTO_OWNER, ownerId);
+            List<Integer> strapiIds = photos.stream()
+                    .map(Photo::getStrapiId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            // STEP 2: Delete photos from Strapi
+            strapiService.deleteMultiplePhotosFromStrapi(strapiIds);
+
+            // STEP 3: Delete photo records from DB
+            photoRepo.deleteByOwnerTypeAndOwnerId(BerlizConstants.TRAINER_PHOTO_OWNER, ownerId);
+
+            // STEP 4: Delete album
             trainerPhotoAlbumRepo.delete(trainerPhotoAlbum);
-            String adminNotificationMessage = "Trainer photo with id: " + trainerPhotoAlbum.getId()
-                    + ", and info " + trainerPhotoAlbum.getUuid() + ", has been deleted";
-            String notificationMessage = "You have successfully deleted your trainer video: "
-                    + trainerPhotoAlbum.getUuid();
+
+            // STEP 5: Send notifications
+            String adminNotificationMessage = "Trainer Photo Album with ownerId: " + ownerId + " has been deleted";
+            String notificationMessage = "You have successfully deleted your Photo Album";
             jwtFilter.sendNotifications("/topic/deleteTrainerPhotoAlbum", adminNotificationMessage,
                     jwtFilter.getCurrentUser(), notificationMessage, trainerPhotoAlbum);
-            return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer photo deleted from album successfully");
+
+            return BerlizUtilities.buildResponse(HttpStatus.OK, "Trainer photo album deleted successfully");
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
+
         return BerlizUtilities.buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, BerlizConstants.SOMETHING_WENT_WRONG);
     }
+
 
     @Override
     public ResponseEntity<List<TrainerPhotoAlbum>> getAllTrainerPhotoAlbums() {
@@ -898,25 +944,90 @@ public class TrainerServiceImplement implements TrainerService {
     }
 
     @Override
-    public ResponseEntity<List<TrainerPhotoAlbum>> getMyTrainerPhotoAlbums() {
+    public ResponseEntity<List<TrainerPhotoAlbumResponse>> getAllTrainerPhotoAlbumsWithPhotos() {
         try {
-            log.info("Inside getMyTrainerPhotoAlbums");
+            log.info("Inside getAllTrainerPhotoAlbumsWithPhotos");
+
             if (!jwtFilter.isAdmin()) {
-                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+                return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            }
+
+            List<TrainerPhotoAlbum> albums = trainerPhotoAlbumRepo.findAll();
+            List<TrainerPhotoAlbumResponse> responseList = new ArrayList<>();
+
+            for (TrainerPhotoAlbum album : albums) {
+                List<Photo> photos = photoRepo.getPhotosByTrainerPhotoAlbum(album.getId());
+                TrainerPhotoAlbumResponse response = TrainerUtilities.trainerPhotoAlbumResponseWithPhotos(album, photos);
+                responseList.add(response);
+            }
+
+            return new ResponseEntity<>(responseList, HttpStatus.OK);
+
+        } catch (Exception ex) {
+            log.error("Error fetching albums with photos", ex);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+    @Override
+    public ResponseEntity<TrainerPhotoAlbumResponse> getMyTrainerPhotoAlbum(Integer albumId) {
+        try {
+            log.info("Inside getMyTrainerPhotoAlbum");
+
+            if (!jwtFilter.isAdmin() && !jwtFilter.isTrainer()) {
+                return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
             }
 
             Trainer trainer = trainerRepo.findByUserId(jwtFilter.getCurrentUserId());
             if (trainer == null) {
-                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+                return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
             }
 
-            List<TrainerPhotoAlbum> trainerPhotoAlbum = trainerPhotoAlbumRepo.findByTrainer(trainer);
-            return new ResponseEntity<>(trainerPhotoAlbum, HttpStatus.OK);
+            Optional<TrainerPhotoAlbum> optionalAlbum = trainerPhotoAlbumRepo.findById(albumId);
+            if (optionalAlbum.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+
+            TrainerPhotoAlbum owner = optionalAlbum.get();
+
+            // Ensure the album belongs to the trainer
+            if (!owner.getTrainer().getId().equals(trainer.getId())) {
+                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            }
+
+            List<Photo> photos = photoRepo.getPhotosByTrainerPhotoAlbum(owner.getId());
+            TrainerPhotoAlbumResponse response = TrainerUtilities.trainerPhotoAlbumResponseWithPhotos(owner, photos);
+
+            return new ResponseEntity<>(response, HttpStatus.OK);
+
         } catch (Exception ex) {
             ex.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+
+    @Override
+    public ResponseEntity<List<Photo>> getTrainerPhotoAlbumPhotos() {
+        try {
+            log.info("Inside getTrainerPhotoAlbumPhotos");
+
+            // Only admin should be able to access this
+            if (!jwtFilter.isAdmin()) {
+                return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            }
+
+            // Fetch all photos where owner is 'trainer_album'
+            List<Photo> photos = photoRepo.getAllTrainerPhotoAlbumPhotos(BerlizConstants.TRAINER_PHOTO_OWNER);
+            return new ResponseEntity<>(photos, HttpStatus.OK);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
 
     @Override
     public ResponseEntity<String> addTrainerBenefit(Map<String, String> requestMap) throws JsonProcessingException {
@@ -2335,33 +2446,40 @@ public class TrainerServiceImplement implements TrainerService {
      * @throws IOException If an I/O error occurs while saving the photo file or TrainerPhotoAlbum entity.
      */
     private void getTrainerPhotoAlbumFromMap(PhotoAlbumRequest photoAlbumRequest, Trainer trainer) throws IOException {
+        // 1. Create and save the TrainerPhotoAlbum
         TrainerPhotoAlbum trainerPhotoAlbum = new TrainerPhotoAlbum();
-
-        // Generate a unique photo file name based on Trainer's name and a truncated UUID
-        String photoFolderPath = BerlizConstants.TRAINER_PHOTO_ALBUM_LOCATION;
-        long numericUUID = UUID.randomUUID().getMostSignificantBits();
-        String truncatedUUID = String.valueOf(numericUUID).substring(0, 15);
-        String photoFileName = trainer.getName() + "_photo-" + truncatedUUID;
-        String photoFilePath = photoFolderPath + photoFileName;
-
-        // Save the photo file to the specified path
-        Path path = Paths.get(photoFilePath);
-        Files.write(path, photoAlbumRequest.getPhoto().getBytes());
-
-        // Save photo details to the database
         trainerPhotoAlbum.setTrainer(trainer);
-        trainerPhotoAlbum.setPhoto(photoFileName);
         trainerPhotoAlbum.setComment(photoAlbumRequest.getComment());
         trainerPhotoAlbum.setDate(new Date());
         trainerPhotoAlbum.setLastUpdate(new Date());
+        trainerPhotoAlbum = trainerPhotoAlbumRepo.save(trainerPhotoAlbum); // get generated ID
+
+        // Upload each photo to Strapi and save its metadata
+        for (MultipartFile file : photoAlbumRequest.getPhotos()) {
+           StrapiPhotoMetadata meta = strapiService.uploadPhoto(file); // extract metadata from Strapi response
+
+            Photo photo = new Photo();
+            photo.setPhotoUrl(meta.getPhotoUrl());
+            photo.setStrapiId(meta.getId());
+            photo.setName(meta.getName());
+            photo.setCaption(meta.getCaption()); // optional caption if not in metadata
+            photo.setMimeType(meta.getMimeType());
+            photo.setByteSize(meta.getByteSize());
+            photo.setOwnerType(BerlizConstants.TRAINER_PHOTO_OWNER);
+            photo.setOwnerId(trainerPhotoAlbum.getId());
+            photo.setDate(new Date());
+            photo.setLastUpdate(new Date());
+
+            photoRepo.save(photo);
+        }
 
         // Save TrainerPhotoAlbum entity and broadcast the updated information
-        TrainerPhotoAlbum savedTrainerPhotoAlbum = trainerPhotoAlbumRepo.save(trainerPhotoAlbum);
-        String adminNotificationMessage = "A new photo with id: " + savedTrainerPhotoAlbum.getId()
-                + " and info" + savedTrainerPhotoAlbum.getUuid()
-                + ", has been added for trainer: " + trainer.getName();
-        String notificationMessage = "You have successfully added a photo to your trainer's profile: "
-                + savedTrainerPhotoAlbum.getUuid();
+        TrainerPhotoAlbum savedTrainerPhotoAlbum = trainerPhotoAlbum;
+        String adminNotificationMessage = String.format(
+                "A new trainer photo album with ID: %d has been created for trainer: %s",
+                trainerPhotoAlbum.getId(), trainer.getName());
+        String notificationMessage = "You have successfully added new photo(s) to your trainer's profile.";
+
         jwtFilter.sendNotifications("/topic/getTrainerPhotoAlbumFromMap", adminNotificationMessage,
                 jwtFilter.getCurrentUser(), notificationMessage, savedTrainerPhotoAlbum);
     }

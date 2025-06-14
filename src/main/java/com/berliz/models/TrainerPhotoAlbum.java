@@ -5,7 +5,7 @@ import lombok.Data;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
-import java.text.SimpleDateFormat;
+import java.io.Serializable;
 import java.util.Date;
 
 @Data
@@ -13,7 +13,7 @@ import java.util.Date;
 @DynamicInsert
 @DynamicUpdate
 @Table(name = "trainerPhotoAlbum")
-public class TrainerPhotoAlbum {
+public class TrainerPhotoAlbum implements Serializable {
 
     private static final long SerialVersionUID = 1L;
 
@@ -26,12 +26,6 @@ public class TrainerPhotoAlbum {
     @JoinColumn(name = "trainer_fk", nullable = false)
     private Trainer trainer;
 
-    @Column(name = "uuid")
-    private String uuid;
-
-    @Column(name = "photo")
-    private String photo;
-
     @Column(name = "comment", columnDefinition = "TEXT")
     private String comment;
 
@@ -41,17 +35,4 @@ public class TrainerPhotoAlbum {
     @Column(name = "last_update", columnDefinition = "TIMESTAMP")
     private Date lastUpdate;
 
-    @PrePersist
-    public void prePersist() {
-        this.uuid = generateUuid();
-    }
-
-    private String generateUuid() {
-        String trainerName = this.trainer.getName();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
-        String dateCreated = dateFormat.format(this.date);
-        String id = String.valueOf(this.id);
-
-        return trainerName + "_" + dateCreated + "_ID-" + id;
-    }
 }

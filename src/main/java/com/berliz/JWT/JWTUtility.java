@@ -51,7 +51,9 @@ public class JWTUtility {
     }
 
     private Boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
+
+        return extractExpiration(token).before(new Date()
+        );
     }
 
     private String createAccessToken(Map<String, Object> claims, String username, Integer id) {
@@ -75,7 +77,7 @@ public class JWTUtility {
     }
 
     public String generateAccessToken(String accessToken) {
-        Claims claims =  extractAllClaims(accessToken);
+        Claims claims = extractAllClaims(accessToken);
         String role = clientUserDetailsService.getUserDetails().getRole();
         String username = clientUserDetailsService.getUserDetails().getEmail();
         Integer id = clientUserDetailsService.getUserDetails().getId();
@@ -102,12 +104,14 @@ public class JWTUtility {
     }
 
     public String generateConfirmAccountToken() {
-       return RandomStringUtils.randomNumeric(8);
+        return RandomStringUtils.randomNumeric(8);
     }
 
     public Boolean isValidToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        return (username.equals(userDetails.getUsername())
+                && !isTokenExpired(token)
+        );
     }
 
     public static String getUniqueRandomNumber() {

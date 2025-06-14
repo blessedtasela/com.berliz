@@ -3,6 +3,8 @@ package com.berliz.DTO;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @Data
 public class TrainerRequest {
     private Integer id;
@@ -14,3 +16,6 @@ public class TrainerRequest {
     private MultipartFile photo;
     private String categoryIds;
 }
+
+
+
