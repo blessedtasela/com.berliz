@@ -32,6 +32,6 @@ build/
 ### VS Code ###
 .vscode/
 
-### environment file ###
+### environment file and secrets###
 .env
-.set_env_file.sh
+.set_env_vars.sh
