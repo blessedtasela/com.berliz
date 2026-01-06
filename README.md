@@ -6,8 +6,9 @@
 The **Berliz backend** powers the fitness and combat sports platform, handling user data, workouts, media uploads, and other API requests. Built with **Spring Boot**, it connects to a **PostgreSQL database** and exposes RESTful APIs for the frontend. Strapi is also integrated as a headless CMS for managing media and content.
 
 ## 🚀 Live API
-### The backend API is accessible at:  
-#### `https://api.berliz.fitness`  
+### The app is accessible at:  
+
+#### [https://berliz.fitness](https://berliz.fitness) 
 
 ## 🛠️ Technologies & Libraries
 - **Java & Spring Boot** — Backend framework and REST API  
