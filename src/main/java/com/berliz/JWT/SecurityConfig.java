@@ -68,7 +68,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth ->
                         auth
                                 // Allow access to static resources
-                                .requestMatchers("/images/**","/videos/**", "/public/**", "/css/**", "/js/**", "/webjars/**").permitAll()
+                                .requestMatchers("/images/**", "/videos/**", "/public/**", "/css/**", "/js/**", "/webjars/**").permitAll()
                                 .requestMatchers(
                                         ("/user/login"),
                                         ("/user/signup"),
@@ -87,8 +87,12 @@ public class SecurityConfig {
                                         ("/stomp"),
                                         ("/user/quickAdd"),
                                         ("/user/sendActivationToken/**"),
-                                        ("/static/**")
-                                ).permitAll()
+                                        ("/static/**"),
+                                        ("/swagger-ui/**"),
+                                        ("/api-docs/**"),
+                                        ("/swagger-ui.html")
+                                )
+                                .permitAll()
                                 .anyRequest().authenticated());
 
         // fix H2 database console: Refused to display ' in a frame because it set 'X-Frame-Options' to 'deny'

@@ -68,10 +68,11 @@ public class JWTFilter extends OncePerRequestFilter {
                 "/user/forgotPassword|/newsletter/add|/newsletter/updateStatus|" +
                 "/user/validatePasswordToken|/user/resetPassword|/user/activateAccount|" +
                 "/category/getActiveCategories|/contactUs/add|/dashboard/berliz|/trainer/getActiveTrainers|" +
-                "/center/getActiveCenters|/user/refreshToken|/ws/.*|/user/quickAdd|/user/sendActivationToken/.*")) {
 
+                "/center/getActiveCenters|/user/refreshToken|/ws/.*|/user/quickAdd|/user/sendActivationToken/.*" +
+                "/swagger-ui/.*|/api-docs/.*|/swagger-ui.html"))  {
             filterChain.doFilter(httpServletRequest, httpServletResponse);
-        } else {
+            } else {
             // Handle authenticated paths
             String authorizationHeader = httpServletRequest.getHeader("Authorization");
             String token = null;
